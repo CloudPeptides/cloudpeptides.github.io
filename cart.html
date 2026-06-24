@@ -173,6 +173,9 @@ return sum + (price * qty);
 
 },0);
 
+document.getElementById('subtotal').textContent =
+'$' + total.toFixed(2);
+
 await fetch(
 'https://script.google.com/macros/s/AKfycbxLEpm1l_PB6IRwCGFJzqFmXy8Mqx36_yYXxcEiwoHWWDQIuBsBiAK3VJ6C3sz1bt2U/exec',
 {
