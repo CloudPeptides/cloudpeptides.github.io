@@ -36,7 +36,9 @@
           <select id="optionSelect"></select>
           <div class="detail-price" id="price"></div>
           <p id="codeLine" class="disclaimer"></p>
-          <a class="btn" href="contact.html">Contact To Order</a>
+          <button class="btn" id="addToCart">
+            Add To Cart
+          </button>
         </div>
         <p class="disclaimer">Research use only. Not for human consumption. No peptide information or medical claims are provided on this page.</p>
       </div>
@@ -45,6 +47,48 @@
 </main>
 <script src="js/products.js"></script>
 <script src="js/product.js"></script>
+  <script src="js/cart.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+  const button = document.getElementById('addToCart');
+
+  if (!button) return;
+
+  button.addEventListener('click', () => {
+
+    const product =
+      document.getElementById('productName').textContent;
+
+    const mg =
+      document.getElementById('optionSelect').value;
+
+    const price =
+      document.getElementById('price').textContent;
+
+    const cart =
+      JSON.parse(localStorage.getItem('cart') || '[]');
+
+    cart.push({
+      product,
+      mg,
+      price
+    });
+
+    localStorage.setItem(
+      'cart',
+      JSON.stringify(cart)
+    );
+
+    alert('Added to cart');
+
+    updateCartCount();
+  });
+
+});
+</script>
+  
 <footer class="footer">
   <strong>♡ For research purposes only. Not for human consumption. ♡</strong><br>
   © 2026 Cloud Peptides. All rights reserved.
