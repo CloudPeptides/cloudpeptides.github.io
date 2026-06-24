@@ -61,8 +61,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const product =
       document.getElementById('productName').textContent;
 
+    const optionSelect =
+      document.getElementById('optionSelect');
+
     const mg =
-      document.getElementById('optionSelect').value;
+      optionSelect.options[optionSelect.selectedIndex].textContent;
 
     const price =
       document.getElementById('price').textContent;
