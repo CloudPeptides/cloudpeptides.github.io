@@ -84,3 +84,16 @@ radial-gradient(circle at 100% 0,rgba(219,164,201,.10),transparent 30%),
   .feature-grid,.category-row,.contact-grid,.product-page{grid-template-columns:1fr}.product-grid{grid-template-columns:repeat(2,1fr)}.product-vial-large{min-height:420px}.product-vial-large img{height:370px}
 }
 @media(max-width:540px){.product-grid{grid-template-columns:1fr}.feature{grid-template-columns:1fr;text-align:center}.feature-icon{margin:auto}.hero-home img{width:92vw}.container{padding:44px 18px}.product-image{height:220px}.product-image img{height:195px}}
+
+.cart-icon{
+  color:#DBA4C9;
+  font-size:28px;
+  text-decoration:none;
+  margin-left:20px;
+  transition:.2s;
+}
+
+.cart-icon:hover{
+  transform:scale(1.1);
+}
+
