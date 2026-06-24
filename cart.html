@@ -68,13 +68,84 @@ JSON.parse(localStorage.getItem('cart') || '[]');
 const container =
 document.getElementById('cartItems');
 
-container.innerHTML = cart.map(item => `
+container.innerHTML = cart.map((item,index) => `
 <div class="panel" style="margin-bottom:20px;">
+
 <h3>${item.product}</h3>
+
 <p>${item.mg}</p>
+
 <p>${item.price}</p>
+
+<p>
+Quantity:
+<button onclick="decreaseQty(${index})">−</button>
+
+${item.quantity || 1}
+
+<button onclick="increaseQty(${index})">+</button>
+</p>
+
+<button onclick="removeItem(${index})"
+class="btn outline">
+Remove
+</button>
+
 </div>
 `).join('');
+
+function saveAndReload(cart){
+localStorage.setItem(
+'cart',
+JSON.stringify(cart)
+);
+location.reload();
+}
+
+function increaseQty(index){
+
+const cart =
+JSON.parse(
+localStorage.getItem('cart')
+|| '[]'
+);
+
+cart[index].quantity =
+(cart[index].quantity || 1) + 1;
+
+saveAndReload(cart);
+}
+
+function decreaseQty(index){
+
+const cart =
+JSON.parse(
+localStorage.getItem('cart')
+|| '[]'
+);
+
+if((cart[index].quantity || 1) > 1){
+
+cart[index].quantity--;
+
+saveAndReload(cart);
+
+}
+
+}
+
+function removeItem(index){
+
+const cart =
+JSON.parse(
+localStorage.getItem('cart')
+|| '[]'
+);
+
+cart.splice(index,1);
+
+saveAndReload(cart);
+}
 
 document
 .getElementById('submitOrder')
@@ -95,7 +166,10 @@ cart.reduce((sum,item)=>{
 const price =
 Number(item.price.replace(/[^0-9.]/g,''));
 
-return sum + price;
+const qty =
+item.quantity || 1;
+
+return sum + (price * qty);
 
 },0);
 
