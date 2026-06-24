@@ -8,13 +8,13 @@ window.PRODUCTS = [
         "code": "CU50",
         "spec": "50mg",
         "count": 10,
-        "price": 80.0
+        "price": 120.0
       },
       {
         "code": "CU100",
         "spec": "100mg",
         "count": 10,
-        "price": 150.0
+        "price": 170.0
       }
     ],
     "featured": true
@@ -28,7 +28,7 @@ window.PRODUCTS = [
         "code": "AU50",
         "spec": "50mg",
         "count": 10,
-        "price": 100.0
+        "price": 110.0
       }
     ],
     "featured": false
@@ -42,13 +42,13 @@ window.PRODUCTS = [
         "code": "BC5",
         "spec": "5mg",
         "count": 10,
-        "price": 100.0
+        "price": 110.0
       },
       {
         "code": "BC10",
         "spec": "10mg",
         "count": 10,
-        "price": 188.0
+        "price": 170.0
       }
     ],
     "featured": true
@@ -62,13 +62,13 @@ window.PRODUCTS = [
         "code": "NJ500",
         "spec": "500mg",
         "count": 10,
-        "price": 175.0
+        "price": 160.0
       },
       {
         "code": "NJ1000",
         "spec": "1000mg",
         "count": 10,
-        "price": 238.0
+        "price": 215.0
       }
     ],
     "featured": true
@@ -82,13 +82,13 @@ window.PRODUCTS = [
         "code": "TB5",
         "spec": "5mg",
         "count": 10,
-        "price": 225.0
+        "price": 200.0
       },
       {
         "code": "TB10",
         "spec": "10mg",
         "count": 10,
-        "price": 375.0
+        "price": 290.0
       }
     ],
     "featured": false
@@ -102,19 +102,19 @@ window.PRODUCTS = [
         "code": "BB10",
         "spec": "5mg/5mg",
         "count": 10,
-        "price": 288.0
+        "price": 220.0
       },
       {
         "code": "BB20",
         "spec": "10mg/10mg",
         "count": 10,
-        "price": 475.0
+        "price": 300.0
       },
       {
         "code": "BB30",
         "spec": "15mg/15mg",
         "count": 10,
-        "price": 700.0
+        "price": 390.0
       }
     ],
     "featured": false
@@ -128,7 +128,7 @@ window.PRODUCTS = [
         "code": "GLOW",
         "spec": "70mg",
         "count": 10,
-        "price": 425.0
+        "price": 350.0
       }
     ],
     "featured": true
@@ -142,7 +142,7 @@ window.PRODUCTS = [
         "code": "KLOW",
         "spec": "80mg",
         "count": 10,
-        "price": 450.0
+        "price": 360.0
       }
     ],
     "featured": false
@@ -156,13 +156,13 @@ window.PRODUCTS = [
         "code": "KP5",
         "spec": "5mg",
         "count": 10,
-        "price": 113.0
+        "price": 150.0
       },
       {
         "code": "KP10",
         "spec": "10mg",
         "count": 10,
-        "price": 150.0
+        "price": 190.0
       }
     ],
     "featured": false
@@ -176,13 +176,13 @@ window.PRODUCTS = [
         "code": "ET10",
         "spec": "10mg",
         "count": 10,
-        "price": 113.0
+        "price": 110.0
       },
       {
         "code": "ET50",
         "spec": "50mg",
         "count": 10,
-        "price": 375.0
+        "price": 340.0
       }
     ],
     "featured": false
@@ -196,7 +196,7 @@ window.PRODUCTS = [
         "code": "MT10",
         "spec": "10mg",
         "count": 10,
-        "price": 163.0
+        "price": 150.0
       }
     ],
     "featured": false
@@ -210,7 +210,7 @@ window.PRODUCTS = [
         "code": "ML10",
         "spec": "10mg",
         "count": 10,
-        "price": 163.0
+        "price": 150.0
       }
     ],
     "featured": false
@@ -224,7 +224,7 @@ window.PRODUCTS = [
         "code": "GTT600",
         "spec": "600mg",
         "count": 10,
-        "price": 175.0
+        "price": 160.0
       },
       {
         "code": "GTT1500",
@@ -244,13 +244,13 @@ window.PRODUCTS = [
         "code": "SM10",
         "spec": "10mg",
         "count": 10,
-        "price": 138.0
+        "price": 140.0
       },
       {
         "code": "SM20",
         "spec": "20mg",
         "count": 10,
-        "price": 238.0
+        "price": 230.0
       }
     ],
     "featured": true
@@ -276,19 +276,19 @@ window.PRODUCTS = [
         "code": "TR20",
         "spec": "20mg",
         "count": 10,
-        "price": 238.0
+        "price": 200.0
       },
       {
         "code": "TR30",
         "spec": "30mg",
         "count": 10,
-        "price": 325.0
+        "price": 260.0
       },
       {
         "code": "TR40",
         "spec": "40mg",
         "count": 10,
-        "price": 413.0
+        "price": 280.0
       },
       {
         "code": "TR60",
@@ -314,37 +314,37 @@ window.PRODUCTS = [
         "code": "RT10",
         "spec": "10mg",
         "count": 10,
-        "price": 300.0
+        "price": 250.0
       },
       {
         "code": "RT15",
         "spec": "15mg",
         "count": 10,
-        "price": 350.0
+        "price": 300.0
       },
       {
         "code": "RT20",
         "spec": "20mg",
         "count": 10,
-        "price": 450.0
+        "price": 350.0
       },
       {
         "code": "RT30",
         "spec": "30mg",
         "count": 10,
-        "price": 500.0
+        "price": 400.0
       },
       {
         "code": "RT40",
         "spec": "40mg",
         "count": 10,
-        "price": 575.0
+        "price": 450.0
       },
       {
         "code": "RT60",
         "spec": "60mg",
         "count": 10,
-        "price": 725.0
+        "price": 550.0
       }
     ],
     "featured": true
@@ -358,19 +358,19 @@ window.PRODUCTS = [
         "code": "MS10",
         "spec": "10mg",
         "count": 10,
-        "price": 188.0
+        "price": 185.0
       },
       {
         "code": "MS20",
         "spec": "20mg",
         "count": 10,
-        "price": 338.0
+        "price": 255.0
       },
       {
         "code": "MS40",
         "spec": "40mg",
         "count": 10,
-        "price": 550.0
+        "price": 400.0
       }
     ],
     "featured": true
@@ -396,7 +396,7 @@ window.PRODUCTS = [
         "code": "TSM20",
         "spec": "20mg",
         "count": 10,
-        "price": 750.0
+        "price": 600.0
       }
     ],
     "featured": true
@@ -410,13 +410,13 @@ window.PRODUCTS = [
         "code": "IP5",
         "spec": "5mg",
         "count": 10,
-        "price": 98.0
+        "price": 100.0
       },
       {
         "code": "IP10",
         "spec": "10mg",
         "count": 10,
-        "price": 163.0
+        "price": 165.0
       }
     ],
     "featured": false
@@ -430,13 +430,13 @@ window.PRODUCTS = [
         "code": "10AM",
         "spec": "10mg",
         "count": 10,
-        "price": 113.0
+        "price": 110.0
       },
       {
         "code": "50AM",
         "spec": "50mg",
         "count": 10,
-        "price": 213.0
+        "price": 170.0
       }
     ],
     "featured": false
@@ -450,7 +450,7 @@ window.PRODUCTS = [
         "code": "IF1",
         "spec": "1mg",
         "count": 10,
-        "price": 575.0
+        "price": 550.0
       }
     ],
     "featured": false
@@ -464,13 +464,13 @@ window.PRODUCTS = [
         "code": "CND5",
         "spec": "5mg",
         "count": 10,
-        "price": 225.0
+        "price": 200.0
       },
       {
         "code": "CND10",
         "spec": "10mg",
         "count": 10,
-        "price": 350.0
+        "price": 315.0
       }
     ],
     "featured": false
@@ -484,7 +484,7 @@ window.PRODUCTS = [
         "code": "CP10",
         "spec": "10mg",
         "count": 10,
-        "price": 275.0
+        "price": 230.0
       }
     ],
     "featured": false
@@ -498,7 +498,7 @@ window.PRODUCTS = [
         "code": "5AD",
         "spec": "5mg",
         "count": 10,
-        "price": 250.0
+        "price": 220.0
       }
     ],
     "featured": false
@@ -512,7 +512,7 @@ window.PRODUCTS = [
         "code": "10AD",
         "spec": "10mg",
         "count": 10,
-        "price": 413.0
+        "price": 290.0
       }
     ],
     "featured": false
@@ -526,13 +526,13 @@ window.PRODUCTS = [
         "code": "CGL5",
         "spec": "5mg",
         "count": 10,
-        "price": 325.0
+        "price": 250.0
       },
       {
         "code": "CGL10",
         "spec": "10mg",
         "count": 10,
-        "price": 488.0
+        "price": 315.0
       }
     ],
     "featured": false
@@ -546,13 +546,13 @@ window.PRODUCTS = [
         "code": "SML5",
         "spec": "5mg",
         "count": 10,
-        "price": 188.0
+        "price": 185.0
       },
       {
         "code": "SML10",
         "spec": "10mg",
         "count": 10,
-        "price": 363.0
+        "price": 275.0
       }
     ],
     "featured": false
@@ -563,10 +563,10 @@ window.PRODUCTS = [
     "category": "Weight Loss + Metabolic",
     "options": [
       {
-        "code": "",
+        "code": "LEM",
         "spec": "10ml",
         "count": 10,
-        "price": 163.0
+        "price": 165.0
       }
     ],
     "featured": false
@@ -580,7 +580,7 @@ window.PRODUCTS = [
         "code": "AR100",
         "spec": "100mg",
         "count": 10,
-        "price": 288.0
+        "price": 290.0
       }
     ],
     "featured": false
@@ -608,13 +608,13 @@ window.PRODUCTS = [
         "code": "DS5",
         "spec": "5mg",
         "count": 10,
-        "price": 113.0
+        "price": 115.0
       },
       {
         "code": "DS10",
         "spec": "10mg",
         "count": 10,
-        "price": 188.0
+        "price": 190.0
       }
     ],
     "featured": false
@@ -628,7 +628,7 @@ window.PRODUCTS = [
         "code": "G2K",
         "spec": "2000iu",
         "count": 10,
-        "price": 113.0
+        "price": 115.0
       },
       {
         "code": "G5K",
@@ -688,7 +688,7 @@ window.PRODUCTS = [
         "code": "SK5",
         "spec": "5mg",
         "count": 10,
-        "price": 113.0
+        "price": 115.0
       },
       {
         "code": "SK10",
@@ -708,7 +708,7 @@ window.PRODUCTS = [
         "code": "SX5",
         "spec": "5mg",
         "count": 10,
-        "price": 113.0
+        "price": 115.0
       },
       {
         "code": "SX10",
@@ -728,13 +728,13 @@ window.PRODUCTS = [
         "code": "2S10",
         "spec": "10mg",
         "count": 10,
-        "price": 250.0
+        "price": 230.0
       },
       {
         "code": "2S50",
         "spec": "50mg",
         "count": 10,
-        "price": 800.0
+        "price": 520.0
       }
     ],
     "featured": true
@@ -748,13 +748,13 @@ window.PRODUCTS = [
         "code": "TA5",
         "spec": "5mg",
         "count": 10,
-        "price": 263.0
+        "price": 260.0
       },
       {
         "code": "TA10",
         "spec": "10mg",
         "count": 10,
-        "price": 413.0
+        "price": 400.0
       }
     ],
     "featured": false
@@ -768,13 +768,13 @@ window.PRODUCTS = [
         "code": "ADA5",
         "spec": "5mg",
         "count": 10,
-        "price": 225.0
+        "price": 200.0
       },
       {
         "code": "ADA10",
         "spec": "10mg",
         "count": 10,
-        "price": 338.0
+        "price": 335.0
       }
     ],
     "featured": false
@@ -788,7 +788,7 @@ window.PRODUCTS = [
         "code": "XT100",
         "spec": "100iu",
         "count": 1,
-        "price": 225.0
+        "price": 200.0
       }
     ],
     "featured": false
@@ -802,7 +802,7 @@ window.PRODUCTS = [
         "code": "Pin10",
         "spec": "10mg",
         "count": 10,
-        "price": 150.0
+        "price": 170.0
       }
     ],
     "featured": false
@@ -816,7 +816,7 @@ window.PRODUCTS = [
         "code": "OT5",
         "spec": "5mg",
         "count": 10,
-        "price": 113.0
+        "price": 115.0
       },
       {
         "code": "OT10",
@@ -864,7 +864,7 @@ window.PRODUCTS = [
         "code": "TY10",
         "spec": "10mg",
         "count": 10,
-        "price": 160.0
+        "price": 165.0
       }
     ],
     "featured": false
