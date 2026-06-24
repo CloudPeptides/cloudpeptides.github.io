@@ -70,11 +70,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const cart =
       JSON.parse(localStorage.getItem('cart') || '[]');
 
-    cart.push({
-      product,
-      mg,
-      price
-    });
+    const existing = cart.find(
+item =>
+item.product === product &&
+item.mg === mg
+);
+
+if (existing) {
+
+existing.quantity =
+(existing.quantity || 1) + 1;
+
+} else {
+
+cart.push({
+product,
+mg,
+price,
+quantity:1
+});
+
+}
 
     localStorage.setItem(
       'cart',
