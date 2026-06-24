@@ -99,6 +99,22 @@ Remove
 </div>
 `).join('');
 
+const total =
+cart.reduce((sum,item)=>{
+
+const price =
+Number(item.price.replace(/[^0-9.]/g,''));
+
+const qty =
+item.quantity || 1;
+
+return sum + (price * qty);
+
+},0);
+
+document.getElementById('subtotal').textContent =
+'$' + total.toFixed(2);
+
 function saveAndReload(cart){
 localStorage.setItem(
 'cart',
@@ -164,22 +180,6 @@ document.getElementById('customerEmail').value;
 
 const contact =
 document.getElementById('customerContact').value;
-
-const total =
-cart.reduce((sum,item)=>{
-
-const price =
-Number(item.price.replace(/[^0-9.]/g,''));
-
-const qty =
-item.quantity || 1;
-
-return sum + (price * qty);
-
-},0);
-
-document.getElementById('subtotal').textContent =
-'$' + total.toFixed(2);
 
 await fetch(
 'https://script.google.com/macros/s/AKfycbxLEpm1l_PB6IRwCGFJzqFmXy8Mqx36_yYXxcEiwoHWWDQIuBsBiAK3VJ6C3sz1bt2U/exec',
