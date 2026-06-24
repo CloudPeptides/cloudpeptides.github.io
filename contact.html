@@ -35,11 +35,16 @@
         <div class="contact-row"><strong>Email</strong><a href="mailto:the.cloud.peptides@gmail.com">the.cloud.peptides@gmail.com</a></div>
         <div class="contact-row"><strong>iMessage / WhatsApp</strong><a href="tel:4434700714">443-470-0714</a></div>
       </div>
-      <form class="panel form" id="contactForm">
+      <form class="panel form"
+      action="https://formsubmit.co/the.cloud.peptides@gmail.com"
+      method="POST">
+        <input type="hidden" name="_subject" value="Cloud Peptides Contact Form">
+        <input type="hidden" name="_captcha" value="false">
+        <input type="hidden" name="_template" value="table">
         <h2>Send Message</h2>
-        <input id="name" required placeholder="Your Name">
-        <input id="email" type="email" required placeholder="Your Email">
-        <textarea id="message" required placeholder="Your Message"></textarea>
+        <input name="Name" id="name" required placeholder="Your Name">
+        <input name="Email" id="email" type="email" required placeholder="Your Email">
+        <textarea name="Message" id="message" required placeholder="Your Message"></textarea>
         <button class="btn" type="submit">Send Message</button>
         <p class="disclaimer">This opens your email app with the message filled in.</p>
       </form>
