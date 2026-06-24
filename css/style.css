@@ -117,3 +117,17 @@ radial-gradient(circle at 100% 0,rgba(219,164,201,.10),transparent 30%),
     height: 90px;
     object-fit: contain;
 }
+
+.about-panel{
+    text-align:center;
+}
+
+.about-panel p{
+    max-width:650px;
+    margin:0 auto 24px auto;
+    line-height:1.8;
+}
+
+.about-panel h2{
+    margin-bottom:30px;
+}
