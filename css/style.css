@@ -97,3 +97,8 @@ radial-gradient(circle at 100% 0,rgba(219,164,201,.10),transparent 30%),
   transform:scale(1.1);
 }
 
+.category-icon img {
+    width: 90px;
+    height: 90px;
+    object-fit: contain;
+}
