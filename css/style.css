@@ -155,3 +155,34 @@ radial-gradient(circle at 100% 0,rgba(219,164,201,.10),transparent 30%),
     margin-bottom:30px;
 }
 
+.notice{
+    max-width:900px;
+    margin:50px auto;
+    padding:28px 34px;
+    text-align:center;
+    background:#fff8fc;
+    border:1px solid #f3d2e3;
+    border-radius:18px;
+    color:#666;
+    line-height:1.8;
+    font-size:17px;
+    box-shadow:0 8px 30px rgba(232,169,200,.12);
+}
+
+.notice strong{
+    display:block;
+    color:#d48db9;
+    font-size:24px;
+    margin-bottom:6px;
+}
+
+.notice a{
+    color:#d48db9;
+    font-weight:700;
+    text-decoration:none;
+}
+
+.notice a:hover{
+    text-decoration:underline;
+}
+
