@@ -233,3 +233,16 @@ radial-gradient(circle at 100% 0,rgba(219,164,201,.10),transparent 30%),
     line-height:1.7;
     margin-bottom:24px;
 }
+
+.research-status{
+    margin-top:auto;
+    padding:12px 22px;
+    border:1px solid #f0c8dc;
+    border-radius:999px;
+    background:#fff8fc;
+    color:#d48db9;
+    font-size:13px;
+    font-weight:700;
+    letter-spacing:.8px;
+    text-transform:uppercase;
+}
