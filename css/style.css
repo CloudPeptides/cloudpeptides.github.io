@@ -186,3 +186,34 @@ radial-gradient(circle at 100% 0,rgba(219,164,201,.10),transparent 30%),
     text-decoration:underline;
 }
 
+.research-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+    gap:28px;
+    margin-top:40px;
+}
+
+.research-card{
+    background:#fff;
+    border:1px solid #f2d9e6;
+    border-radius:22px;
+    padding:32px;
+    text-align:center;
+    transition:.25s;
+    box-shadow:0 10px 35px rgba(226,175,199,.12);
+}
+
+.research-card:hover{
+    transform:translateY(-6px);
+    box-shadow:0 18px 45px rgba(226,175,199,.18);
+}
+
+.research-card h2{
+    margin:18px 0 14px;
+}
+
+.research-card p{
+    color:#666;
+    line-height:1.7;
+    margin-bottom:24px;
+}
