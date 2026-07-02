@@ -246,3 +246,117 @@ radial-gradient(circle at 100% 0,rgba(219,164,201,.10),transparent 30%),
     letter-spacing:.8px;
     text-transform:uppercase;
 }
+
+/* ---------- RESEARCH LIBRARY V2 ---------- */
+
+.research-card{
+    background:#fff;
+    border:1px solid #f1d8e5;
+    border-radius:24px;
+    padding:28px;
+    display:flex;
+    flex-direction:column;
+    box-shadow:0 12px 30px rgba(226,175,199,.10);
+    transition:.25s;
+}
+
+.research-card:hover{
+    transform:translateY(-6px);
+    box-shadow:0 18px 45px rgba(226,175,199,.16);
+}
+
+.research-card h2{
+    margin-bottom:6px;
+    text-align:center;
+}
+
+.stack-subtitle{
+    text-align:center;
+    color:#888;
+    font-size:14px;
+    margin-bottom:24px;
+}
+
+.snapshot{
+    background:#fff8fc;
+    border:1px solid #f4d6e6;
+    border-radius:18px;
+    padding:18px;
+    margin-bottom:22px;
+}
+
+.snapshot h4{
+    margin-bottom:12px;
+    color:#d48db9;
+}
+
+.snapshot ul{
+    list-style:none;
+    padding:0;
+    margin:0;
+}
+
+.snapshot li{
+    margin:8px 0;
+}
+
+.compound-tags{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:10px;
+    margin:18px 0 24px;
+}
+
+.compound-tags span{
+    background:#fdeff6;
+    color:#c56ea3;
+    padding:8px 16px;
+    border-radius:999px;
+    font-size:14px;
+    font-weight:600;
+}
+
+.evidence{
+    margin-top:10px;
+}
+
+.evidence-row{
+    margin:14px 0;
+}
+
+.evidence-row small{
+    display:block;
+    margin-bottom:6px;
+    color:#777;
+}
+
+.bar{
+    height:8px;
+    background:#f0e7ed;
+    border-radius:999px;
+    overflow:hidden;
+}
+
+.fill{
+    height:100%;
+    background:#d48db9;
+    border-radius:999px;
+}
+
+.status-badge{
+    margin:24px auto 20px;
+    padding:10px 18px;
+    background:#fff8fc;
+    border:1px solid #f3cfe0;
+    border-radius:999px;
+    color:#d48db9;
+    font-size:13px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.8px;
+}
+
+.research-card .btn{
+    margin-top:auto;
+}
