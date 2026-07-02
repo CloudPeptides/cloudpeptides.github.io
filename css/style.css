@@ -328,13 +328,17 @@ color:#b45d93;
 
 text-decoration:none;
 
+cursor:pointer;
+
 transition:.2s;
 
 }
 
 .compound-tags a:hover{
 
-background:#f8e2ee;
+background:#f5d8e8;
+
+color:#a34d84;
 
 transform:translateY(-2px);
 
