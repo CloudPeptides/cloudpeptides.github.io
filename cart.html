@@ -1,262 +1,104 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cart | Cloud Peptides</title>
-<link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cart | Cloud Peptides</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
 <header class="site-header">
-<nav class="nav">
-<a class="logo" href="index.html">
-<img src="assets/logo.png" alt="Cloud Peptides">
-</a>
+  <nav class="nav">
+    <a class="logo" href="index.html">
+      <img src="assets/logo.png" alt="Cloud Peptides">
+    </a>
 
-<button class="menu" id="menuBtn">☰</button>
+    <button class="menu" id="menuBtn">☰</button>
 
-<div class="nav-links" id="navLinks">
-<a href="index.html">Home</a>
-<a href="shop.html">Shop</a>
-<a href="faq.html">FAQ</a>
-<a href="about.html">About</a>
-<a href="https://discord.gg/8pF3AvHgT" target="_blank">Discord</a>
-<a href="contact.html">Contact</a>
-</div>
+    <div class="nav-links" id="navLinks">
+      <a href="index.html">Home</a>
+      <a href="shop.html">Shop</a>
+      <a href="faq.html">FAQ</a>
+      <a href="about.html">About</a>
+      <a href="https://discord.gg/8pF3AvHgT" target="_blank">Discord</a>
+      <a href="contact.html">Contact</a>
+    </div>
 
-<a href="cart.html" class="cart-icon">🛍️</a>
-</nav>
+    <a href="cart.html" class="cart-icon">🛍️</a>
+  </nav>
 </header>
 
 <main>
+  <section class="page-hero">
+    <h1>Your Cart</h1>
+    <p>Review your order request before submitting.</p>
+  </section>
 
-<section class="container">
+  <section class="container">
+    <div id="cartItems"></div>
 
-<h1>Your Cart</h1>
+    <div class="cart-total">
+      <p style="margin-top:15px;font-size:14px;color:#666;">
+        Minimum order: 2 kits.<br>
+        $15 shipping on 2 kits.<br>
+        FREE shipping on 3+ kits.
+      </p>
 
-<div id="cartItems"></div>
+      <div>Subtotal: <span id="subtotal">$0.00</span></div>
+      <div>Shipping: <span id="shipping">$15.00</span></div>
 
-<div class="cart-total">
+      <div style="margin-top:15px;font-size:28px;font-weight:700;">
+        Total: <span id="total">$0.00</span>
+      </div>
+    </div>
 
-<p style="margin-top:15px;font-size:14px;color:#666;">
-Minimum order: 2 kits.<br>
-$15 shipping on 2 kits.<br>
-FREE shipping on 3+ kits.
-</p>
+    <form id="checkoutForm" class="panel form">
+      <h2>Checkout</h2>
 
-  <div>
-    Subtotal:
-    <span id="subtotal">$0.00</span>
-  </div>
+      <p class="disclaimer">
+        Payment is not collected at checkout. After your order request is reviewed,
+        we will contact you with payment instructions.
+      </p>
 
-  <div>
-    Shipping:
-    <span id="shipping">$15.00</span>
-  </div>
+      <input id="customerName" name="name" required placeholder="Full Name">
 
-  <div style="margin-top:15px;font-size:28px;font-weight:700;">
-    Total:
-    <span id="total">$0.00</span>
-  </div>
+      <input id="customerEmail" name="email" type="email" required placeholder="Email">
 
-</div>
+      <input id="customerContact" name="contact" required placeholder="Phone / Discord / WhatsApp">
 
-<h2 style="margin-top:40px;">Checkout</h2>
+      <select id="paymentMethod" name="payment" required>
+        <option value="">Preferred Payment Method</option>
+        <option value="Bitcoin (BTC)">Bitcoin (BTC)</option>
+        <option value="Ethereum (ETH)">Ethereum (ETH)</option>
+        <option value="Zelle">Zelle</option>
+        <option value="PayPal">PayPal</option>
+      </select>
 
-<input id="customerName" placeholder="Name">
+      <textarea id="customerNotes" name="notes" placeholder="Additional notes (optional)"></textarea>
 
-<input id="customerEmail" placeholder="Email">
+      <button id="submitOrder" class="btn" type="submit">
+        Place Order Request
+      </button>
+    </form>
 
-<input id="customerContact" placeholder="Phone / Discord">
-
-<button id="submitOrder" class="btn">
-Place Order Request
-</button>
-
-</section>
-
+    <div id="successMessage" class="panel" style="display:none;text-align:center;">
+      <h2>♡ Thank you for your order!</h2>
+      <p>
+        Your order request has been received successfully.
+        We will contact you shortly with payment instructions.
+      </p>
+      <a href="index.html" class="btn">Return Home</a>
+    </div>
+  </section>
 </main>
 
 <footer class="footer">
-<strong>♡ For research purposes only. Not for human consumption. ♡</strong><br>
-© 2026 Cloud Peptides. All rights reserved.
+  <strong>♡ For research purposes only. Not for human consumption. ♡</strong><br>
+  © 2026 Cloud Peptides. All rights reserved.
 </footer>
 
 <script src="js/cart.js"></script>
-
-<script>
-
-const cart =
-JSON.parse(localStorage.getItem('cart') || '[]');
-
-const container =
-document.getElementById('cartItems');
-
-container.innerHTML = cart.map((item,index) => `
-<div class="panel" style="margin-bottom:20px;">
-
-<h3>${item.product}</h3>
-
-<p>${item.mg}</p>
-
-<p>${item.price}</p>
-
-<p>
-Quantity:
-<button onclick="decreaseQty(${index})">−</button>
-
-${item.quantity || 1}
-
-<button onclick="increaseQty(${index})">+</button>
-</p>
-
-<button onclick="removeItem(${index})"
-class="btn outline">
-Remove
-</button>
-
-</div>
-`).join('');
-
-const subtotal =
-cart.reduce((sum,item)=>{
-
-const price =
-Number(item.price.replace(/[^0-9.]/g,''));
-
-const qty =
-item.quantity || 1;
-
-return sum + (price * qty);
-
-},0);
-
-const kitCount =
-cart.reduce((sum,item)=>{
-
-return sum + (item.quantity || 1);
-
-},0);
-
-const shipping =
-kitCount >= 3 ? 0 : 15;
-
-const total =
-subtotal + shipping;
-
-document.getElementById('subtotal').textContent =
-'$' + subtotal.toFixed(2);
-
-document.getElementById('shipping').textContent =
-shipping === 0
-? 'FREE'
-: '$15.00';
-
-document.getElementById('total').textContent =
-'$' + total.toFixed(2);
-function saveAndReload(cart){
-localStorage.setItem(
-'cart',
-JSON.stringify(cart)
-);
-location.reload();
-}
-
-function increaseQty(index){
-
-const cart =
-JSON.parse(
-localStorage.getItem('cart')
-|| '[]'
-);
-
-cart[index].quantity =
-(cart[index].quantity || 1) + 1;
-
-saveAndReload(cart);
-}
-
-function decreaseQty(index){
-
-const cart =
-JSON.parse(
-localStorage.getItem('cart')
-|| '[]'
-);
-
-if((cart[index].quantity || 1) > 1){
-
-cart[index].quantity--;
-
-saveAndReload(cart);
-
-}
-
-}
-
-function removeItem(index){
-
-const cart =
-JSON.parse(
-localStorage.getItem('cart')
-|| '[]'
-);
-
-cart.splice(index,1);
-
-saveAndReload(cart);
-}
-
-document
-.getElementById('submitOrder')
-.addEventListener('click', async () => {
-
-  if(kitCount < 2){
-
-alert(
-'Minimum order is 2 kits. Add one more kit to continue.'
-);
-
-return;
-
-}
-
-const name =
-document.getElementById('customerName').value;
-
-const email =
-document.getElementById('customerEmail').value;
-
-const contact =
-document.getElementById('customerContact').value;
-
-await fetch(
-'https://script.google.com/macros/s/AKfycbxLEpm1l_PB6IRwCGFJzqFmXy8Mqx36_yYXxcEiwoHWWDQIuBsBiAK3VJ6C3sz1bt2U/exec',
-{
-method:'POST',
-body:JSON.stringify({
-name,
-email,
-contact,
-products:JSON.stringify(cart),
-total
-})
-}
-);
-
-alert(
-'Order submitted successfully. We will contact you shortly.'
-);
-
-localStorage.removeItem('cart');
-
-window.location.href='index.html';
-
-});
-
-</script>
-
 <script src="js/app.js"></script>
 
 </body>
