@@ -769,3 +769,12 @@ font-size:24px;
 }
 
 }
+
+.compound-tags{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    margin:30px 0;
+    min-height:170px;
+    align-content:flex-start;
+}
