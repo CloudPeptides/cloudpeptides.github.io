@@ -42,7 +42,15 @@ jobs:
         run: npm run test
 
       - name: Build
+        # PUBLIC_SUPABASE_URL/PUBLIC_SUPABASE_ANON_KEY are the anon key —
+        # meaningless without RLS, safe to pass here. Reusing the
+        # vars.SUPABASE_URL/vars.SUPABASE_ANON_KEY already configured in
+        # Phase 2, just under Astro's PUBLIC_ naming. Never the
+        # service-role key — that never appears in any workflow.
         run: npm run build
+        env:
+          PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
 
       # Cache the Chromium binary itself (keyed on the lockfile, since
       # Playwright's version — and therefore the compatible browser build —
@@ -72,6 +80,9 @@ jobs:
       # correctly. See those files for the verified reasoning.
       - name: E2E + accessibility tests (Chromium)
         run: npm run test:e2e
+        env:
+          PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
 
       - name: Upload Playwright report on failure
         if: failure()
@@ -81,11 +92,15 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
-      # Runs against the actual built output (dist/client — the real
-      # static-asset directory the Cloudflare adapter produces; not dist/
-      # itself, which just contains dist/client/ alongside build metadata).
+      # Crawls a real running preview server (scripts/check-links.mjs),
+      # not just the static dist/client output — Phase 3's on-demand
+      # routes (src/pages/research/compounds/**) have no static HTML
+      # file for a filesystem-only crawler to find.
       - name: Broken link check
         run: npm run check:links
+        env:
+          PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
 
   deploy-staging:
     needs: ci
@@ -110,6 +125,9 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
 
       # Staging only: wrangler.jsonc sets name "cloudpeptides-staging" and
       # workers_dev: true, with no "routes"/custom domain configured —

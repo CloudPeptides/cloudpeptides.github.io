@@ -1,9 +1,5 @@
-import { execSync } from 'node:child_process';
+import { stopPreviewServer } from '../../scripts/lib/preview-server.mjs';
 
 export default function globalTeardown(): void {
-  try {
-    execSync('npx astro preview stop', { stdio: 'inherit' });
-  } catch {
-    // Already stopped, or never started — nothing more to clean up.
-  }
+  stopPreviewServer();
 }

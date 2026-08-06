@@ -26,4 +26,13 @@ export default defineConfig(
       globals: globals.node,
     },
   },
+  {
+    // Ambient declaration files legitimately use triple-slash references
+    // — it's the standard Astro convention for env.d.ts specifically,
+    // not something an `import` can replace.
+    files: ['**/*.d.ts'],
+    rules: {
+      '@typescript-eslint/triple-slash-reference': 'off',
+    },
+  },
 );
