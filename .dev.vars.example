@@ -16,3 +16,10 @@ RESEND_API_KEY=
 # (e.g. "orders@yourdomain.com"). Must belong to a domain verified in
 # the Resend dashboard before real sends will work.
 RESEND_FROM_ADDRESS=
+
+# TURNSTILE_SECRET_KEY: Cloudflare Turnstile's secret key (server-only —
+#   validated via siteverify in src/lib/turnstile.ts). Turnstile is
+#   free, no billing question. Leave empty locally until a Turnstile
+#   site exists in the Cloudflare dashboard; Turnstile verification is
+#   skipped (not enforced) while this is unset, same pattern as Resend.
+TURNSTILE_SECRET_KEY=

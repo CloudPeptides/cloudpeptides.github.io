@@ -1,44 +1,29 @@
 /**
- * Best-effort rate limiting with no new Cloudflare resource provisioned
- * (no KV/Durable Object binding) — astro.config.mjs already documents a
- * deliberate house rule against auto-provisioning bindings that aren't
- * in active use (see its `session: false` comment), so a new KV
- * namespace for this alone isn't added without asking first.
+ * Rate limiting + cooldown for the two public form routes
+ * (src/pages/api/contact.ts, checkout.ts).
  *
- * Two layers, both applied by the calling route:
- *  1. `checkRateLimit` — an in-memory sliding-window counter, keyed by
- *     client IP. Real but soft: it only holds for the lifetime of one
- *     Worker isolate (resets on cold start, doesn't share across
- *     Cloudflare PoPs), so treat it as a speed bump against casual
- *     abuse from one place, not a hard distributed limit.
- *  2. A short-lived cookie (set by the route, see
- *     src/pages/api/contact.ts / checkout.ts) that blocks rapid
- *     resubmission from the same browser regardless of isolate state.
+ * Primary layer: Cloudflare's native Workers Rate Limiting binding
+ * (wrangler.jsonc's `ratelimits`, env.FORM_RATE_LIMITER) — durable
+ * across requests regardless of which isolate/PoP handles them, unlike
+ * this file's previous in-memory Map (which only held for one Worker
+ * isolate's lifetime and reset on cold start). `checkRateLimit` takes
+ * the binding itself so it stays unit-testable with a fake.
  *
- * If stronger guarantees are ever needed, upgrading to Workers KV is
- * the natural next step — that's a new-resource decision, not made
- * here.
+ * Secondary layer, kept but demoted per explicit instruction: a
+ * short-lived per-browser cookie that blocks rapid resubmission from
+ * the same browser even if the primary check is somehow bypassed.
  */
 
-const WINDOW_MS = 10 * 60 * 1000; // 10 minutes
-const MAX_REQUESTS_PER_WINDOW = 5;
+export interface RateLimitBinding {
+  limit(options: { key: string }): Promise<{ success: boolean }>;
+}
 
-const requestLog = new Map<string, number[]>();
-
-export function checkRateLimit(
+export async function checkRateLimit(
+  binding: RateLimitBinding,
   key: string,
-  now: number = Date.now(),
-  log: Map<string, number[]> = requestLog,
-): { allowed: boolean; retryAfterMs?: number } {
-  const timestamps = (log.get(key) ?? []).filter((t) => now - t < WINDOW_MS);
-  if (timestamps.length >= MAX_REQUESTS_PER_WINDOW) {
-    const oldest = timestamps[0];
-    log.set(key, timestamps);
-    return { allowed: false, retryAfterMs: WINDOW_MS - (now - oldest) };
-  }
-  timestamps.push(now);
-  log.set(key, timestamps);
-  return { allowed: true };
+): Promise<{ allowed: boolean }> {
+  const outcome = await binding.limit({ key });
+  return { allowed: outcome.success };
 }
 
 const COOLDOWN_COOKIE_NAME = 'cp-form-cooldown';

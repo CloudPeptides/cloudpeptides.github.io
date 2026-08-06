@@ -99,6 +99,9 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
       <textarea id="customerNotes" name="notes" placeholder="Additional notes (optional)"
       ></textarea>
 
+      <!-- Cloudflare Turnstile — see contact.astro for the same pattern. -->
+      <div class="cf-turnstile" data-turnstile></div>
+
       <p class="cp-form-message" data-tone="error" id="checkoutFormMessage" role="alert" hidden></p>
 
       <button id="submitOrder" class="cp-btn-full" type="submit">Place Order Request</button>
@@ -117,6 +120,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 
 <script>
   import '../../scripts/cart-page.ts';
+  import '../../scripts/turnstile-widget.ts';
 </script>
 
 <style>

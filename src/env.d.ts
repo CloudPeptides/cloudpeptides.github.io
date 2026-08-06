@@ -17,6 +17,10 @@ interface ImportMetaEnv {
    * that launches a one-off local review server.
    */
   readonly PUBLIC_ENABLE_DEV_FIXTURES?: string;
+  /** Turnstile sitekeys are designed to be public (unlike the secret
+   * key) — safe under the PUBLIC_ prefix, read client-side to render
+   * the widget (src/scripts/turnstile-widget.ts). */
+  readonly PUBLIC_TURNSTILE_SITE_KEY?: string;
 }
 
 interface ImportMeta {
@@ -41,5 +45,17 @@ declare module 'cloudflare:workers' {
   export const env: {
     RESEND_API_KEY?: string;
     RESEND_FROM_ADDRESS?: string;
+    /** Server-only — validated via Turnstile's siteverify API
+     * (src/lib/turnstile.ts), never sent to the client. */
+    TURNSTILE_SECRET_KEY?: string;
+    /** Cloudflare's native Workers Rate Limiting binding
+     * (wrangler.jsonc's `ratelimits`) — durable across requests
+     * regardless of which isolate/PoP handles them, replacing the prior
+     * in-memory-only limiter. Shape confirmed against wrangler's own
+     * generated types, not guessed:
+     * https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/ */
+    FORM_RATE_LIMITER: {
+      limit(options: { key: string }): Promise<{ success: boolean }>;
+    };
   };
 }

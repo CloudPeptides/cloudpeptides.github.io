@@ -1,41 +1,40 @@
 import { describe, expect, it } from 'vitest';
-import { checkRateLimit, cooldownSetCookieHeader, isInCooldown } from '../../src/lib/rate-limit';
+import {
+  checkRateLimit,
+  cooldownSetCookieHeader,
+  isInCooldown,
+  type RateLimitBinding,
+} from '../../src/lib/rate-limit';
 
-describe('checkRateLimit', () => {
-  it('allows requests under the limit', () => {
-    const log = new Map<string, number[]>();
-    const now = 1_000_000;
-    for (let i = 0; i < 5; i++) {
-      expect(checkRateLimit('1.2.3.4', now + i, log).allowed).toBe(true);
-    }
+function fakeBinding(success: boolean): RateLimitBinding {
+  return { limit: async () => ({ success }) };
+}
+
+describe('checkRateLimit (Cloudflare native binding)', () => {
+  it('allows when the binding reports success', async () => {
+    const result = await checkRateLimit(fakeBinding(true), 'contact:1.2.3.4');
+    expect(result.allowed).toBe(true);
   });
 
-  it('blocks the 6th request within the window', () => {
-    const log = new Map<string, number[]>();
-    const now = 1_000_000;
-    for (let i = 0; i < 5; i++) checkRateLimit('1.2.3.4', now + i, log);
-    const result = checkRateLimit('1.2.3.4', now + 5, log);
+  it('blocks when the binding reports failure', async () => {
+    const result = await checkRateLimit(fakeBinding(false), 'contact:1.2.3.4');
     expect(result.allowed).toBe(false);
-    expect(result.retryAfterMs).toBeGreaterThan(0);
   });
 
-  it('allows again once the window has passed', () => {
-    const log = new Map<string, number[]>();
-    const now = 1_000_000;
-    for (let i = 0; i < 5; i++) checkRateLimit('1.2.3.4', now + i, log);
-    const later = now + 11 * 60 * 1000;
-    expect(checkRateLimit('1.2.3.4', later, log).allowed).toBe(true);
-  });
-
-  it('tracks different keys independently', () => {
-    const log = new Map<string, number[]>();
-    const now = 1_000_000;
-    for (let i = 0; i < 5; i++) checkRateLimit('1.2.3.4', now + i, log);
-    expect(checkRateLimit('5.6.7.8', now, log).allowed).toBe(true);
+  it('passes the exact key through to the binding', async () => {
+    let seenKey: string | undefined;
+    const binding: RateLimitBinding = {
+      limit: async (opts) => {
+        seenKey = opts.key;
+        return { success: true };
+      },
+    };
+    await checkRateLimit(binding, 'checkout:5.6.7.8');
+    expect(seenKey).toBe('checkout:5.6.7.8');
   });
 });
 
-describe('cooldown cookie', () => {
+describe('cooldown cookie (secondary defense)', () => {
   it('is not in cooldown with no cookie header', () => {
     expect(isInCooldown(null)).toBe(false);
     expect(isInCooldown('')).toBe(false);
@@ -44,7 +43,7 @@ describe('cooldown cookie', () => {
   it('a freshly-set cookie is in cooldown right after', () => {
     const now = 1_000_000;
     const setCookie = cooldownSetCookieHeader(now);
-    const value = setCookie.split(';')[0]; // "cp-form-cooldown=1030000"
+    const value = setCookie.split(';')[0];
     expect(isInCooldown(value, now + 1000)).toBe(true);
   });
 

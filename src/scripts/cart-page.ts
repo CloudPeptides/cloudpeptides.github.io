@@ -121,6 +121,10 @@ async function submitOrder(event: SubmitEvent): Promise<void> {
   const notes = (document.getElementById('customerNotes') as HTMLTextAreaElement).value.trim();
   const honeypot =
     (document.getElementById('checkoutHoneypot') as HTMLInputElement | null)?.value ?? '';
+  // Cloudflare Turnstile auto-injects this hidden field once solved —
+  // see contact-form.ts for the same pattern.
+  const turnstileToken =
+    (form.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement | null)?.value ?? '';
 
   if (!name || !email || !contact || !payment) {
     setFormMessage('Please complete all required checkout fields.', 'error');
@@ -150,6 +154,7 @@ async function submitOrder(event: SubmitEvent): Promise<void> {
         shipping: totals.shipping,
         total: totals.total,
         website: honeypot, // honeypot field — real users never fill this
+        turnstileToken,
       }),
     });
     const result = (await response.json()) as { success: boolean; error?: string };

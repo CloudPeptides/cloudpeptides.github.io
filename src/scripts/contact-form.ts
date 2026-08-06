@@ -20,6 +20,12 @@ function init(): void {
     const email = (document.getElementById('email') as HTMLInputElement).value.trim();
     const message = (document.getElementById('message') as HTMLTextAreaElement).value.trim();
     const honeypot = (document.getElementById('contactHoneypot') as HTMLInputElement).value;
+    // Cloudflare Turnstile auto-injects this hidden field into the form
+    // once the widget is solved (only present at all once
+    // PUBLIC_TURNSTILE_SITE_KEY is configured and the widget rendered).
+    const turnstileToken =
+      (form.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement | null)?.value ??
+      '';
 
     const button = document.getElementById('contactSubmit') as HTMLButtonElement;
     button.disabled = true;
@@ -29,7 +35,7 @@ function init(): void {
       const response = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, message, website: honeypot }),
+        body: JSON.stringify({ name, email, message, website: honeypot, turnstileToken }),
       });
       const result = (await response.json()) as { success: boolean; error?: string };
 

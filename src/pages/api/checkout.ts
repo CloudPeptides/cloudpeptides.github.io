@@ -1,7 +1,9 @@
 /**
- * Server-side checkout-request route — same rationale and protections
- * as src/pages/api/contact.ts. This is an order *request*, not payment
- * processing (matches the legacy site exactly: "Payment is not
+ * Server-side checkout-request route — same rationale and layered
+ * protections as src/pages/api/contact.ts (honeypot + cookie cooldown
+ * as secondary defenses, Cloudflare's native rate-limit binding +
+ * Turnstile siteverify as primary). This is an order *request*, not
+ * payment processing (matches the legacy site exactly: "Payment is not
  * collected at checkout" — no card/crypto processor is integrated here
  * or anywhere in this rebuild).
  */
@@ -12,6 +14,7 @@ import { env } from 'cloudflare:workers';
 import { validateCheckoutSubmission } from '../../lib/form-validation';
 import { checkRateLimit, cooldownSetCookieHeader, isInCooldown } from '../../lib/rate-limit';
 import { sendEmail } from '../../lib/resend';
+import { verifyTurnstileToken } from '../../lib/turnstile';
 
 const DESTINATION_EMAIL = 'info.order.thecloud@proton.me';
 
@@ -51,9 +54,21 @@ export const POST: APIRoute = async ({ request }) => {
   if (isInCooldown(cookieHeader)) {
     return json({ success: false, error: 'Please wait a moment before submitting again.' }, 429);
   }
-  const rate = checkRateLimit(`checkout:${ip}`);
+
+  const rate = await checkRateLimit(env.FORM_RATE_LIMITER, `checkout:${ip}`);
   if (!rate.allowed) {
     return json({ success: false, error: 'Too many requests. Please try again shortly.' }, 429);
+  }
+
+  if (env.TURNSTILE_SECRET_KEY) {
+    const token = typeof input.turnstileToken === 'string' ? input.turnstileToken : '';
+    if (!token) {
+      return json({ success: false, error: 'Please complete the verification challenge.' }, 400);
+    }
+    const verification = await verifyTurnstileToken(env.TURNSTILE_SECRET_KEY, token, ip);
+    if (!verification.success) {
+      return json({ success: false, error: 'Verification failed. Please try again.' }, 400);
+    }
   }
 
   const { result, data } = validateCheckoutSubmission(input);
