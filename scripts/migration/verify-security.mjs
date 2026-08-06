@@ -14,6 +14,7 @@
  * for the wrong reason. Prints a clear check for this before running
  * anything else.
  */
+import { execSync } from 'node:child_process';
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -119,26 +120,36 @@ async function main() {
     'link_health_checks',
     'batch_coas',
   ];
-  // pg_catalog tables aren't exposed through the Data API, so RLS status
-  // is checked via a small SECURITY DEFINER helper function instead —
-  // see supabase/migrations/20260806144908_rls_check_helper.sql.
-  const { data: rlsCheck, error: rlsCheckError } = await admin.rpc('check_rls_enabled', {
-    table_names: tables,
-  });
-  if (rlsCheckError) {
-    record(
-      'RLS enabled on every exposed table',
-      false,
-      `verification function missing: ${rlsCheckError.message} — see migration 20260806144908_rls_check_helper.sql`,
+  // pg_catalog tables aren't exposed through the Data API. A
+  // SECURITY DEFINER helper function exists for this
+  // (supabase/migrations/20260806144908_rls_check_helper.sql) but
+  // PostgREST's schema-cache pickup of newly-created functions after a
+  // direct `db push` was observed to lag unpredictably (confirmed the
+  // function itself exists correctly via direct SQL — this is a caching
+  // delay, not a real problem). Shelling out to `supabase db query
+  // --linked` instead is slower but deterministic and doesn't depend on
+  // that cache.
+  let rlsCheck;
+  try {
+    const raw = execSync(
+      `npx supabase db query --linked --output json "select c.relname as table_name, c.relrowsecurity as rowsecurity from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and c.relname = any(array[${tables.map((t) => `'${t}'`).join(',')}]);"`,
+      { encoding: 'utf8' },
     );
-  } else {
+    rlsCheck = JSON.parse(raw).rows;
+  } catch (err) {
+    record('RLS enabled on every exposed table', false, `query failed: ${err.message}`);
+    rlsCheck = null;
+  }
+  if (rlsCheck) {
+    const checkedNames = new Set(rlsCheck.map((r) => r.table_name));
+    const missing = tables.filter((t) => !checkedNames.has(t));
     const disabled = rlsCheck.filter((r) => !r.rowsecurity);
     record(
       'RLS enabled on every exposed table',
-      disabled.length === 0,
-      disabled.length
-        ? `disabled on: ${disabled.map((d) => d.table_name).join(', ')}`
-        : `${rlsCheck.length} tables checked`,
+      disabled.length === 0 && missing.length === 0,
+      `${rlsCheck.length}/${tables.length} tables found` +
+        (disabled.length ? `; disabled on: ${disabled.map((d) => d.table_name).join(', ')}` : '') +
+        (missing.length ? `; missing from pg_class: ${missing.join(', ')}` : ''),
     );
   }
 
@@ -172,15 +183,28 @@ async function main() {
     `${contributorDrafts?.length ?? 0} rows returned`,
   );
 
+  // An RLS-filtered UPDATE with no matching visible rows returns SUCCESS
+  // with zero rows affected and no error — the *absence* of an error
+  // proves nothing on its own. Re-reading the row via the admin client
+  // (which bypasses RLS) afterward is the only way to confirm whether a
+  // write actually happened.
+  async function roleStillUnchanged(userId, expectedRole) {
+    const { data } = await admin.from('user_roles').select('role').eq('user_id', userId).single();
+    return data?.role === expectedRole;
+  }
+
   // --- member cannot write their own role ---------------------------------
-  const { error: selfPromoteError } = await users.member.client
+  await users.member.client
     .from('user_roles')
     .update({ role: 'admin' })
     .eq('user_id', users.member.userId);
+  const memberRoleUnchanged = await roleStillUnchanged(users.member.userId, 'member');
   record(
     'member cannot update their own role',
-    !!selfPromoteError,
-    selfPromoteError ? 'rejected as expected' : 'UPDATE SUCCEEDED — SECURITY FAILURE',
+    memberRoleUnchanged,
+    memberRoleUnchanged
+      ? 'row unchanged in the database, as expected'
+      : 'ROLE WAS ACTUALLY CHANGED — SECURITY FAILURE',
   );
 
   const { error: selfInsertError } = await users.member.client
@@ -193,14 +217,17 @@ async function main() {
   );
 
   // --- editor cannot self-promote to admin either -------------------------
-  const { error: editorPromoteError } = await users.editor.client
+  await users.editor.client
     .from('user_roles')
     .update({ role: 'admin' })
     .eq('user_id', users.editor.userId);
+  const editorRoleUnchanged = await roleStillUnchanged(users.editor.userId, 'editor');
   record(
     'editor cannot promote themselves to admin',
-    !!editorPromoteError,
-    editorPromoteError ? 'rejected as expected' : 'UPDATE SUCCEEDED — SECURITY FAILURE',
+    editorRoleUnchanged,
+    editorRoleUnchanged
+      ? 'row unchanged in the database, as expected'
+      : 'ROLE WAS ACTUALLY CHANGED — SECURITY FAILURE',
   );
 
   // --- anon cannot insert/update research content -------------------------
