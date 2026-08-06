@@ -2,6 +2,22 @@
 
 Append-only. One entry per meaningful step, per [CLAUDE.md](../CLAUDE.md) §3/§11/§12.
 
+## Phase 2 — Supabase Staging Database (complete)
+
+**Project:** `cloudpeptides-staging` (Supabase, separate from any other project on the account, free tier).
+
+- Full Blueprint v2 §5–16 research schema (9 migrations, all validated against a real Postgres parser before ever touching the live project): `compounds`, `compound_aliases`, `stack_components`, `studies`, `sources`, `source_identifiers`, `claims`, `claim_sources`, `regulatory_records`, `content_revisions`, `link_health_checks`, plus the structurally-separate `batch_coas` commerce stub. Locked-down `user_roles` + Custom Access Token Hook + JWT-claim `authorize()` helpers per §16. RLS enabled and policied on all 14 tables; explicit GRANTs (current Supabase default no longer auto-exposes new tables).
+- Legacy compound migration: parsed all 87 `legacy-site/*.html` pages with a real HTML parser, classified by breadcrumb parent (99.9% reliable rule, one manual-title-pattern exception caught for a genuine content stub — see below). 56 compounds/stacks identified, 48 imported as **draft**, 8 correctly held back for human review (ambiguous `entity_kind`, never guessed).
+- **Real bugs found and fixed via live testing against the actual staging project, not assumed correct:**
+  - `semax.html` has no breadcrumb (a stub placeholder in the legacy site itself) — the classifier would have silently bucketed it as a non-compound hub page. Caught via its title still matching every real compound page's pattern; now correctly flagged as an importable-but-stub compound needing real content, never silently dropped.
+  - FAQ answers were extracted twice (generic paragraph + proper Q/A pair) — fixed.
+  - `SUPABASE_URL` initially included a `/rest/v1/` suffix (copied from the dashboard's "Data API" field) — every request doubled the path and 404'd with a misleading `PGRST125` error that looked like an RLS/schema-cache problem but wasn't. Diagnosed by testing the raw REST endpoint directly.
+  - `custom_access_token_hook` wasn't `SECURITY DEFINER`, so it ran as `supabase_auth_admin` — which was never granted `SELECT` on `user_roles` — and every login failed. Fixed; matches Supabase's own documented pattern for this hook.
+  - The security-verification script initially treated "UPDATE returned no error" as proof a write succeeded. For `user_roles` (no UPDATE policy at all), an RLS-filtered UPDATE matches zero rows and returns success with no error — a false-failure signal, not a real hole. Fixed to re-verify actual row state via the service-role client.
+- **Final verified state:** 48 compounds (all `draft`), 446 claims, 48 provenance sources (one per legacy page, `source_type='other'`, documenting where the text came from — never a fabricated scientific citation), 446 claim_sources, 15/18 stack_components resolved (3 correctly unresolved, referencing the two held-back compounds).
+- **Security verification: 14/14 automated checks passed** against the real project — RLS enabled on all 14 tables, anon/member cannot read drafts, contributor can, nobody can write their own role (verified by re-reading actual DB state, not just error absence), contributor cannot publish but editor can, cross-user `user_roles` access blocked, every compound confirmed `draft`.
+- Credentials: `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`/`SUPABASE_ANON_KEY` in local `.env.local` (gitignored) for the migration scripts only; `SUPABASE_URL`/`SUPABASE_ANON_KEY` also as GitHub Actions variables/secret for future CI use; a temporary Supabase personal access token (account-wide, used only to link/push migrations via CLI) was recommended for revocation once Phase 2 finished.
+
 ## Phase 0 — Planning (complete)
 
 - 2026-08-06 — Repository inspected; `docs/planning/cloudpeptides-platform-blueprint-v2_2.md` confirmed as the authoritative Blueprint v2 and renamed to `cloudpeptides-platform-blueprint-v2.md` via a Git-aware rename (history preserved, `R100`, no content change).
