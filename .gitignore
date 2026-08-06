@@ -14,8 +14,12 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# environment variables
+# environment variables — real Supabase/service-role credentials for the
+# migration scripts (scripts/migration/*.mjs) go in .env.local, never
+# committed.
 .env
+.env.local
+.env.*.local
 .env.production
 
 # macOS-specific files
