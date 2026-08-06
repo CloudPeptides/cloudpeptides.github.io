@@ -1,0 +1,121 @@
+---
+/**
+ * One regulatory record row — design handoff §21: "labeled row per
+ * jurisdiction (agency + jurisdiction + status + last-verified date),
+ * never a bare color chip." approved (forest) · investigational (info
+ * blue) · withdrawn/discontinued (warning amber) · banned-in-sport
+ * (danger) · not-approved/no-determination (neutral gray).
+ */
+import type { RegulatoryRecord, Source } from '../../lib/database.types';
+
+interface Props {
+  record: RegulatoryRecord & { sources: Source };
+}
+const { record } = Astro.props;
+
+const STATUS_LABELS: Record<string, string> = {
+  approved: 'Approved',
+  not_approved: 'Not approved',
+  withdrawn: 'Withdrawn',
+  discontinued: 'Discontinued',
+  investigational: 'Investigational',
+  banned_in_sport: 'Banned in sport',
+  scheduled_controlled_substance: 'Scheduled / controlled substance',
+  unscheduled: 'Unscheduled',
+  no_determination: 'No determination',
+  other: 'Other',
+};
+
+const TONE: Record<string, string> = {
+  approved: 'success',
+  investigational: 'info',
+  withdrawn: 'warning',
+  discontinued: 'warning',
+  banned_in_sport: 'danger',
+  scheduled_controlled_substance: 'danger',
+  not_approved: 'neutral',
+  no_determination: 'neutral',
+  unscheduled: 'neutral',
+  other: 'neutral',
+};
+
+const tone = TONE[record.regulatory_status] ?? 'neutral';
+---
+
+<div class="cp-reg-row" data-tone={tone}>
+  <div class="cp-reg-row__main">
+    <span class="cp-reg-row__agency">{record.agency}</span>
+    <span class="cp-reg-row__jurisdiction">{record.jurisdiction}</span>
+    {record.indication && <span class="cp-reg-row__indication">— {record.indication}</span>}
+  </div>
+  <div class="cp-reg-row__status">
+    <span class="cp-reg-row__dot" aria-hidden="true"></span>
+    {STATUS_LABELS[record.regulatory_status] ?? record.regulatory_status}
+  </div>
+  <div class="cp-reg-row__meta">
+    Last verified {record.last_verified_date} ·
+    <a href={record.sources.url} target="_blank" rel="noopener noreferrer">source</a>
+  </div>
+</div>
+
+<style>
+  .cp-reg-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.25rem 1rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-control);
+    background: var(--bg-elevated);
+  }
+  .cp-reg-row__main {
+    grid-column: 1 / -1;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .cp-reg-row__jurisdiction {
+    color: var(--text-secondary);
+    font-weight: 400;
+  }
+  .cp-reg-row__indication {
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+  .cp-reg-row__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: var(--text-caption);
+    font-weight: 500;
+  }
+  .cp-reg-row__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .cp-reg-row[data-tone='success'] .cp-reg-row__status {
+    color: var(--success-text);
+  }
+  .cp-reg-row[data-tone='info'] .cp-reg-row__status {
+    color: var(--info-text);
+  }
+  .cp-reg-row[data-tone='warning'] .cp-reg-row__status {
+    color: var(--warning-text);
+  }
+  .cp-reg-row[data-tone='danger'] .cp-reg-row__status {
+    color: var(--danger-text);
+  }
+  .cp-reg-row[data-tone='neutral'] .cp-reg-row__status {
+    color: var(--text-muted);
+  }
+  .cp-reg-row__meta {
+    grid-column: 1 / -1;
+    font-size: var(--text-caption);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+  .cp-reg-row__meta a {
+    color: var(--info-text);
+  }
+</style>

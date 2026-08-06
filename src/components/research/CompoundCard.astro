@@ -1,0 +1,70 @@
+---
+/**
+ * Compound directory result card — design handoff §27. Favorite/Compare
+ * actions are Phase 5 (auth) features, not built yet — omitted rather
+ * than stubbed with fake interactivity.
+ */
+import type { CompoundListItem } from '../../lib/supabase';
+import Card from '../ui/Card.astro';
+import Badge from '../ui/Badge.astro';
+
+interface Props {
+  compound: CompoundListItem;
+}
+const { compound } = Astro.props;
+
+const ENTITY_LABELS: Record<string, string> = {
+  peptide: 'Peptide',
+  peptide_blend: 'Peptide blend',
+  stack: 'Stack',
+  small_molecule_drug: 'Small molecule',
+  biologic: 'Biologic',
+  supplement: 'Supplement',
+  non_peptide_research_compound: 'Research compound',
+};
+---
+
+<a href={`/research/compounds/${compound.slug}`} class="cp-compound-card-link">
+  <Card
+    class="cp-compound-card"
+    accent={compound.entity_kind === 'stack' ? 'var(--terracotta-text)' : 'var(--primary)'}
+  >
+    <div class="cp-compound-card__top">
+      <Badge tone={compound.entity_kind === 'stack' ? 'terracotta' : 'forest'}
+        >{ENTITY_LABELS[compound.entity_kind] ?? compound.entity_kind}</Badge
+      >
+      {
+        compound.identity_confidence !== 'verified' && (
+          <Badge tone="warning">{compound.identity_confidence.replace(/_/g, ' ')}</Badge>
+        )
+      }
+    </div>
+    <h3 class="cp-compound-card__name">{compound.name}</h3>
+    {compound.category && <p class="cp-compound-card__category">{compound.category}</p>}
+  </Card>
+</a>
+
+<style>
+  .cp-compound-card-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+  }
+  .cp-compound-card__top {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .cp-compound-card__name {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    margin: 0 0 0.25rem;
+    color: var(--text-primary);
+  }
+  .cp-compound-card__category {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--text-caption);
+  }
+</style>

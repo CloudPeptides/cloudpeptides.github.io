@@ -1,0 +1,149 @@
+---
+/**
+ * Search/filter/sort controls for the compound directory — design
+ * handoff §27: "Search bar... Active-filter chips... Filter sidebar
+ * (desktop) / bottom-sheet (mobile)... plain-language checkmark list."
+ * Wired by src/scripts/compound-search.ts (framework-free).
+ */
+import type { CompoundListItem } from '../../lib/supabase';
+
+interface Props {
+  compounds: CompoundListItem[];
+}
+const { compounds } = Astro.props;
+
+const ENTITY_LABELS: Record<string, string> = {
+  peptide: 'Peptide',
+  peptide_blend: 'Peptide blend',
+  stack: 'Stack',
+  small_molecule_drug: 'Small molecule',
+  biologic: 'Biologic',
+  supplement: 'Supplement',
+  non_peptide_research_compound: 'Research compound',
+};
+
+const entityKinds = [...new Set(compounds.map((c) => c.entity_kind))].sort();
+const categories = [
+  ...new Set(compounds.map((c) => c.category).filter((c): c is string => Boolean(c))),
+].sort();
+const confidences = [...new Set(compounds.map((c) => c.identity_confidence))].sort();
+---
+
+<div class="cp-search-filter-bar">
+  <div class="cp-search-filter-bar__search">
+    <label for="compound-search" class="cp-visually-hidden">Search compounds</label>
+    <input
+      id="compound-search"
+      type="search"
+      placeholder="Search by name…"
+      data-compound-search
+      autocomplete="off"
+    />
+  </div>
+
+  <div class="cp-search-filter-bar__filters">
+    <label>
+      Type
+      <select data-filter-entity-kind>
+        <option value="">All types</option>
+        {entityKinds.map((k) => <option value={k}>{ENTITY_LABELS[k] ?? k}</option>)}
+      </select>
+    </label>
+
+    <label>
+      Category
+      <select data-filter-category>
+        <option value="">All categories</option>
+        {categories.map((c) => <option value={c}>{c}</option>)}
+      </select>
+    </label>
+
+    <label>
+      Identity status
+      <select data-filter-confidence>
+        <option value="">All</option>
+        {confidences.map((c) => <option value={c}>{c.replace(/_/g, ' ')}</option>)}
+      </select>
+    </label>
+
+    <label>
+      Sort
+      <select data-sort>
+        <option value="name-asc">Name (A–Z)</option>
+        <option value="name-desc">Name (Z–A)</option>
+      </select>
+    </label>
+
+    <button type="button" data-clear-filters class="cp-search-filter-bar__clear">
+      Clear filters
+    </button>
+  </div>
+
+  <p class="cp-search-filter-bar__count" data-result-count aria-live="polite">
+    {compounds.length} compounds
+  </p>
+</div>
+
+<script>
+  import '../../scripts/compound-search.ts';
+</script>
+
+<style>
+  .cp-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .cp-search-filter-bar {
+    margin-bottom: 2rem;
+  }
+  .cp-search-filter-bar__search input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-control);
+    border: 1.5px solid var(--border-interactive);
+    background: var(--bg-sunken);
+    color: var(--text-primary);
+    font-size: var(--text-body);
+    margin-bottom: 1rem;
+  }
+  .cp-search-filter-bar__filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: end;
+  }
+  .cp-search-filter-bar__filters label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: var(--text-caption);
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+  .cp-search-filter-bar__filters select {
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-control);
+    border: 1.5px solid var(--border-interactive);
+    background: var(--bg-sunken);
+    color: var(--text-primary);
+    min-height: 44px;
+    min-width: 10rem;
+  }
+  .cp-search-filter-bar__clear {
+    padding: 0.5rem 1rem;
+    min-height: 44px;
+    border-radius: var(--radius-control);
+    border: 1.5px solid var(--border-interactive);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+  .cp-search-filter-bar__count {
+    margin: 1rem 0 0;
+    color: var(--text-muted);
+    font-size: var(--text-caption);
+  }
+</style>

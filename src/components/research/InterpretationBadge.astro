@@ -1,0 +1,96 @@
+---
+/**
+ * Interpretation-status badge — design handoff §20: "established
+ * (forest fill, seal-check) · supported (sage outline, check) ·
+ * preliminary (mint fill, hourglass) · conflicting (terracotta outline,
+ * split-arrow) · insufficient (warm-gray outline, question mark) ·
+ * unknown (neutral outline, dash)." Color never carries meaning alone
+ * (§15) — every state pairs its color with a distinct icon and label.
+ */
+import type { InterpretationStatus } from '../../lib/database.types';
+
+interface Props {
+  status: InterpretationStatus;
+  class?: string;
+}
+const { status, class: className } = Astro.props;
+
+const LABELS: Record<InterpretationStatus, string> = {
+  established: 'Established',
+  supported: 'Supported',
+  preliminary: 'Preliminary',
+  conflicting: 'Conflicting',
+  insufficient: 'Insufficient evidence',
+  unknown: 'Not yet assessed',
+};
+
+const ICONS: Record<InterpretationStatus, string> = {
+  established:
+    '<path d="M10 3 4 5.5v4c0 4 2.6 7 6 8 3.4-1 6-4 6-8v-4L10 3Z"/><path d="M7.5 10l1.8 1.8 3.2-3.6"/>',
+  supported: '<path d="M4 10.5l4 4 8-8.5"/>',
+  preliminary:
+    '<path d="M6 3.5h8M6 16.5h8M6.8 3.5c0 3 2 4 3.2 5-1.2 1-3.2 2-3.2 5M13.2 3.5c0 3-2 4-3.2 5 1.2 1 3.2 2 3.2 5"/>',
+  conflicting: '<path d="M4 7h6l-2-2M16 7h-6M4 13h6M16 13h-6l2 2"/>',
+  insufficient:
+    '<circle cx="10" cy="10" r="7"/><path d="M10 13v.01M10 6.5a2 2 0 0 1 2 2c0 1.3-2 1.8-2 3.5"/>',
+  unknown: '<path d="M5 10h10"/>',
+};
+---
+
+<span class:list={['cp-interp-badge', className]} data-interp={status}>
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 20 20"
+    width="14"
+    height="14"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    set:html={ICONS[status]}
+  />
+  {LABELS[status]}
+</span>
+
+<style>
+  .cp-interp-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-family: var(--font-body);
+    font-size: var(--text-caption);
+    font-weight: 500;
+    padding: 0.25rem 0.625rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+  }
+  .cp-interp-badge[data-interp='established'] {
+    background: var(--primary);
+    color: var(--text-on-primary);
+  }
+  .cp-interp-badge[data-interp='supported'] {
+    background: transparent;
+    color: var(--secondary);
+    border-color: var(--secondary);
+  }
+  .cp-interp-badge[data-interp='preliminary'] {
+    background: var(--accent-mint);
+    color: var(--text-primary);
+  }
+  .cp-interp-badge[data-interp='conflicting'] {
+    background: transparent;
+    color: var(--terracotta-text);
+    border-color: var(--terracotta-text);
+  }
+  .cp-interp-badge[data-interp='insufficient'] {
+    background: transparent;
+    color: var(--text-muted);
+    border-color: var(--text-muted);
+  }
+  .cp-interp-badge[data-interp='unknown'] {
+    background: transparent;
+    color: var(--text-muted);
+    border-color: var(--border-subtle);
+  }
+</style>

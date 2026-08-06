@@ -1,0 +1,95 @@
+---
+/**
+ * One claim, rendered with its interpretation badge and citation chips
+ * — design handoff §28: "claim-level statements, each with its own
+ * evidence-type + evidence-quality badges — never a single uncited
+ * paragraph." Evidence-quality + rationale is available on click-through
+ * (a <details> disclosure here) rather than shown as a third badge by
+ * default, per §20.
+ */
+import type { Claim, ClaimSource, Source } from '../../lib/database.types';
+import EvidenceBadge from './EvidenceBadge.astro';
+import InterpretationBadge from './InterpretationBadge.astro';
+
+interface Props {
+  claim: Claim & { claim_sources: (ClaimSource & { sources: Source })[] };
+}
+const { claim } = Astro.props;
+---
+
+<article class="cp-claim">
+  <p class="cp-claim__statement">{claim.statement}</p>
+  <div class="cp-claim__meta">
+    {claim.interpretation_status && <InterpretationBadge status={claim.interpretation_status} />}
+    {claim.claim_sources.map(({ sources }) => <EvidenceBadge sourceType={sources.source_type} />)}
+  </div>
+  {
+    claim.evidence_quality && claim.quality_rationale && (
+      <details class="cp-claim__quality">
+        <summary>Evidence quality: {claim.evidence_quality.replace('_', ' ')}</summary>
+        <p>{claim.quality_rationale}</p>
+      </details>
+    )
+  }
+  {
+    claim.claim_sources.length > 0 && (
+      <ul class="cp-claim__sources">
+        {claim.claim_sources.map(({ sources, relationship }) => (
+          <li>
+            <a href={sources.url} target="_blank" rel="noopener noreferrer">
+              {sources.title}
+            </a>
+            <span class="cp-claim__relationship">({relationship.replace(/_/g, ' ')})</span>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</article>
+
+<style>
+  .cp-claim {
+    padding: 1.25rem 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .cp-claim:last-child {
+    border-bottom: none;
+  }
+  .cp-claim__statement {
+    margin: 0 0 0.75rem;
+    color: var(--text-primary);
+    line-height: var(--text-body--line-height);
+  }
+  .cp-claim__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  .cp-claim__quality {
+    font-size: var(--text-caption);
+    color: var(--text-secondary);
+    margin: 0.5rem 0;
+  }
+  .cp-claim__quality summary {
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .cp-claim__quality p {
+    margin: 0.375rem 0 0;
+  }
+  .cp-claim__sources {
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    font-size: var(--text-caption);
+    font-family: var(--font-mono);
+  }
+  .cp-claim__sources a {
+    color: var(--info-text);
+  }
+  .cp-claim__relationship {
+    color: var(--text-muted);
+    margin-left: 0.25rem;
+  }
+</style>
