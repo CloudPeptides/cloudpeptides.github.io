@@ -122,6 +122,10 @@ export interface Source {
   publication_date: string | null;
   retrieved_date: string;
   retraction_status: 'none' | 'corrected' | 'retracted' | 'expression_of_concern';
+  /** Joined via study_id — null whenever the source has none attached
+   * (true for every currently-migrated draft; real editorial work adds
+   * this later). */
+  studies?: Study | null;
 }
 
 export interface ClaimSource {

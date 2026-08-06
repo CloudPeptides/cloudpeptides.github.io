@@ -56,7 +56,7 @@ export async function getPublishedCompoundBySlug(
     .select(
       `*,
       compound_aliases (*),
-      claims!claims_compound_id_fkey ( *, claim_sources ( *, sources (*) ) ),
+      claims!claims_compound_id_fkey ( *, claim_sources ( *, sources ( *, studies (*) ) ) ),
       regulatory_records ( *, sources (*) ),
       stack_components!stack_components_stack_id_fkey ( *, compounds!stack_components_component_compound_id_fkey ( id, slug, name ) )`,
     )

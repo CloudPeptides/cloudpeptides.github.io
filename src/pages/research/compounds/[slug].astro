@@ -78,6 +78,18 @@ if (compound) {
 }
 
 const EVIDENCE_GRID_TYPES = ['human', 'animal', 'in-vitro', 'mechanistic'] as const;
+const HUMAN_STUDY_DESIGNS = [
+  'rct_human',
+  'non_randomized_human_trial',
+  'human_observational',
+  'case_report_or_series',
+];
+
+// Mirrors EvidenceBadge's own resolveDisplayType — kept in sync manually
+// since this is a small, stable rule set. study_design (from the
+// joined studies row) is the real signal when present; source_type is
+// only a fallback for sources with no study attached (true for every
+// currently-migrated draft's provenance-only source).
 function evidenceGridCounts() {
   const counts: Record<(typeof EVIDENCE_GRID_TYPES)[number], number> = {
     human: 0,
@@ -88,11 +100,15 @@ function evidenceGridCounts() {
   if (!compound) return counts;
   for (const claim of compound.claims) {
     for (const cs of claim.claim_sources) {
-      // Mirrors EvidenceBadge's own mapping — kept in sync manually since
-      // this is a small, stable rule set.
-      const st = cs.sources.source_type;
-      if (st === 'clinicaltrials_gov' || st === 'pubmed_article' || st === 'doi_article')
-        counts.human++;
+      const design = cs.sources.studies?.study_design;
+      if (design) {
+        if (HUMAN_STUDY_DESIGNS.includes(design)) counts.human++;
+        else if (design === 'animal_study') counts.animal++;
+        else if (design === 'in_vitro_study') counts['in-vitro']++;
+        else if (design === 'mechanistic') counts.mechanistic++;
+        continue;
+      }
+      if (cs.sources.source_type === 'clinicaltrials_gov') counts.human++;
     }
   }
   return counts;

@@ -21,7 +21,14 @@ const { claim } = Astro.props;
   <p class="cp-claim__statement">{claim.statement}</p>
   <div class="cp-claim__meta">
     {claim.interpretation_status && <InterpretationBadge status={claim.interpretation_status} />}
-    {claim.claim_sources.map(({ sources }) => <EvidenceBadge sourceType={sources.source_type} />)}
+    {
+      claim.claim_sources.map(({ sources }) => (
+        <EvidenceBadge
+          sourceType={sources.source_type}
+          studyDesign={sources.studies?.study_design}
+        />
+      ))
+    }
   </div>
   {
     claim.evidence_quality && claim.quality_rationale && (
