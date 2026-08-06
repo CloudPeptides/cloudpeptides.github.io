@@ -1,0 +1,84 @@
+name: CI
+
+# Phase 1A only — lint/typecheck/test/build/link-check gating.
+# No deployment job here: that's exclusively a Phase 1B addition, gated
+# on separate explicit approval per CLAUDE.md §9.
+on:
+  push:
+    branches: [rebuild/astro-platform]
+  pull_request:
+    branches: [rebuild/astro-platform]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+      # Cache the Chromium binary itself (keyed on the lockfile, since
+      # Playwright's version — and therefore the compatible browser build —
+      # only changes when package-lock.json does). The cache stores the
+      # browser binary but not the OS-level libraries it needs to run, so a
+      # cache hit still requires installing those separately.
+      - name: Cache Playwright Chromium
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright Chromium (cache miss)
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright OS dependencies (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      # test:e2e's global-setup/global-teardown (tests/e2e/global-setup.ts,
+      # tests/e2e/global-teardown.ts) manage the preview server's full
+      # lifecycle explicitly — `astro preview` self-detaches immediately
+      # rather than staying in the foreground, so Playwright's automatic
+      # webServer process-tracking can't be relied on to start/stop it
+      # correctly. See those files for the verified reasoning.
+      - name: E2E + accessibility tests (Chromium)
+        run: npm run test:e2e
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+      # Runs against the actual built output (dist/client — the real
+      # static-asset directory the Cloudflare adapter produces; not dist/
+      # itself, which just contains dist/client/ alongside build metadata).
+      - name: Broken link check
+        run: npm run check:links
