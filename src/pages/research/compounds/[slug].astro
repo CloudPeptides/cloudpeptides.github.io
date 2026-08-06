@@ -1,0 +1,379 @@
+---
+export const prerender = false;
+
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import Badge from '../../../components/ui/Badge.astro';
+import Card from '../../../components/ui/Card.astro';
+import ClaimBlock from '../../../components/research/ClaimBlock.astro';
+import RegulatoryRow from '../../../components/research/RegulatoryRow.astro';
+import StudyCard from '../../../components/research/StudyCard.astro';
+import EmptyState from '../../../components/ui/EmptyState.astro';
+import ErrorState from '../../../components/ui/ErrorState.astro';
+import { hasSupabaseConfig, getPublishedCompoundBySlug } from '../../../lib/supabase';
+import { fixtureCompound } from '../../../lib/fixtures';
+import type { ContentSection } from '../../../lib/database.types';
+
+const { slug } = Astro.params;
+
+let compound: Awaited<ReturnType<typeof getPublishedCompoundBySlug>> = null;
+let loadError: string | null = null;
+
+// Dev-only template preview using clearly-fictional fixture data (see
+// src/lib/fixtures.ts) — never reachable outside `astro dev`, never
+// queries Supabase, never shows real (draft or otherwise) content. This
+// is how the fully-populated template layout gets verified without
+// publishing anything or fabricating claims about a real compound.
+if (import.meta.env.DEV && slug === fixtureCompound.slug) {
+  compound = fixtureCompound;
+} else if (!hasSupabaseConfig()) {
+  loadError = 'Compound profiles are not configured in this environment.';
+} else if (slug) {
+  try {
+    compound = await getPublishedCompoundBySlug(slug);
+  } catch {
+    loadError = 'Could not load this compound profile right now.';
+  }
+}
+
+// A slug that doesn't resolve to a *published* row renders the same
+// "not found" response whether the compound doesn't exist at all or
+// exists only as a draft — anonymous visitors get no signal either way
+// that draft content exists. This is the direct-URL leakage boundary.
+if (!loadError && !compound) {
+  Astro.response.status = 404;
+}
+
+const ENTITY_LABELS: Record<string, string> = {
+  peptide: 'Peptide',
+  peptide_blend: 'Peptide blend',
+  stack: 'Stack',
+  small_molecule_drug: 'Small molecule',
+  biologic: 'Biologic',
+  supplement: 'Supplement',
+  non_peptide_research_compound: 'Research compound',
+};
+
+const SECTION_HEADINGS: Partial<Record<ContentSection, string>> = {
+  summary: 'Overview',
+  mechanism: 'Mechanism of Action',
+  pharmacokinetics: 'Pharmacokinetics',
+  origin: 'Origin',
+  adverse_effects: 'Adverse Effects',
+  interactions: 'Interactions',
+  storage: 'Storage',
+  faq: 'Frequently Asked Questions',
+};
+
+type Claims = NonNullable<typeof compound>['claims'];
+const claimsBySection = new Map<ContentSection, Claims>();
+if (compound) {
+  for (const claim of compound.claims) {
+    const bucket = claimsBySection.get(claim.content_section) ?? [];
+    bucket.push(claim);
+    claimsBySection.set(claim.content_section, bucket);
+  }
+  for (const bucket of claimsBySection.values()) {
+    bucket.sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+  }
+}
+
+const EVIDENCE_GRID_TYPES = ['human', 'animal', 'in-vitro', 'mechanistic'] as const;
+function evidenceGridCounts() {
+  const counts: Record<(typeof EVIDENCE_GRID_TYPES)[number], number> = {
+    human: 0,
+    animal: 0,
+    'in-vitro': 0,
+    mechanistic: 0,
+  };
+  if (!compound) return counts;
+  for (const claim of compound.claims) {
+    for (const cs of claim.claim_sources) {
+      // Mirrors EvidenceBadge's own mapping — kept in sync manually since
+      // this is a small, stable rule set.
+      const st = cs.sources.source_type;
+      if (st === 'clinicaltrials_gov' || st === 'pubmed_article' || st === 'doi_article')
+        counts.human++;
+    }
+  }
+  return counts;
+}
+const evidenceCounts = evidenceGridCounts();
+
+// Unique sources across every claim, for the citation-cards section.
+const allSources = compound
+  ? [
+      ...new Map(
+        compound.claims.flatMap((c) => c.claim_sources).map((cs) => [cs.sources.id, cs]),
+      ).values(),
+    ]
+  : [];
+
+const safetyClaims = [
+  ...(claimsBySection.get('safety') ?? []),
+  ...(claimsBySection.get('adverse_effects') ?? []),
+];
+---
+
+<BaseLayout title={compound?.name ?? 'Compound not found'}>
+  <section class="cp-research-container">
+    {
+      loadError && (
+        <Fragment>
+          <h1 class="cp-visually-hidden">Compound profile</h1>
+          <ErrorState message={loadError} />
+        </Fragment>
+      )
+    }
+
+    {
+      !loadError && !compound && (
+        <EmptyState
+          headingLevel="h1"
+          title="Compound not found"
+          message="This compound doesn't exist, or isn't published yet."
+          actionLabel="Back to the directory"
+          actionHref="/research/compounds"
+        />
+      )
+    }
+
+    {
+      !loadError && compound && (
+        <Fragment>
+          <header class="cp-profile-header">
+            <div class="cp-profile-header__badges">
+              <Badge tone={compound.entity_kind === 'stack' ? 'terracotta' : 'forest'}>
+                {ENTITY_LABELS[compound.entity_kind] ?? compound.entity_kind}
+              </Badge>
+              {compound.category && <Badge tone="neutral">{compound.category}</Badge>}
+              {compound.identity_confidence !== 'verified' && (
+                <Badge tone="warning">
+                  identity: {compound.identity_confidence.replace(/_/g, ' ')}
+                </Badge>
+              )}
+            </div>
+            <h1 class="text-h1">{compound.name}</h1>
+            {compound.compound_aliases.length > 0 && (
+              <p class="cp-profile-header__aliases">
+                Also known as{' '}
+                {compound.compound_aliases.map((a) => (
+                  <span class="cp-mono">{a.alias}</span>
+                ))}
+              </p>
+            )}
+            {compound.last_reviewed_at && (
+              <p class="cp-profile-header__reviewed">
+                Last reviewed {new Date(compound.last_reviewed_at).toLocaleDateString()}
+              </p>
+            )}
+          </header>
+
+          {compound.entity_kind === 'stack' && compound.stack_components.length > 0 && (
+            <Card class="cp-profile-section">
+              <h2>Component Compounds</h2>
+              <ul class="cp-related-list">
+                {compound.stack_components.map((sc) => (
+                  <li>
+                    <a href={`/research/compounds/${sc.compounds.slug}`}>{sc.compounds.name}</a>
+                    {sc.dose_or_ratio_note && (
+                      <span class="cp-mono"> — {sc.dose_or_ratio_note}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          {(['summary', 'mechanism', 'pharmacokinetics', 'origin'] as ContentSection[]).map(
+            (section) =>
+              claimsBySection.has(section) && (
+                <Card class="cp-profile-section">
+                  <h2>{SECTION_HEADINGS[section]}</h2>
+                  {claimsBySection.get(section)!.map((claim) => (
+                    <ClaimBlock claim={claim} />
+                  ))}
+                </Card>
+              ),
+          )}
+
+          <Card class="cp-profile-section">
+            <h2>Evidence by Type</h2>
+            <div class="cp-evidence-grid">
+              {EVIDENCE_GRID_TYPES.map((type) => (
+                <div class="cp-evidence-grid__cell">
+                  <span class="cp-evidence-grid__count">{evidenceCounts[type]}</span>
+                  <span class="cp-evidence-grid__label">{type}</span>
+                  {evidenceCounts[type] === 0 && (
+                    <span class="cp-evidence-grid__none">None identified</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {safetyClaims.length > 0 && (
+            <Card class="cp-profile-section cp-profile-section--safety">
+              <h2>Safety</h2>
+              {safetyClaims.map((claim) => (
+                <ClaimBlock claim={claim} />
+              ))}
+            </Card>
+          )}
+
+          {compound.regulatory_records.length > 0 && (
+            <Card class="cp-profile-section">
+              <h2>Regulatory Status</h2>
+              <div class="cp-regulatory-list">
+                {compound.regulatory_records.map((record) => (
+                  <RegulatoryRow record={record} />
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {(['interactions', 'storage'] as ContentSection[]).map(
+            (section) =>
+              claimsBySection.has(section) && (
+                <Card class="cp-profile-section">
+                  <h2>{SECTION_HEADINGS[section]}</h2>
+                  {claimsBySection.get(section)!.map((claim) => (
+                    <ClaimBlock claim={claim} />
+                  ))}
+                </Card>
+              ),
+          )}
+
+          {claimsBySection.has('faq') && (
+            <Card class="cp-profile-section">
+              <h2>Frequently Asked Questions</h2>
+              {claimsBySection.get('faq')!.map((claim) => (
+                <ClaimBlock claim={claim} />
+              ))}
+            </Card>
+          )}
+
+          {allSources.length > 0 && (
+            <Card class="cp-profile-section">
+              <h2>Sources &amp; Citations</h2>
+              <div class="cp-study-grid">
+                {allSources.map((cs) => (
+                  <StudyCard
+                    source={cs.sources}
+                    relationship={cs.relationship}
+                    dateAccessed={cs.date_accessed}
+                  />
+                ))}
+              </div>
+            </Card>
+          )}
+        </Fragment>
+      )
+    }
+  </section>
+</BaseLayout>
+
+<style>
+  .cp-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .cp-research-container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 5rem;
+  }
+  .cp-profile-header {
+    margin-bottom: 2rem;
+  }
+  .cp-profile-header__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .cp-profile-header__aliases {
+    color: var(--text-secondary);
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .cp-profile-header__reviewed {
+    color: var(--text-muted);
+    font-size: var(--text-caption);
+  }
+  .cp-mono {
+    font-family: var(--font-mono);
+    font-size: var(--text-data);
+  }
+  .cp-profile-section {
+    margin-bottom: 1.5rem;
+  }
+  .cp-profile-section h2 {
+    font-family: var(--font-display);
+    font-size: var(--text-h3);
+    margin: 0 0 1rem;
+  }
+  .cp-profile-section--safety {
+    border-color: var(--danger-text);
+    border-width: 1.5px;
+  }
+  .cp-evidence-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+  @media (min-width: 640px) {
+    .cp-evidence-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+  .cp-evidence-grid__cell {
+    text-align: center;
+    padding: 1rem;
+    background: var(--bg-sunken);
+    border-radius: var(--radius-control);
+  }
+  .cp-evidence-grid__count {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    color: var(--primary);
+  }
+  .cp-evidence-grid__label {
+    display: block;
+    text-transform: capitalize;
+    color: var(--text-secondary);
+    font-size: var(--text-caption);
+  }
+  .cp-evidence-grid__none {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+  }
+  .cp-regulatory-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .cp-related-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .cp-related-list a {
+    color: var(--primary);
+    font-weight: 500;
+  }
+  .cp-study-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    gap: 1rem;
+  }
+</style>

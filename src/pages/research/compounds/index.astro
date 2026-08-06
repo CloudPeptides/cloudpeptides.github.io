@@ -1,0 +1,110 @@
+---
+// On-demand: this page reads live, changing data from Supabase — the
+// one genuine reason to opt out of the static-first default (CLAUDE.md
+// §4 / Phase 1A's "static-first, on-demand only for routes that need
+// it" decision).
+export const prerender = false;
+
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import CompoundCard from '../../../components/research/CompoundCard.astro';
+import SearchFilterBar from '../../../components/research/SearchFilterBar.astro';
+import EmptyState from '../../../components/ui/EmptyState.astro';
+import ErrorState from '../../../components/ui/ErrorState.astro';
+import { hasSupabaseConfig, listPublishedCompounds } from '../../../lib/supabase';
+
+let compounds: Awaited<ReturnType<typeof listPublishedCompounds>> = [];
+let loadError: string | null = null;
+
+if (hasSupabaseConfig()) {
+  try {
+    compounds = await listPublishedCompounds();
+  } catch {
+    loadError = 'Could not load the compound directory right now.';
+  }
+} else {
+  loadError = 'Compound directory is not configured in this environment.';
+}
+---
+
+<BaseLayout
+  title="Compound Directory"
+  description="Browse the Cloud Peptides research library of published compounds."
+>
+  <section class="cp-research-container">
+    <header class="cp-directory-header">
+      <p class="cp-eyebrow">Research Library</p>
+      <h1 class="text-h1">Compound Directory</h1>
+      <p class="cp-directory-header__intro">
+        Browse published research summaries, organized by type, category, and identity status. Every
+        entry is claim-level cited and editorially reviewed before publication.
+      </p>
+    </header>
+
+    {loadError && <ErrorState message={loadError} />}
+
+    {
+      !loadError && compounds.length === 0 && (
+        <EmptyState
+          title="No published compounds yet"
+          message="The research library is still in editorial review. Published compound profiles will appear here once they clear the draft → in review → published workflow."
+        />
+      )
+    }
+
+    {
+      !loadError && compounds.length > 0 && (
+        <Fragment>
+          <SearchFilterBar compounds={compounds} />
+          <div class="cp-compound-grid" data-compound-grid>
+            {compounds.map((compound) => (
+              <div
+                data-compound-item
+                data-name={compound.name}
+                data-entity-kind={compound.entity_kind}
+                data-category={compound.category ?? ''}
+                data-identity-confidence={compound.identity_confidence}
+              >
+                <CompoundCard compound={compound} />
+              </div>
+            ))}
+          </div>
+          <div data-filter-empty-state hidden>
+            <EmptyState
+              title="No compounds match those filters"
+              message="Try a different search term or clear the filters to see everything published."
+            />
+          </div>
+        </Fragment>
+      )
+    }
+  </section>
+</BaseLayout>
+
+<style>
+  .cp-research-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 5rem;
+  }
+  .cp-directory-header {
+    max-width: 42rem;
+    margin-bottom: 2.5rem;
+  }
+  .cp-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--primary);
+    margin: 0 0 0.5rem;
+  }
+  .cp-directory-header__intro {
+    color: var(--text-secondary);
+    line-height: var(--text-body--line-height);
+  }
+  .cp-compound-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    gap: 1.25rem;
+  }
+</style>

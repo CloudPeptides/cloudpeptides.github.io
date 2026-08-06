@@ -46,7 +46,12 @@ const { title, description = 'Cloud Peptides research platform.' } = Astro.props
   </head>
   <body>
     <a href="#main-content" class="cp-skip-link">Skip to content</a>
-    <Nav />
+    <Nav
+      links={[
+        { label: 'Home', href: '/' },
+        { label: 'Research', href: '/research/compounds' },
+      ]}
+    />
     <main id="main-content">
       <slot />
     </main>
