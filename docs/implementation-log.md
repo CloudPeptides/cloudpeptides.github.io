@@ -2,6 +2,28 @@
 
 Append-only. One entry per meaningful step, per [CLAUDE.md](../CLAUDE.md) §3/§11/§12.
 
+## Phase 3 — Public Compound Directory & Profile Pages (complete)
+
+**Routes (both on-demand, `prerender: false` — everything else stays static):** `/research/compounds` (search/filter/sort directory) and `/research/compounds/[slug]` (full profile: identity, overview, mechanism, evidence-by-type grid, safety, regulatory, citations, stack components).
+
+**Data layer:** `src/lib/supabase.ts` (anon key only), `src/lib/database.types.ts` (hand-maintained against the migration SQL — generating it needs a Management API token, deliberately not kept around). RLS (Phase 2) is the actual enforcement; explicit `.eq('status','published')` filters are defense-in-depth.
+
+**Components:** `EmptyState`/`ErrorState`/`Skeleton` (design handoff §29 state system, hollow-cloud motif per §19), `EvidenceBadge`/`InterpretationBadge` (§20), `RegulatoryRow` (§21), `ClaimBlock`, `StudyCard`, `CompoundCard`, `SearchFilterBar` + framework-free `compound-search.ts` (same minimal-JS approach as `nav.ts`/`theme-toggle.ts` — deliberately not a React island; filtering a card grid by data-attributes doesn't meet CLAUDE.md's bar for genuine interaction complexity).
+
+**Real bugs found and fixed via live testing, not assumed correct:**
+- The compound-not-found page had no `<h1>` at all — caught by axe (`page-has-heading-one`), fixed by adding a `headingLevel` prop to `EmptyState`.
+- `check:links` crawled the static `dist/client` output, which has no file for an on-demand route — false-positive broken-link report. Rewrote it to crawl a live preview server instead (`scripts/lib/preview-server.mjs`, shared with the e2e global setup/teardown).
+- The security-verification script's RLS check depended on a Management API token that's deliberately not kept around after Phase 2 — switched to the `check_rls_enabled` RPC as the primary path (service-role key only), CLI as fallback.
+- The service-role key in `.env.local` was rejected mid-phase ("Invalid API key") — confirmed via direct REST calls that only the service-role key was affected (the anon key, what the deployed site actually uses, was unaffected throughout); resolved by refreshing the key value from the dashboard.
+
+**Draft-safety, verified directly against the live project, not assumed:**
+- Zero compounds are published (48 remain `draft`, unchanged) — the directory and every profile page render their real, honest empty/not-found states.
+- A real imported draft (`bpc-157`) and a genuinely nonexistent slug both return HTTP 404 identically, including a raw anon-key REST check with the exact nested-join query Phase 3 introduces (bypassing the page entirely) — confirmed empty result even without any status filter applied client-side.
+- A dev-only template-preview path (`import.meta.env.DEV` gated, clearly-fictional fixture data, `src/lib/fixtures.ts`) was verified to be completely inert in a production build — same slug 404s normally once built.
+- Full Phase 2 RLS security suite re-run: 14/14 checks still pass.
+
+**Testing:** 9 unit tests (search/filter/sort against a simulated DOM, happy-dom — the only way to test this without publishing anything), 9 e2e tests (empty state desktop/mobile, draft-leakage boundary ×2, axe on 4 page states), all passing. `check:secrets` clean throughout.
+
 ## Phase 2 — Supabase Staging Database (complete)
 
 **Project:** `cloudpeptides-staging` (Supabase, separate from any other project on the account, free tier).
