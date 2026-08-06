@@ -6,14 +6,27 @@
  * HTML file for a pure filesystem crawler to find. Crawling the running
  * server (real Cloudflare-adapter runtime, same as `npm run preview`)
  * resolves both static and on-demand routes correctly.
+ *
+ * `--skip` excludes the real production domain (astro.config.mjs's
+ * `site`) from live-reachability checks: every page now carries an
+ * absolute canonical/og:url/og:image pointing there (correct — that's
+ * the eventual production identity, not the staging Worker), but
+ * nothing has actually been deployed to that domain yet pre-cutover
+ * (CLAUDE.md §9), so linkinator would otherwise 404 on every single
+ * page's own canonical tag. Confirmed via a full run that every
+ * failure without this skip was exactly that pattern, nothing else.
  */
 import { execSync } from 'node:child_process';
 import { startPreviewServer, stopPreviewServer } from './lib/preview-server.mjs';
 
+const PRODUCTION_DOMAIN = 'https://cloudpeptides.github.io';
+
 async function main() {
   const url = await startPreviewServer();
   try {
-    execSync(`npx linkinator ${url} --recurse --silent`, { stdio: 'inherit' });
+    execSync(`npx linkinator ${url} --recurse --silent --skip "${PRODUCTION_DOMAIN}"`, {
+      stdio: 'inherit',
+    });
   } finally {
     stopPreviewServer();
   }

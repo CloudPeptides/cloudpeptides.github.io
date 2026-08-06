@@ -1,0 +1,9 @@
+# Cloud Peptides — production-ready robots.txt. Currently served from the
+# staging Cloudflare Worker (*.workers.dev) only; the disallow rules below
+# reflect what should be excluded once this is the live production site.
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /shop/cart
+
+Sitemap: https://cloudpeptides.github.io/sitemap.xml

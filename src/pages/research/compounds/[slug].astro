@@ -169,10 +169,52 @@ const safetyClaims = [
   ...(claimsBySection.get('adverse_effects') ?? []),
 ];
 
-const SHOP_URL = 'https://cloudpeptides.github.io/shop.html';
+// Shop is now rebuilt natively in this app — no per-compound product-id
+// mapping exists between compound slugs (e.g. "bpc-157") and shop
+// product ids (e.g. "bpc"), so this links to the general shop entry
+// point rather than guessing/inventing a specific product link.
+const SHOP_URL = '/shop';
+
+// Description built only from real fields already on the compound —
+// never a fabricated scientific summary.
+const profileDescription = compound
+  ? `${compound.name} research profile — ${ENTITY_LABELS[compound.entity_kind] ?? compound.entity_kind}${compound.category ? `, ${compound.category}` : ''}, with claim-level citations and evidence-type breakdown.`
+  : 'Compound profile not found.';
+
+const breadcrumbJsonLd = compound
+  ? {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: 'Home',
+          item: new URL('/', Astro.site).toString(),
+        },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: 'Research',
+          item: new URL('/research/compounds', Astro.site).toString(),
+        },
+        {
+          '@type': 'ListItem',
+          position: 3,
+          name: compound.name,
+          item: new URL(`/research/compounds/${compound.slug}`, Astro.site).toString(),
+        },
+      ],
+    }
+  : undefined;
 ---
 
-<BaseLayout title={compound?.name ?? 'Compound not found'}>
+<BaseLayout
+  title={compound?.name ?? 'Compound not found'}
+  description={profileDescription}
+  structuredData={breadcrumbJsonLd}
+  noindex={!compound}
+>
   <section class="cp-research-container">
     {
       loadError && (
