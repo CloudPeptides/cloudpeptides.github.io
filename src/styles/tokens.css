@@ -74,6 +74,16 @@
   --primary: #7fbf9c;
   --primary-hover: #7fbf9c; /* handoff doesn't define a separate dark hover shade */
   --text-on-primary: #0f1712;
+  /* Not in the handoff §15 dark-theme table (it only lists tokens with a
+     changed AA-verified value), but every approved concept file
+     (design-concepts/*.html) explicitly sets --mint:#24382C for dark —
+     consistent across all four, so treated as the authoritative value.
+     Without it, --accent-mint stayed at its light value (#C8E0CE) in
+     dark theme, and pairing that with dark theme's pale --text-primary
+     (#EDEDE3) on badges like InterpretationBadge's "preliminary" state
+     produced a 1.18:1 contrast ratio — caught live by axe during Phase 3
+     visual-correction verification, not assumed. */
+  --accent-mint: #24382c;
   --terracotta-text: #e0916a;
   --terracotta-strong: #e0916a;
   --success-text: #6fcb9a;

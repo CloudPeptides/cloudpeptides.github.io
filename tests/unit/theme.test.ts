@@ -15,17 +15,16 @@ describe('parseStoredTheme', () => {
 });
 
 describe('resolveTheme', () => {
-  it('prefers a valid stored theme over the system preference', () => {
-    expect(resolveTheme('light', true)).toBe('light');
-    expect(resolveTheme('dark', false)).toBe('dark');
+  it('uses a valid stored theme when present', () => {
+    expect(resolveTheme('light')).toBe('light');
+    expect(resolveTheme('dark')).toBe('dark');
   });
 
-  it('falls back to the system preference when nothing is stored', () => {
-    expect(resolveTheme(null, true)).toBe('dark');
-    expect(resolveTheme(null, false)).toBe('light');
+  it('defaults to light when nothing is stored — the approved light theme is always the default, never system preference', () => {
+    expect(resolveTheme(null)).toBe('light');
   });
 
-  it('falls back to the system preference when the stored value is invalid', () => {
-    expect(resolveTheme('not-a-theme', true)).toBe('dark');
+  it('defaults to light when the stored value is invalid', () => {
+    expect(resolveTheme('not-a-theme')).toBe('light');
   });
 });

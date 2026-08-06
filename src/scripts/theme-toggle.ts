@@ -1,16 +1,17 @@
 /**
  * Framework-free light/dark theme toggle.
  * Progressive enhancement: without this script, the page still renders
- * correctly via the `prefers-color-scheme` media query baked into
- * tokens.css defaults; this script only adds the persisted manual override.
+ * correctly in the default light theme (tokens.css's `:root` values);
+ * this script only adds the persisted manual override to dark. System
+ * `prefers-color-scheme` is deliberately not consulted — light is always
+ * the default per the approved design handoff.
  */
 import { resolveTheme, type Theme } from '../lib/theme.ts';
 
 const STORAGE_KEY = 'cp-theme';
 
 function getCurrentTheme(): Theme {
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  return resolveTheme(localStorage.getItem(STORAGE_KEY), prefersDark);
+  return resolveTheme(localStorage.getItem(STORAGE_KEY));
 }
 
 function applyTheme(theme: Theme): void {

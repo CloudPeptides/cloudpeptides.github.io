@@ -11,11 +11,24 @@ import SearchFilterBar from '../../../components/research/SearchFilterBar.astro'
 import EmptyState from '../../../components/ui/EmptyState.astro';
 import ErrorState from '../../../components/ui/ErrorState.astro';
 import { hasSupabaseConfig, listPublishedCompounds } from '../../../lib/supabase';
+import { fixtureListItems } from '../../../lib/fixtures';
 
 let compounds: Awaited<ReturnType<typeof listPublishedCompounds>> = [];
 let loadError: string | null = null;
 
-if (hasSupabaseConfig()) {
+if (import.meta.env.PUBLIC_ENABLE_DEV_FIXTURES === 'true') {
+  // TEMPORARY, UNCOMMITTED, LOCAL-ONLY branch — shows the dev fixture list
+  // instead of querying Supabase, purely so the populated UI can be
+  // reviewed locally. Gated on an explicit opt-in flag (never set in
+  // .env.local, CI, or any deployed environment — only ever exported
+  // ephemerally for a one-off local review server), not
+  // `import.meta.env.DEV`: verified live that `astro preview` (what the
+  // e2e/build verification suite actually runs) also evaluates DEV as
+  // true for this adapter's on-demand routes, which would have let
+  // fixture content leak into what's supposed to be an honest,
+  // real-Supabase-backed check. Do not commit this branch.
+  compounds = fixtureListItems;
+} else if (hasSupabaseConfig()) {
   try {
     compounds = await listPublishedCompounds();
   } catch {
@@ -33,7 +46,7 @@ if (hasSupabaseConfig()) {
   <section class="cp-research-container">
     <header class="cp-directory-header">
       <p class="cp-eyebrow">Research Library</p>
-      <h1 class="text-h1">Compound Directory</h1>
+      <h1 class="cp-directory-header__heading">Compound Directory</h1>
       <p class="cp-directory-header__intro">
         Browse published research summaries, organized by type, category, and identity status. Every
         entry is claim-level cited and editorially reviewed before publication.
@@ -53,8 +66,7 @@ if (hasSupabaseConfig()) {
 
     {
       !loadError && compounds.length > 0 && (
-        <Fragment>
-          <SearchFilterBar compounds={compounds} />
+        <SearchFilterBar compounds={compounds}>
           <div class="cp-compound-grid" data-compound-grid>
             {compounds.map((compound) => (
               <div
@@ -74,7 +86,7 @@ if (hasSupabaseConfig()) {
               message="Try a different search term or clear the filters to see everything published."
             />
           </div>
-        </Fragment>
+        </SearchFilterBar>
       )
     }
   </section>
@@ -88,7 +100,7 @@ if (hasSupabaseConfig()) {
   }
   .cp-directory-header {
     max-width: 42rem;
-    margin-bottom: 2.5rem;
+    margin-bottom: 2rem;
   }
   .cp-eyebrow {
     text-transform: uppercase;
@@ -98,13 +110,31 @@ if (hasSupabaseConfig()) {
     color: var(--primary);
     margin: 0 0 0.5rem;
   }
+  .cp-directory-header__heading {
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: clamp(1.875rem, 4vw, var(--text-h1));
+    margin: 0 0 0.75rem;
+  }
   .cp-directory-header__intro {
     color: var(--text-secondary);
     line-height: var(--text-body--line-height);
+    margin: 0;
   }
   .cp-compound-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 1.25rem;
+  }
+  @media (max-width: 1100px) {
+    .cp-compound-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 640px) {
+    .cp-compound-grid {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

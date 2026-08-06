@@ -17,9 +17,9 @@ const { source, study, relationship, dateAccessed } = Astro.props;
 ---
 
 <Card class="cp-study-card">
-  <h4 class="cp-study-card__title">
+  <h3 class="cp-study-card__title">
     <a href={source.url} target="_blank" rel="noopener noreferrer">{source.title}</a>
-  </h4>
+  </h3>
   <dl class="cp-study-card__meta">
     {
       study?.study_design && (

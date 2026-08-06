@@ -6,7 +6,12 @@ test('home page renders the base layout with working nav and footer', async ({ p
 
   await expect(page).toHaveTitle(/Cloud Peptides/);
   await expect(page.getByRole('link', { name: 'Cloud Peptides home' })).toBeVisible();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Cloud Peptides');
+  // Design-concept homepage rebuild — the H1 is the approved hero
+  // headline, not the site name (the brand link above already covers
+  // that, per the nav's aria-label).
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    'Peptide research, backed by cited evidence',
+  );
   await expect(page.locator('footer')).toBeVisible();
 });
 

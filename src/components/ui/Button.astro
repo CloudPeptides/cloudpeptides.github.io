@@ -64,6 +64,15 @@ const Tag = href ? 'a' : 'button';
   .cp-btn--secondary:hover {
     background: var(--bg-sunken);
   }
+  /* Browsers restyle :visited links from their own UA/history state
+     rather than always deferring to the author's theme-aware color —
+     caught live via axe in dark theme against a link this browser
+     profile had actually visited before (confirmed with an unvisited
+     clone rendering correctly without this rule). Explicit here so a
+     real visitor's history can't silently break the theme's contrast. */
+  .cp-btn--secondary:visited {
+    color: var(--text-primary);
+  }
 
   .cp-btn--tertiary {
     background: transparent;

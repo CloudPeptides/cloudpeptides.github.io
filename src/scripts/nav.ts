@@ -9,6 +9,7 @@
 function initNav(): void {
   const toggle = document.querySelector<HTMLButtonElement>('[data-nav-toggle]');
   const dialog = document.querySelector<HTMLDialogElement>('[data-nav-dialog]');
+  const closeButton = document.querySelector<HTMLButtonElement>('[data-nav-close]');
 
   if (!toggle || !dialog) return;
 
@@ -36,6 +37,8 @@ function initNav(): void {
       openDialog();
     }
   });
+
+  closeButton?.addEventListener('click', () => closeDialog());
 
   // Defensive fallback for the native Escape-key path, which closes the
   // dialog without going through closeDialog() above.

@@ -64,6 +64,26 @@ const currentPath = Astro.url.pathname;
   </nav>
 
   <dialog id="cp-nav-dialog" data-nav-dialog class="cp-nav__dialog" aria-label="Navigation menu">
+    <div class="cp-nav__dialog-header">
+      <span class="cp-nav__dialog-brand">
+        <Logo variant="primary" size={22} />
+        <span>Cloud Peptides</span>
+      </span>
+      <button type="button" data-nav-close aria-label="Close menu" class="cp-nav__dialog-close">
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 20 20"
+          width="16"
+          height="16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        >
+          <path d="M5 5l10 10M15 5L5 15"></path>
+        </svg>
+      </button>
+    </div>
     <ul class="cp-nav__dialog-links">
       {
         links.map((link) => (
@@ -188,6 +208,36 @@ const currentPath = Astro.url.pathname;
 
   .cp-nav__dialog::backdrop {
     background: rgba(20, 32, 26, 0.4);
+  }
+
+  .cp-nav__dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+  }
+
+  .cp-nav__dialog-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 1rem;
+  }
+
+  .cp-nav__dialog-close {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1.5px solid var(--border-interactive);
+    border-radius: var(--radius-control);
+    color: var(--text-primary);
+    cursor: pointer;
   }
 
   .cp-nav__dialog-links {

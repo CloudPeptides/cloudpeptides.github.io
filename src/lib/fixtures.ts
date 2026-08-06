@@ -113,6 +113,7 @@ export const fixtureListItems = [
     category: 'Example Category',
     identity_confidence: 'unverified',
     status: 'published',
+    compound_aliases: [{ alias: 'ERC-000A' }],
   },
   {
     id: 'fixture-2',
@@ -122,5 +123,27 @@ export const fixtureListItems = [
     category: 'Example Category',
     identity_confidence: 'unverified',
     status: 'published',
+    compound_aliases: [],
   },
+  {
+    id: 'fixture-3',
+    slug: 'erc-002-verified',
+    name: 'ERC-002 Example Verified Compound',
+    entity_kind: 'peptide',
+    category: 'Example Recovery Category',
+    identity_confidence: 'verified',
+    status: 'published',
+    compound_aliases: [{ alias: 'ERC-002B' }, { alias: 'Example Synonym' }],
+  },
+];
+
+/**
+ * Related-compounds demo for the erc-000 fixture profile — mirrors what
+ * getRelatedCompounds() would return for a real compound (a real reverse
+ * stack_components lookup), but hand-written here since the fixture path
+ * never queries Supabase at all.
+ */
+export const fixtureRelatedCompounds = [
+  { slug: 'erc-001-stack', name: 'ERC-001 Example Stack', entity_kind: 'stack' },
+  { slug: 'erc-002-verified', name: 'ERC-002 Example Verified Compound', entity_kind: 'peptide' },
 ];

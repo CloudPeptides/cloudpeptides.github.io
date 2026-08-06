@@ -25,20 +25,24 @@ const { title, description = 'Cloud Peptides research platform.' } = Astro.props
     <link rel="icon" type="image/svg+xml" href="/brand/logo-favicon.svg" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <title>{title} | Cloud Peptides</title>
+    <!-- Design handoff §16: Fraunces (display), IBM Plex Sans (body), IBM
+         Plex Mono (data/technical). Loaded once here for every page. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap"
+    />
     <script is:inline>
       // Set the theme before first paint to avoid a flash of the wrong
       // theme. The full toggle interaction is wired later by
       // src/scripts/theme-toggle.ts once the DOM (and toggle buttons)
-      // actually exist.
+      // actually exist. Default is always light — system
+      // prefers-color-scheme is deliberately not consulted, only an
+      // explicit stored choice can select dark (matches src/lib/theme.ts).
       (function () {
         const stored = localStorage.getItem('cp-theme');
-        const theme =
-          stored === 'light' || stored === 'dark'
-            ? stored
-            : window.matchMedia('(prefers-color-scheme: dark)').matches
-              ? 'dark'
-              : 'light';
-        if (theme === 'dark') {
+        if (stored === 'dark') {
           document.documentElement.setAttribute('data-theme', 'dark');
         }
       })();

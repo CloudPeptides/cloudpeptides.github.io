@@ -7,29 +7,48 @@ import Card from '../../../components/ui/Card.astro';
 import ClaimBlock from '../../../components/research/ClaimBlock.astro';
 import RegulatoryRow from '../../../components/research/RegulatoryRow.astro';
 import StudyCard from '../../../components/research/StudyCard.astro';
+import EvidenceGrid from '../../../components/research/EvidenceGrid.astro';
+import ShopDisclosure from '../../../components/research/ShopDisclosure.astro';
 import EmptyState from '../../../components/ui/EmptyState.astro';
 import ErrorState from '../../../components/ui/ErrorState.astro';
-import { hasSupabaseConfig, getPublishedCompoundBySlug } from '../../../lib/supabase';
-import { fixtureCompound } from '../../../lib/fixtures';
+import {
+  hasSupabaseConfig,
+  getPublishedCompoundBySlug,
+  getRelatedCompounds,
+  type RelatedCompound,
+} from '../../../lib/supabase';
+import { fixtureCompound, fixtureRelatedCompounds } from '../../../lib/fixtures';
 import type { ContentSection } from '../../../lib/database.types';
 
 const { slug } = Astro.params;
 
 let compound: Awaited<ReturnType<typeof getPublishedCompoundBySlug>> = null;
 let loadError: string | null = null;
+let related: RelatedCompound[] = [];
+let isFixture = false;
 
 // Dev-only template preview using clearly-fictional fixture data (see
-// src/lib/fixtures.ts) — never reachable outside `astro dev`, never
-// queries Supabase, never shows real (draft or otherwise) content. This
-// is how the fully-populated template layout gets verified without
-// publishing anything or fabricating claims about a real compound.
-if (import.meta.env.DEV && slug === fixtureCompound.slug) {
+// src/lib/fixtures.ts) — gated on an explicit opt-in flag (never set in
+// .env.local, CI, or any deployed environment — only ever exported
+// ephemerally for a one-off local review server), never queries
+// Supabase, never shows real (draft or otherwise) content. Deliberately
+// NOT `import.meta.env.DEV`: verified live that `astro preview` (what
+// the e2e/build verification suite actually runs) also evaluates DEV as
+// true for this adapter's on-demand routes — an explicit flag is the
+// only thing that reliably stays false in every built/served context
+// unless someone deliberately opts in. This is how the fully-populated
+// template layout gets verified without publishing anything or
+// fabricating claims about a real compound.
+if (import.meta.env.PUBLIC_ENABLE_DEV_FIXTURES === 'true' && slug === fixtureCompound.slug) {
   compound = fixtureCompound;
+  related = fixtureRelatedCompounds;
+  isFixture = true;
 } else if (!hasSupabaseConfig()) {
   loadError = 'Compound profiles are not configured in this environment.';
 } else if (slug) {
   try {
     compound = await getPublishedCompoundBySlug(slug);
+    if (compound) related = await getRelatedCompounds(compound.id);
   } catch {
     loadError = 'Could not load this compound profile right now.';
   }
@@ -64,6 +83,27 @@ const SECTION_HEADINGS: Partial<Record<ContentSection, string>> = {
   faq: 'Frequently Asked Questions',
 };
 
+// 1.5px stroke, rounded caps/joins, 20px grid — design handoff §18.
+// Content-specific per section — never the brand mark (§19).
+const SECTION_ICONS: Partial<Record<ContentSection, string>> = {
+  summary: '<path d="M8 3h4M8.5 3v5l-4 8a1.5 1.5 0 0 0 1.3 2.2h8.4A1.5 1.5 0 0 0 15.5 16l-4-8V3"/>',
+  mechanism:
+    '<circle cx="10" cy="10" r="2.2"/><path d="M10 3v2.2M10 14.8V17M17 10h-2.2M5.2 10H3M15.1 4.9l-1.5 1.5M6.4 13.6l-1.5 1.5M15.1 15.1l-1.5-1.5M6.4 6.4 4.9 4.9"/>',
+  pharmacokinetics: '<path d="M4 10h3l2-5 4 10 2-5h3"/>',
+  origin: '<circle cx="10" cy="7" r="4"/><path d="M6 17c0-2.5 1.8-4.5 4-4.5s4 2 4 4.5"/>',
+  adverse_effects:
+    '<path d="M10 3 4 5.5v4c0 4 2.6 7 6 8 3.4-1 6-4 6-8v-4L10 3Z"/><path d="M10 8v3.5M10 14v.01"/>',
+  interactions: '<circle cx="6" cy="10" r="3"/><circle cx="14" cy="10" r="3"/>',
+  storage: '<path d="M4 6h12v10H4z"/><path d="M4 6l1.5-3h9L16 6"/>',
+  faq: '<circle cx="10" cy="10" r="7"/><path d="M10 13v.01M10 6.5a2 2 0 0 1 2 2c0 1.3-2 1.8-2 3.5"/>',
+};
+const SAFETY_ICON =
+  '<path d="M10 3 4 5.5v4c0 4 2.6 7 6 8 3.4-1 6-4 6-8v-4L10 3Z"/><path d="M10 8v3.5M10 14v.01"/>';
+const REGULATORY_ICON =
+  '<path d="M10 3v14M4 6h3.5L5 12h5M16 6h-3.5L15 12h-5"/><path d="M4 17h12"/>';
+const RELATED_ICON =
+  '<circle cx="6" cy="6" r="2.5"/><circle cx="14" cy="14" r="2.5"/><path d="M8 8l4 4"/>';
+
 type Claims = NonNullable<typeof compound>['claims'];
 const claimsBySection = new Map<ContentSection, Claims>();
 if (compound) {
@@ -77,7 +117,7 @@ if (compound) {
   }
 }
 
-const EVIDENCE_GRID_TYPES = ['human', 'animal', 'in-vitro', 'mechanistic'] as const;
+type EvidenceGridType = 'human' | 'animal' | 'in-vitro' | 'mechanistic';
 const HUMAN_STUDY_DESIGNS = [
   'rct_human',
   'non_randomized_human_trial',
@@ -91,7 +131,7 @@ const HUMAN_STUDY_DESIGNS = [
 // only a fallback for sources with no study attached (true for every
 // currently-migrated draft's provenance-only source).
 function evidenceGridCounts() {
-  const counts: Record<(typeof EVIDENCE_GRID_TYPES)[number], number> = {
+  const counts: Record<EvidenceGridType, number> = {
     human: 0,
     animal: 0,
     'in-vitro': 0,
@@ -128,6 +168,8 @@ const safetyClaims = [
   ...(claimsBySection.get('safety') ?? []),
   ...(claimsBySection.get('adverse_effects') ?? []),
 ];
+
+const SHOP_URL = 'https://cloudpeptides.github.io/shop.html';
 ---
 
 <BaseLayout title={compound?.name ?? 'Compound not found'}>
@@ -156,8 +198,20 @@ const safetyClaims = [
     {
       !loadError && compound && (
         <Fragment>
-          <header class="cp-profile-header">
-            <div class="cp-profile-header__badges">
+          <nav class="cp-breadcrumb" aria-label="Breadcrumb">
+            <a href="/research/compounds">Research</a>
+            <span aria-hidden="true">/</span>
+            {compound.category && (
+              <Fragment>
+                <span>{compound.category}</span>
+                <span aria-hidden="true">/</span>
+              </Fragment>
+            )}
+            <span aria-current="page">{compound.name}</span>
+          </nav>
+
+          <Card class="cp-identity-card">
+            <div class="cp-identity-card__badges">
               <Badge tone={compound.entity_kind === 'stack' ? 'terracotta' : 'forest'}>
                 {ENTITY_LABELS[compound.entity_kind] ?? compound.entity_kind}
               </Badge>
@@ -168,120 +222,254 @@ const safetyClaims = [
                 </Badge>
               )}
             </div>
-            <h1 class="text-h1">{compound.name}</h1>
+            <h1 class="cp-identity-card__name">{compound.name}</h1>
             {compound.compound_aliases.length > 0 && (
-              <p class="cp-profile-header__aliases">
+              <p class="cp-identity-card__aliases">
                 Also known as{' '}
                 {compound.compound_aliases.map((a) => (
                   <span class="cp-mono">{a.alias}</span>
                 ))}
               </p>
             )}
-            {compound.last_reviewed_at && (
-              <p class="cp-profile-header__reviewed">
-                Last reviewed {new Date(compound.last_reviewed_at).toLocaleDateString()}
-              </p>
-            )}
-          </header>
-
-          {compound.entity_kind === 'stack' && compound.stack_components.length > 0 && (
-            <Card class="cp-profile-section">
-              <h2>Component Compounds</h2>
-              <ul class="cp-related-list">
-                {compound.stack_components.map((sc) => (
-                  <li>
-                    <a href={`/research/compounds/${sc.compounds.slug}`}>{sc.compounds.name}</a>
-                    {sc.dose_or_ratio_note && (
-                      <span class="cp-mono"> — {sc.dose_or_ratio_note}</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          )}
-
-          {(['summary', 'mechanism', 'pharmacokinetics', 'origin'] as ContentSection[]).map(
-            (section) =>
-              claimsBySection.has(section) && (
-                <Card class="cp-profile-section">
-                  <h2>{SECTION_HEADINGS[section]}</h2>
-                  {claimsBySection.get(section)!.map((claim) => (
-                    <ClaimBlock claim={claim} />
-                  ))}
-                </Card>
-              ),
-          )}
-
-          <Card class="cp-profile-section">
-            <h2>Evidence by Type</h2>
-            <div class="cp-evidence-grid">
-              {EVIDENCE_GRID_TYPES.map((type) => (
-                <div class="cp-evidence-grid__cell">
-                  <span class="cp-evidence-grid__count">{evidenceCounts[type]}</span>
-                  <span class="cp-evidence-grid__label">{type}</span>
-                  {evidenceCounts[type] === 0 && (
-                    <span class="cp-evidence-grid__none">None identified</span>
-                  )}
-                </div>
-              ))}
+            <div class="cp-identity-card__strip">
+              <span>Entity: {ENTITY_LABELS[compound.entity_kind] ?? compound.entity_kind}</span>
+              {compound.category && <span>Category: {compound.category}</span>}
+              <span>Identifier: {compound.slug}</span>
             </div>
           </Card>
 
-          {safetyClaims.length > 0 && (
-            <Card class="cp-profile-section cp-profile-section--safety">
-              <h2>Safety</h2>
-              {safetyClaims.map((claim) => (
-                <ClaimBlock claim={claim} />
-              ))}
-            </Card>
-          )}
-
-          {compound.regulatory_records.length > 0 && (
-            <Card class="cp-profile-section">
-              <h2>Regulatory Status</h2>
-              <div class="cp-regulatory-list">
-                {compound.regulatory_records.map((record) => (
-                  <RegulatoryRow record={record} />
-                ))}
-              </div>
-            </Card>
-          )}
-
-          {(['interactions', 'storage'] as ContentSection[]).map(
-            (section) =>
-              claimsBySection.has(section) && (
+          <div class="cp-profile-layout">
+            <div class="cp-profile-main">
+              {compound.entity_kind === 'stack' && compound.stack_components.length > 0 && (
                 <Card class="cp-profile-section">
-                  <h2>{SECTION_HEADINGS[section]}</h2>
-                  {claimsBySection.get(section)!.map((claim) => (
+                  <h2 class="cp-section-heading">Component Compounds</h2>
+                  <ul class="cp-related-list">
+                    {compound.stack_components.map((sc) => (
+                      <li>
+                        <a href={`/research/compounds/${sc.compounds.slug}`}>{sc.compounds.name}</a>
+                        {sc.dose_or_ratio_note && (
+                          <span class="cp-mono"> — {sc.dose_or_ratio_note}</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              )}
+
+              {(['summary', 'mechanism', 'pharmacokinetics', 'origin'] as ContentSection[]).map(
+                (section) =>
+                  claimsBySection.has(section) && (
+                    <Card class="cp-profile-section">
+                      <h2 class="cp-section-heading">
+                        <svg
+                          aria-hidden="true"
+                          viewBox="0 0 20 20"
+                          width="16"
+                          height="16"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          set:html={SECTION_ICONS[section]}
+                        />
+                        {SECTION_HEADINGS[section]}
+                      </h2>
+                      {claimsBySection.get(section)!.map((claim) => (
+                        <ClaimBlock claim={claim} />
+                      ))}
+                    </Card>
+                  ),
+              )}
+
+              <Card class="cp-profile-section">
+                <h2 class="cp-section-heading">
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 20 20"
+                    width="16"
+                    height="16"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M4 10h3l2-5 4 10 2-5h3" />
+                  </svg>
+                  Evidence by Type
+                </h2>
+                <EvidenceGrid counts={evidenceCounts} />
+              </Card>
+
+              {safetyClaims.length > 0 && (
+                <Card class="cp-profile-section cp-profile-section--safety">
+                  <h2 class="cp-section-heading cp-section-heading--danger">
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 20 20"
+                      width="16"
+                      height="16"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      set:html={SAFETY_ICON}
+                    />
+                    Safety &amp; Uncertainty
+                  </h2>
+                  {safetyClaims.map((claim) => (
                     <ClaimBlock claim={claim} />
                   ))}
                 </Card>
-              ),
-          )}
+              )}
 
-          {claimsBySection.has('faq') && (
-            <Card class="cp-profile-section">
-              <h2>Frequently Asked Questions</h2>
-              {claimsBySection.get('faq')!.map((claim) => (
-                <ClaimBlock claim={claim} />
-              ))}
-            </Card>
-          )}
+              {compound.regulatory_records.length > 0 && (
+                <Card class="cp-profile-section">
+                  <h2 class="cp-section-heading">
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 20 20"
+                      width="16"
+                      height="16"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      set:html={REGULATORY_ICON}
+                    />
+                    Regulatory Status by Jurisdiction
+                  </h2>
+                  <div class="cp-regulatory-list">
+                    {compound.regulatory_records.map((record) => (
+                      <RegulatoryRow record={record} />
+                    ))}
+                  </div>
+                </Card>
+              )}
 
-          {allSources.length > 0 && (
-            <Card class="cp-profile-section">
-              <h2>Sources &amp; Citations</h2>
-              <div class="cp-study-grid">
-                {allSources.map((cs) => (
-                  <StudyCard
-                    source={cs.sources}
-                    relationship={cs.relationship}
-                    dateAccessed={cs.date_accessed}
-                  />
-                ))}
-              </div>
-            </Card>
-          )}
+              {(['interactions', 'storage'] as ContentSection[]).map(
+                (section) =>
+                  claimsBySection.has(section) && (
+                    <Card class="cp-profile-section">
+                      <h2 class="cp-section-heading">
+                        <svg
+                          aria-hidden="true"
+                          viewBox="0 0 20 20"
+                          width="16"
+                          height="16"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          set:html={SECTION_ICONS[section]}
+                        />
+                        {SECTION_HEADINGS[section]}
+                      </h2>
+                      {claimsBySection.get(section)!.map((claim) => (
+                        <ClaimBlock claim={claim} />
+                      ))}
+                    </Card>
+                  ),
+              )}
+
+              {claimsBySection.has('faq') && (
+                <Card class="cp-profile-section">
+                  <h2 class="cp-section-heading">
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 20 20"
+                      width="16"
+                      height="16"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      set:html={SECTION_ICONS.faq}
+                    />
+                    Frequently Asked Questions
+                  </h2>
+                  {claimsBySection.get('faq')!.map((claim) => (
+                    <ClaimBlock claim={claim} />
+                  ))}
+                </Card>
+              )}
+            </div>
+
+            <div class="cp-profile-side">
+              {allSources.length > 0 && (
+                <Card class="cp-profile-section">
+                  <h2 class="cp-section-heading cp-section-heading--small">
+                    Studies &amp; Citations
+                  </h2>
+                  <div class="cp-study-stack">
+                    {allSources.map((cs) => (
+                      <StudyCard
+                        source={cs.sources}
+                        study={cs.sources.studies}
+                        relationship={cs.relationship}
+                        dateAccessed={cs.date_accessed}
+                      />
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {related.length > 0 && (
+                <Card class="cp-profile-section">
+                  <h2 class="cp-section-heading cp-section-heading--small">
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 20 20"
+                      width="14"
+                      height="14"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      set:html={RELATED_ICON}
+                    />
+                    Related
+                  </h2>
+                  <ul class="cp-related-list cp-related-list--compact">
+                    {related.map((r) => (
+                      <li>
+                        <a href={`/research/compounds/${r.slug}`}>{r.name} →</a>
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              )}
+
+              {compound.last_reviewed_at && (
+                <Card class="cp-profile-section cp-reviewed-card">
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 20 20"
+                    width="14"
+                    height="14"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M5 3.5h10a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1Z" />
+                    <path d="M7 8.5l1.8 1.8L13 6.5" />
+                  </svg>
+                  Last reviewed {new Date(compound.last_reviewed_at).toLocaleDateString()} by the
+                  editorial team
+                </Card>
+              )}
+
+              {isFixture && <ShopDisclosure shopUrl={SHOP_URL} />}
+            </div>
+          </div>
         </Fragment>
       )
     }
@@ -297,79 +485,108 @@ const safetyClaims = [
     clip: rect(0 0 0 0);
   }
   .cp-research-container {
-    max-width: 860px;
+    max-width: 1280px;
     margin: 0 auto;
-    padding: 3rem 1.5rem 5rem;
+    padding: 2.5rem 1.5rem 5rem;
   }
-  .cp-profile-header {
-    margin-bottom: 2rem;
+  .cp-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: var(--text-caption);
+    color: var(--text-muted);
+    margin-bottom: 1rem;
   }
-  .cp-profile-header__badges {
+  .cp-breadcrumb a {
+    color: var(--text-muted);
+    text-decoration: none;
+  }
+  .cp-breadcrumb a:hover {
+    color: var(--primary);
+    text-decoration: underline;
+  }
+  .cp-breadcrumb [aria-current='page'] {
+    color: var(--text-secondary);
+  }
+
+  .cp-identity-card {
+    margin-bottom: 1.5rem;
+  }
+  .cp-identity-card__badges {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
     margin-bottom: 0.75rem;
   }
-  .cp-profile-header__aliases {
+  .cp-identity-card__name {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: var(--text-h1);
+    color: var(--text-primary);
+    margin: 0 0 0.375rem;
+  }
+  .cp-identity-card__aliases {
     color: var(--text-secondary);
     display: flex;
     gap: 0.5rem;
     flex-wrap: wrap;
+    margin: 0;
   }
-  .cp-profile-header__reviewed {
-    color: var(--text-muted);
-    font-size: var(--text-caption);
+  .cp-identity-card__strip {
+    display: flex;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    margin-top: 0.875rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-subtle);
+    font-family: var(--font-mono);
+    font-size: var(--text-data);
+    color: var(--text-secondary);
   }
+
   .cp-mono {
     font-family: var(--font-mono);
     font-size: var(--text-data);
   }
-  .cp-profile-section {
-    margin-bottom: 1.5rem;
+
+  .cp-profile-layout {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1.5rem;
+    align-items: start;
   }
-  .cp-profile-section h2 {
+
+  .cp-profile-section {
+    margin-bottom: 1.25rem;
+  }
+  .cp-section-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     font-family: var(--font-display);
+    font-weight: 600;
     font-size: var(--text-h3);
+    color: var(--text-primary);
     margin: 0 0 1rem;
+  }
+  .cp-section-heading svg {
+    color: var(--primary);
+    flex-shrink: 0;
+  }
+  .cp-section-heading--small {
+    font-size: 1.0625rem;
+  }
+  .cp-section-heading--danger {
+    color: var(--danger-text);
+  }
+  .cp-section-heading--danger svg {
+    color: var(--danger-text);
   }
   .cp-profile-section--safety {
     border-color: var(--danger-text);
     border-width: 1.5px;
   }
-  .cp-evidence-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-  }
-  @media (min-width: 640px) {
-    .cp-evidence-grid {
-      grid-template-columns: repeat(4, 1fr);
-    }
-  }
-  .cp-evidence-grid__cell {
-    text-align: center;
-    padding: 1rem;
-    background: var(--bg-sunken);
-    border-radius: var(--radius-control);
-  }
-  .cp-evidence-grid__count {
-    display: block;
-    font-family: var(--font-display);
-    font-size: 1.75rem;
-    color: var(--primary);
-  }
-  .cp-evidence-grid__label {
-    display: block;
-    text-transform: capitalize;
-    color: var(--text-secondary);
-    font-size: var(--text-caption);
-  }
-  .cp-evidence-grid__none {
-    display: block;
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    margin-top: 0.25rem;
-  }
+
   .cp-regulatory-list {
     display: flex;
     flex-direction: column;
@@ -386,10 +603,40 @@ const safetyClaims = [
   .cp-related-list a {
     color: var(--primary);
     font-weight: 500;
+    text-decoration: none;
   }
-  .cp-study-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-    gap: 1rem;
+  .cp-related-list a:hover {
+    text-decoration: underline;
+  }
+  .cp-related-list--compact li {
+    font-size: var(--text-caption);
+  }
+  .cp-study-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+  }
+
+  .cp-reviewed-card {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-muted);
+    font-size: var(--text-caption);
+  }
+  .cp-reviewed-card :global(.cp-card__body) {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .cp-reviewed-card svg {
+    flex-shrink: 0;
+    color: var(--text-muted);
+  }
+
+  @media (max-width: 900px) {
+    .cp-profile-layout {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

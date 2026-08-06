@@ -25,6 +25,13 @@ function initCompoundSearch(): void {
   const resultCount = document.querySelector<HTMLElement>('[data-result-count]');
   const emptyState = document.querySelector<HTMLElement>('[data-filter-empty-state]');
   const clearButton = document.querySelector<HTMLButtonElement>('[data-clear-filters]');
+  // Optional — only present in the current directory layout (design
+  // concept restyle), guarded throughout so this file's original DOM
+  // contract/tests still work unchanged without any of these elements.
+  const searchEcho = document.querySelector<HTMLElement>('[data-search-echo]');
+  const chipsContainer = document.querySelector<HTMLElement>('[data-active-chips]');
+  const filterToggle = document.querySelector<HTMLButtonElement>('[data-filter-toggle]');
+  const sidebar = document.querySelector<HTMLElement>('[data-sidebar]');
 
   if (!grid) return;
   const gridEl: HTMLElement = grid;
@@ -65,6 +72,70 @@ function initCompoundSearch(): void {
 
     if (resultCount) resultCount.textContent = `${visible} compound${visible === 1 ? '' : 's'}`;
     if (emptyState) emptyState.hidden = visible !== 0;
+
+    if (searchEcho) {
+      searchEcho.textContent = '';
+      if (query) {
+        searchEcho.innerHTML = '';
+        const prefix = document.createTextNode('Showing results for ');
+        const strong = document.createElement('strong');
+        strong.textContent = (searchInput?.value ?? '').trim();
+        searchEcho.append(prefix, strong);
+      }
+    }
+
+    if (chipsContainer) renderChips(entityKind, category, confidence);
+  }
+
+  function chipLabel(select: HTMLSelectElement | undefined | null, value: string): string {
+    if (!select) return value;
+    const option = Array.from(select.options).find((o) => o.value === value);
+    return option?.textContent ?? value;
+  }
+
+  function renderChips(entityKind: string, category: string, confidence: string): void {
+    if (!chipsContainer) return;
+    chipsContainer.innerHTML = '';
+    const candidates: ({ label: string; clear: () => void } | null)[] = [
+      entityKind
+        ? {
+            label: chipLabel(entityKindSelect, entityKind),
+            clear: () => {
+              if (entityKindSelect) entityKindSelect.value = '';
+            },
+          }
+        : null,
+      category
+        ? {
+            label: chipLabel(categorySelect, category),
+            clear: () => {
+              if (categorySelect) categorySelect.value = '';
+            },
+          }
+        : null,
+      confidence
+        ? {
+            label: chipLabel(confidenceSelect, confidence),
+            clear: () => {
+              if (confidenceSelect) confidenceSelect.value = '';
+            },
+          }
+        : null,
+    ];
+    const active = candidates.filter((c): c is { label: string; clear: () => void } => c !== null);
+
+    for (const chip of active) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'cp-chip';
+      btn.setAttribute('aria-label', `Remove filter: ${chip.label}`);
+      btn.innerHTML = `${chip.label} <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>`;
+      btn.addEventListener('click', () => {
+        chip.clear();
+        apply();
+      });
+      chipsContainer.appendChild(btn);
+    }
   }
 
   searchInput?.addEventListener('input', apply);
@@ -78,6 +149,16 @@ function initCompoundSearch(): void {
     if (categorySelect) categorySelect.value = '';
     if (confidenceSelect) confidenceSelect.value = '';
     apply();
+  });
+
+  filterToggle?.addEventListener('click', () => {
+    const open = sidebar?.hasAttribute('data-open') ?? false;
+    if (open) {
+      sidebar?.removeAttribute('data-open');
+    } else {
+      sidebar?.setAttribute('data-open', '');
+    }
+    filterToggle.setAttribute('aria-expanded', String(!open));
   });
 
   apply();

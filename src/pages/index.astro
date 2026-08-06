@@ -1,17 +1,376 @@
 ---
+/**
+ * Homepage — rebuilt to the approved visual concept
+ * (design-concepts/homepage_revised_with_cloud_mark.html) and design
+ * handoff §26. Replaces the Phase 1A placeholder completely.
+ *
+ * On-demand (not static): the hero eyebrow states a real, live published-
+ * compound count rather than a fabricated/stale number — honest even
+ * when that count is 0 (nothing is published yet, per Phase 3's
+ * draft-safety rules), matching the same "no invented numbers" rule
+ * applied everywhere else in Research.
+ */
+export const prerender = false;
+
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Button from '../components/ui/Button.astro';
+import Card from '../components/ui/Card.astro';
+import { hasSupabaseConfig, listPublishedCompounds } from '../lib/supabase';
+
+let compoundCount = 0;
+let categoryCounts: { category: string; count: number }[] = [];
+
+if (hasSupabaseConfig()) {
+  try {
+    const compounds = await listPublishedCompounds();
+    compoundCount = compounds.length;
+    const byCategory = new Map<string, number>();
+    for (const c of compounds) {
+      if (!c.category) continue;
+      byCategory.set(c.category, (byCategory.get(c.category) ?? 0) + 1);
+    }
+    categoryCounts = [...byCategory.entries()]
+      .map(([category, count]) => ({ category, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+  } catch {
+    // Homepage degrades gracefully to the zero-count copy — this is a
+    // welcome/orientation page, not somewhere to show a raw error state.
+  }
+}
+
+const eyebrowLabel =
+  compoundCount > 0
+    ? `Research library · ${compoundCount} published compound${compoundCount === 1 ? '' : 's'}`
+    : 'Research library · now in editorial review';
+
+// The Astro app doesn't have its own Shop yet (Blueprint Phase 4) — the
+// existing production static site is the live, real shop until that
+// migration happens (CLAUDE.md §1/§11: it stays live as the production
+// fallback throughout this rebuild). Linking there is an honest bridge,
+// not a placeholder link to nowhere.
+const SHOP_URL = 'https://cloudpeptides.github.io/shop.html';
 ---
 
-<BaseLayout title="Home">
-  <section style="max-width: 1280px; margin: 0 auto; padding: 3rem 1.5rem;">
-    <h1 class="text-h1" style="font-family: var(--font-display); margin: 0 0 1rem;">
-      Cloud Peptides
-    </h1>
-    <p
-      style="color: var(--text-secondary); font-size: var(--text-body); line-height: var(--text-body--line-height);"
-    >
-      Phase 1A foundation placeholder — base layout, navigation, footer, and design tokens are wired
-      and verified. Real page content ships in later phases per the approved Blueprint.
-    </p>
+<BaseLayout
+  title="Home"
+  description="Peptide research, backed by cited evidence — every claim links to its source, with a plain-language read on how settled the science is."
+>
+  <section class="cp-hero">
+    <div class="cp-hero__watermark" aria-hidden="true">
+      <svg viewBox="0 0 180 90" width="360" height="180">
+        <rect x="30" y="40" width="120" height="40" rx="20" fill="var(--primary)"></rect>
+        <circle cx="60" cy="35" r="26" fill="var(--primary)"></circle>
+        <circle cx="95" cy="22" r="34" fill="var(--primary)"></circle>
+        <circle cx="130" cy="32" r="24" fill="var(--primary)"></circle>
+      </svg>
+    </div>
+
+    <div class="cp-hero__inner">
+      <div class="cp-hero__copy">
+        <span class="cp-eyebrow-pill">
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 20 20"
+            width="14"
+            height="14"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M8 3h4M8.5 3v5l-4 8a1.5 1.5 0 0 0 1.3 2.2h8.4A1.5 1.5 0 0 0 15.5 16l-4-8V3"
+            ></path>
+          </svg>
+          {eyebrowLabel}
+        </span>
+        <h1 class="cp-hero__heading">Peptide research, backed by cited evidence</h1>
+        <p class="cp-hero__intro">
+          Every claim links to its source — human, animal, in-vitro, or mechanistic — with a
+          plain-language read on how settled the science is.
+        </p>
+        <div class="cp-hero__ctas">
+          <Button href="/research/compounds" variant="primary">Explore the research</Button>
+          <Button href={SHOP_URL} variant="secondary">Visit the shop</Button>
+        </div>
+      </div>
+    </div>
+
+    <Card class="cp-trust-card">
+      <svg
+        aria-hidden="true"
+        class="cp-trust-card__icon"
+        viewBox="0 0 20 20"
+        width="22"
+        height="22"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M10 3 4 5.5v4c0 4 2.6 7 6 8 3.4-1 6-4 6-8v-4L10 3Z"></path>
+        <path d="M7.5 10l1.8 1.8 3.2-3.6"></path>
+      </svg>
+      <div>
+        <p class="cp-trust-card__title">Trust through transparency, not promotional claims</p>
+        <p class="cp-trust-card__body">
+          Every compound page shows a last-reviewed date and its full citation trail. Batch testing
+          is shown separately from scientific evidence, never as proof of effect.
+        </p>
+      </div>
+    </Card>
   </section>
+
+  <section class="cp-modes">
+    <a href="/research/compounds" class="cp-mode-card cp-mode-card--research">
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 20 20"
+        width="26"
+        height="26"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M8 3h4M8.5 3v5l-4 8a1.5 1.5 0 0 0 1.3 2.2h8.4A1.5 1.5 0 0 0 15.5 16l-4-8V3"></path>
+      </svg>
+      <div>
+        <h2>Research</h2>
+        <p>
+          Browse the compound directory: claim-level citations, evidence type, and regulatory
+          status.
+        </p>
+      </div>
+    </a>
+    <a href={SHOP_URL} class="cp-mode-card cp-mode-card--shop">
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 20 20"
+        width="26"
+        height="26"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M4 6h12l-1 10a1.5 1.5 0 0 1-1.5 1.3h-7A1.5 1.5 0 0 1 5 16L4 6Z"></path>
+        <path d="M7 6V5a3 3 0 0 1 6 0v1"></path>
+      </svg>
+      <div>
+        <h2>Shop</h2>
+        <p>
+          Visit the Cloud Peptides shop — kept structurally and visually separate from Research.
+        </p>
+      </div>
+    </a>
+  </section>
+
+  {
+    categoryCounts.length > 0 && (
+      <section class="cp-categories">
+        <h2 class="cp-categories__heading">Browse by category</h2>
+        <div class="cp-categories__grid">
+          {categoryCounts.map(({ category, count }) => (
+            <a
+              class="cp-category-card"
+              href={`/research/compounds?category=${encodeURIComponent(category)}`}
+            >
+              <span class="cp-category-card__name">{category}</span>
+              <span class="cp-category-card__count">
+                {count} compound{count === 1 ? '' : 's'}
+              </span>
+            </a>
+          ))}
+        </div>
+      </section>
+    )
+  }
 </BaseLayout>
+
+<style>
+  .cp-hero {
+    position: relative;
+    overflow: hidden;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 3.5rem 1.5rem 2.5rem;
+  }
+  .cp-hero__watermark {
+    position: absolute;
+    top: -3rem;
+    right: -3rem;
+    opacity: 0.06;
+    pointer-events: none;
+  }
+  .cp-hero__inner {
+    position: relative;
+    margin-bottom: 2.5rem;
+  }
+  .cp-eyebrow-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: var(--text-caption);
+    font-weight: 500;
+    background: var(--accent-mint);
+    color: var(--primary);
+    padding: 0.375rem 0.875rem;
+    border-radius: 999px;
+  }
+  .cp-hero__heading {
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: clamp(2rem, 4.5vw, var(--text-display));
+    line-height: 1.12;
+    margin: 0.875rem 0 1rem;
+  }
+  .cp-hero__intro {
+    color: var(--text-secondary);
+    font-size: 1.0625rem;
+    line-height: var(--text-body--line-height);
+    max-width: 48ch;
+    margin: 0;
+  }
+  .cp-hero__ctas {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .cp-trust-card {
+    display: flex;
+    gap: 0.875rem;
+    align-items: flex-start;
+  }
+  .cp-trust-card :global(.cp-card__body) {
+    display: flex;
+    gap: 0.875rem;
+    align-items: flex-start;
+  }
+  .cp-trust-card__icon {
+    color: var(--primary);
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+  }
+  .cp-trust-card__title {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 0.25rem;
+  }
+  .cp-trust-card__body {
+    color: var(--text-secondary);
+    font-size: var(--text-caption);
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  .cp-modes {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 1.5rem 3rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+  .cp-mode-card {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    padding: 1.5rem;
+    border-radius: var(--radius-card);
+    background: var(--bg-elevated);
+    text-decoration: none;
+    box-shadow: var(--shadow-resting);
+    border: 1.5px solid var(--border-subtle);
+    transition: box-shadow 150ms ease-out;
+  }
+  .cp-mode-card:hover {
+    box-shadow: var(--shadow-hover);
+  }
+  .cp-mode-card h2 {
+    font-family: var(--font-display);
+    font-size: var(--text-h3);
+    color: var(--text-primary);
+    margin: 0 0 0.375rem;
+  }
+  .cp-mode-card p {
+    color: var(--text-secondary);
+    font-size: var(--text-caption);
+    line-height: 1.5;
+    margin: 0;
+  }
+  .cp-mode-card--research {
+    border-color: var(--accent-mint);
+    color: var(--primary);
+  }
+  .cp-mode-card--research svg {
+    color: var(--primary);
+  }
+  .cp-mode-card--shop {
+    border-color: var(--terracotta-text);
+    color: var(--terracotta-text);
+  }
+  .cp-mode-card--shop svg {
+    color: var(--terracotta-text);
+  }
+  /* :visited explicitly pinned to the same theme-aware colors — see the
+     matching note in src/components/ui/Button.astro. */
+  .cp-mode-card--research:visited {
+    color: var(--primary);
+  }
+  .cp-mode-card--shop:visited {
+    color: var(--terracotta-text);
+  }
+
+  .cp-categories {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 1.5rem 4rem;
+  }
+  .cp-categories__heading {
+    font-family: var(--font-display);
+    font-size: var(--text-h2);
+    color: var(--text-primary);
+    margin: 0 0 1.25rem;
+  }
+  .cp-categories__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+  .cp-category-card {
+    display: block;
+    padding: 1.125rem 1.25rem;
+    border-radius: var(--radius-control);
+    background: var(--bg-sunken);
+    border: 1px solid var(--border-subtle);
+    text-decoration: none;
+    color: inherit;
+  }
+  .cp-category-card__name {
+    display: block;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+  }
+  .cp-category-card__count {
+    display: block;
+    font-size: var(--text-caption);
+    color: var(--text-muted);
+  }
+
+  @media (max-width: 900px) {
+    .cp-modes {
+      grid-template-columns: 1fr;
+    }
+    .cp-categories__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
