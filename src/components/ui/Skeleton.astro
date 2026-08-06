@@ -1,0 +1,43 @@
+---
+/**
+ * Loading state — design handoff §29: "Skeleton blocks matching final
+ * content shape; logo pulse only for full-page loads." This is the
+ * per-content skeleton block; the logo pulse lives in BaseLayout for
+ * full navigations.
+ */
+interface Props {
+  class?: string;
+  height?: string;
+}
+const { class: className, height = '1rem' } = Astro.props;
+---
+
+<div class:list={['cp-skeleton', className]} style={{ height }} aria-hidden="true"></div>
+
+<style>
+  .cp-skeleton {
+    border-radius: var(--radius-control);
+    background: linear-gradient(
+      90deg,
+      var(--bg-sunken) 25%,
+      var(--border-subtle) 37%,
+      var(--bg-sunken) 63%
+    );
+    background-size: 400% 100%;
+    animation: cp-skeleton-shimmer 1.8s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cp-skeleton {
+      animation: none;
+      background: var(--bg-sunken);
+    }
+  }
+  @keyframes cp-skeleton-shimmer {
+    0% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0 50%;
+    }
+  }
+</style>

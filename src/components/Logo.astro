@@ -24,6 +24,12 @@
  *    icon-only link), set this so aria-hidden is dropped and the wrapping
  *    <a>/<button> is expected to carry aria-label="Cloud Peptides home" (or
  *    similar) itself — this component does not render its own link wrapper.
+ *
+ * `hollow` (design handoff §29 empty state): "the mark rendered
+ * hollow/unfilled with no chain — an 'empty cloud,' reusing the same
+ * geometry rather than inventing a new icon". Implemented purely with
+ * CSS targeting the primary SVG's existing .cp-logo-chain/.cp-logo-cloud
+ * groups — geometry itself is untouched.
  */
 import primarySvg from '../../public/brand/logo-primary.svg?raw';
 import oneColorSvg from '../../public/brand/logo-one-color.svg?raw';
@@ -34,10 +40,17 @@ interface Props {
   variant?: 'primary' | 'one-color' | 'dark' | 'favicon';
   size?: number;
   standalone?: boolean;
+  hollow?: boolean;
   class?: string;
 }
 
-const { variant = 'primary', size = 40, standalone = false, class: className } = Astro.props;
+const {
+  variant = 'primary',
+  size = 40,
+  standalone = false,
+  hollow = false,
+  class: className,
+} = Astro.props;
 
 const markup = {
   primary: primarySvg,
@@ -48,7 +61,7 @@ const markup = {
 ---
 
 <span
-  class:list={['cp-logo', className]}
+  class:list={['cp-logo', { 'cp-logo--hollow': hollow }, className]}
   style={{ width: `${size}px`, height: `${size}px` }}
   aria-hidden={standalone ? undefined : 'true'}
   set:html={markup}
@@ -58,10 +71,20 @@ const markup = {
   .cp-logo {
     display: inline-block;
     line-height: 0;
+    color: var(--text-muted);
   }
   .cp-logo :global(svg) {
     display: block;
     width: 100%;
     height: 100%;
+  }
+  .cp-logo--hollow :global(.cp-logo-chain) {
+    display: none;
+  }
+  .cp-logo--hollow :global(.cp-logo-cloud circle),
+  .cp-logo--hollow :global(.cp-logo-cloud rect) {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
   }
 </style>
