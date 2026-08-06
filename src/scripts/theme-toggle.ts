@@ -4,17 +4,13 @@
  * correctly via the `prefers-color-scheme` media query baked into
  * tokens.css defaults; this script only adds the persisted manual override.
  */
+import { resolveTheme, type Theme } from '../lib/theme.ts';
+
 const STORAGE_KEY = 'cp-theme';
 
-type Theme = 'light' | 'dark';
-
-function getStoredTheme(): Theme | null {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  return stored === 'light' || stored === 'dark' ? stored : null;
-}
-
-function getSystemTheme(): Theme {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+function getCurrentTheme(): Theme {
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  return resolveTheme(localStorage.getItem(STORAGE_KEY), prefersDark);
 }
 
 function applyTheme(theme: Theme): void {
@@ -29,8 +25,7 @@ function applyTheme(theme: Theme): void {
 }
 
 function initThemeToggle(): void {
-  const theme = getStoredTheme() ?? getSystemTheme();
-  applyTheme(theme);
+  applyTheme(getCurrentTheme());
 
   document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]').forEach((btn) => {
     btn.addEventListener('click', () => {

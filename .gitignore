@@ -26,3 +26,8 @@ pnpm-debug.log*
 
 # wrangler local state
 .wrangler/
+
+# test output
+test-results/
+playwright-report/
+coverage/
