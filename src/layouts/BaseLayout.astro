@@ -3,6 +3,18 @@
  * Shared page shell — design handoff §19/§23/§25/§26.
  * Skip-link, theme bootstrap (no flash of wrong theme), Nav + Footer,
  * design tokens loaded once here for every page.
+ *
+ * SEO (canonical/OG/structured data): every page passes its own `title`
+ * and `description` (already required); `canonical` defaults to the
+ * current URL if not given, `ogImage` to the shared brand-logo PNG
+ * (public/brand/logo-og.png — the same PNG logo already used across the
+ * legacy site, not a new asset). `structuredData` accepts one or more
+ * JSON-LD objects; the Organization+WebSite block is site-wide and
+ * always included, page-specific data (BreadcrumbList, Product, etc.)
+ * is passed in per-page. `noindex` is for pages that should never be
+ * indexed even though they resolve with a 200 (none currently use it —
+ * kept available for e.g. an eventual account/checkout-confirmation
+ * page rather than added speculatively everywhere).
  */
 import '../styles/tokens.css';
 import Nav from '../components/Nav.astro';
@@ -11,9 +23,44 @@ import Footer from '../components/Footer.astro';
 interface Props {
   title: string;
   description?: string;
+  canonical?: string;
+  ogImage?: string;
+  ogType?: 'website' | 'article' | 'product';
+  noindex?: boolean;
+  structuredData?: Record<string, unknown> | Record<string, unknown>[];
 }
 
-const { title, description = 'Cloud Peptides research platform.' } = Astro.props;
+const {
+  title,
+  description = 'Cloud Peptides research platform.',
+  canonical = new URL(Astro.url.pathname, Astro.site).toString(),
+  ogImage = new URL('/brand/logo-og.png', Astro.site).toString(),
+  ogType = 'website',
+  noindex = false,
+  structuredData,
+} = Astro.props;
+
+const ORG_WEBSITE_JSONLD = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      name: 'Cloud Peptides',
+      url: Astro.site?.toString(),
+      logo: new URL('/brand/logo-og.png', Astro.site).toString(),
+    },
+    {
+      '@type': 'WebSite',
+      name: 'Cloud Peptides',
+      url: Astro.site?.toString(),
+    },
+  ],
+};
+
+const jsonLdBlocks = [
+  ORG_WEBSITE_JSONLD,
+  ...(structuredData ? (Array.isArray(structuredData) ? structuredData : [structuredData]) : []),
+];
 ---
 
 <html lang="en">
@@ -24,7 +71,28 @@ const { title, description = 'Cloud Peptides research platform.' } = Astro.props
     <meta name="generator" content={Astro.generator} />
     <link rel="icon" type="image/svg+xml" href="/brand/logo-favicon.svg" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
     <title>{title} | Cloud Peptides</title>
+
+    <!-- Open Graph / social — design handoff-approved brand mark only. -->
+    <meta property="og:site_name" content="Cloud Peptides" />
+    <meta property="og:title" content={`${title} | Cloud Peptides`} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:image" content={ogImage} />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={`${title} | Cloud Peptides`} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+
+    {
+      jsonLdBlocks.map((block) => (
+        <script is:inline type="application/ld+json" set:html={JSON.stringify(block)} />
+      ))
+    }
+
     <!-- Design handoff §16: Fraunces (display), IBM Plex Sans (body), IBM
          Plex Mono (data/technical). Loaded once here for every page. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -54,6 +122,8 @@ const { title, description = 'Cloud Peptides research platform.' } = Astro.props
       links={[
         { label: 'Home', href: '/' },
         { label: 'Research', href: '/research/compounds' },
+        { label: 'Shop', href: '/shop' },
+        { label: 'Contact', href: '/contact' },
       ]}
     />
     <main id="main-content">
@@ -62,6 +132,7 @@ const { title, description = 'Cloud Peptides research platform.' } = Astro.props
     <Footer />
     <script>
       import '../scripts/theme-toggle.ts';
+      import '../scripts/cart-badge.ts';
     </script>
   </body>
 </html>

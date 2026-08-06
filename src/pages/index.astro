@@ -44,12 +44,9 @@ const eyebrowLabel =
     ? `Research library · ${compoundCount} published compound${compoundCount === 1 ? '' : 's'}`
     : 'Research library · now in editorial review';
 
-// The Astro app doesn't have its own Shop yet (Blueprint Phase 4) — the
-// existing production static site is the live, real shop until that
-// migration happens (CLAUDE.md §1/§11: it stays live as the production
-// fallback throughout this rebuild). Linking there is an honest bridge,
-// not a placeholder link to nowhere.
-const SHOP_URL = 'https://cloudpeptides.github.io/shop.html';
+// Shop is now rebuilt natively in this app (/shop) — no longer bridges
+// out to the legacy static site's shop.html.
+const SHOP_URL = '/shop';
 ---
 
 <BaseLayout

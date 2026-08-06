@@ -46,6 +46,23 @@ const currentPath = Astro.url.pathname;
     </ul>
 
     <div class="cp-nav__actions">
+      <a href="/shop/cart" class="cp-nav__cart" aria-label="Cart">
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 20 20"
+          width="18"
+          height="18"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M4 6h12l-1 10a1.5 1.5 0 0 1-1.5 1.3h-7A1.5 1.5 0 0 1 5 16L4 6Z"></path>
+          <path d="M7 6V5a3 3 0 0 1 6 0v1"></path>
+        </svg>
+        <span class="cp-nav__cart-count" data-cart-count hidden>0</span>
+      </a>
       <button type="button" data-theme-toggle aria-pressed="false" aria-label="Toggle dark theme">
         <span aria-hidden="true">◐</span>
       </button>
@@ -187,6 +204,38 @@ const currentPath = Astro.url.pathname;
     border-radius: var(--radius-control);
     cursor: pointer;
     color: var(--text-primary);
+  }
+
+  .cp-nav__cart {
+    position: relative;
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1.5px solid var(--border-interactive);
+    border-radius: var(--radius-control);
+    color: var(--terracotta-text);
+    text-decoration: none;
+  }
+
+  .cp-nav__cart-count {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: var(--terracotta-strong);
+    color: var(--text-on-terracotta);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
   }
 
   .cp-nav__menu-btn {

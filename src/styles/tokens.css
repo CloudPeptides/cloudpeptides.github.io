@@ -33,6 +33,11 @@
   --accent-mint: #c8e0ce;
   --terracotta-text: #a85d37;
   --terracotta-strong: #a85d37;
+  /* Handoff §15's dark table doesn't give --terracotta-strong its own
+     entry — this pairs it with the text color a solid terracotta-fill
+     button needs, mirroring --text-on-primary. White at 4.90:1 here
+     (light theme, per §15). */
+  --text-on-terracotta: #ffffff;
   --blush: #e8b9c4; /* decorative only, never text */
   --success-text: #2f6e4e;
   --warning-text: #8a611f;
@@ -86,6 +91,15 @@
   --accent-mint: #24382c;
   --terracotta-text: #e0916a;
   --terracotta-strong: #e0916a;
+  /* --terracotta-strong is lightened for dark theme (readable as text
+     against the dark page background), which makes white button-fill
+     text fail badly (2.49:1 — caught live by axe on the Shop product
+     page's "Add To Cart" button, the first place this project uses a
+     solid terracotta fill rather than terracotta as text/border).
+     Reuses --text-on-primary dark's same near-black, the design
+     system's existing answer to "what text sits on a light fill in
+     dark theme" for --primary. */
+  --text-on-terracotta: #0f1712;
   --success-text: #6fcb9a;
   --warning-text: #e0b25c;
   --danger-text: #e08d7d;
@@ -116,6 +130,7 @@
   --color-accent-mint: var(--accent-mint);
   --color-terracotta-text: var(--terracotta-text);
   --color-terracotta-strong: var(--terracotta-strong);
+  --color-text-on-terracotta: var(--text-on-terracotta);
   --color-blush: var(--blush);
   --color-success-text: var(--success-text);
   --color-warning-text: var(--warning-text);

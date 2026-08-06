@@ -1,0 +1,391 @@
+---
+/**
+ * Shop index — rebuild of legacy-site/shop.html + js/shop.js, same
+ * category cards / filter buttons / search / product grid, same 47
+ * products (src/lib/shop-products.ts, ported verbatim). Static:
+ * products are a hardcoded catalog (matching the legacy site's own
+ * approach), not queried from anywhere, so there's no reason to opt out
+ * of prerendering here.
+ *
+ * Terracotta accents throughout (design handoff §30/§11-12's shop-mode
+ * color swap) to keep Shop visibly distinct from Research's forest/mint
+ * — enforced structurally too: this file never imports anything from
+ * src/lib/supabase.ts or touches compounds/claims/studies/
+ * regulatory_records (CLAUDE.md §7).
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Card from '../../components/ui/Card.astro';
+import { PRODUCTS } from '../../lib/shop-products';
+import { formatMoney, lowestPriceOption } from '../../lib/shop';
+
+const CATEGORIES = [
+  { name: 'Beauty + Repair', icon: '<circle cx="10" cy="10" r="6"/><path d="M10 7v3l2 2"/>' },
+  {
+    name: 'Weight Loss + Metabolic',
+    icon: '<path d="M10 3v3M10 14v3M4 10h3M13 10h3"/><circle cx="10" cy="10" r="4"/>',
+  },
+  {
+    name: 'Repair + Other',
+    icon: '<path d="M8 3h4M8.5 3v5l-4 8a1.5 1.5 0 0 0 1.3 2.2h8.4A1.5 1.5 0 0 0 15.5 16l-4-8V3"/>',
+  },
+];
+
+const productCount = PRODUCTS.length;
+
+const breadcrumbJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: new URL('/', Astro.site).toString() },
+    {
+      '@type': 'ListItem',
+      position: 2,
+      name: 'Shop',
+      item: new URL('/shop', Astro.site).toString(),
+    },
+  ],
+};
+---
+
+<BaseLayout
+  title="Shop"
+  description="Browse the Cloud Peptides shop — 10 vial research kits by category or name/code search."
+  structuredData={breadcrumbJsonLd}
+>
+  <section class="cp-shop-container">
+    <header class="cp-shop-header">
+      <p class="cp-eyebrow cp-eyebrow--shop">Shop</p>
+      <h1 class="cp-shop-header__heading">Shop 10 Vial Kits</h1>
+      <p class="cp-shop-header__intro">
+        Browse by category or search by product name/code. Click any product to view its available
+        mg options and pricing.
+      </p>
+      <p class="cp-shop-disclaimer">
+        For laboratory research use only. Not for human consumption. Nothing on this page is
+        scientific evidence, a medical claim, or a purchase recommendation about any compound
+        discussed in Research.
+      </p>
+    </header>
+
+    <div class="cp-category-row">
+      {
+        CATEGORIES.map((cat) => (
+          <div class="cp-category-card">
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 20 20"
+              width="28"
+              height="28"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              set:html={cat.icon}
+            />
+            <h2>{cat.name}</h2>
+            <button type="button" class="cp-btn-outline" data-shop-filter-jump={cat.name}>
+              View Products
+            </button>
+          </div>
+        ))
+      }
+    </div>
+
+    <div class="cp-shop-filters">
+      <button type="button" class="cp-filter-btn is-active" data-shop-filter="all">All</button>
+      {
+        CATEGORIES.map((cat) => (
+          <button type="button" class="cp-filter-btn" data-shop-filter={cat.name}>
+            {cat.name}
+          </button>
+        ))
+      }
+    </div>
+
+    <div class="cp-shop-search">
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 20 20"
+        width="16"
+        height="16"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <circle cx="9" cy="9" r="6"></circle><path d="M17 17l-4-4"></path>
+      </svg>
+      <label for="shopSearch" class="cp-visually-hidden">Search product name or code</label>
+      <input
+        id="shopSearch"
+        type="search"
+        placeholder="Search product name or code…"
+        data-shop-search
+        autocomplete="off"
+      />
+    </div>
+
+    <p class="cp-shop-count" aria-live="polite">{productCount} products</p>
+
+    <div class="cp-product-grid" data-shop-grid>
+      {
+        PRODUCTS.map((product) => {
+          const low = lowestPriceOption(product);
+          const multi = product.options.length > 1;
+          const codes = product.options.map((o) => o.code.toLowerCase()).join(' ');
+          return (
+            <a
+              href={`/shop/${product.id}`}
+              class="cp-product-card"
+              data-shop-item
+              data-id={product.id}
+              data-name={product.name}
+              data-category={product.category}
+              data-codes={codes}
+            >
+              <Card class="cp-product-card__inner" accent="var(--terracotta-text)">
+                <div class="cp-product-card__image" aria-hidden="true">
+                  <svg viewBox="0 0 40 40" width="100%" height="100%">
+                    <rect
+                      x="14"
+                      y="8"
+                      width="12"
+                      height="26"
+                      rx="4"
+                      fill="none"
+                      stroke="var(--border-interactive)"
+                      stroke-width="1.5"
+                    />
+                    <rect
+                      x="16"
+                      y="4"
+                      width="8"
+                      height="6"
+                      rx="1.5"
+                      fill="none"
+                      stroke="var(--border-interactive)"
+                      stroke-width="1.5"
+                    />
+                  </svg>
+                </div>
+                <h3 class="cp-product-card__name">{product.name}</h3>
+                <p class="cp-product-card__sub">
+                  10 Vial Kit{multi ? ` • ${product.options.length} options` : ''}
+                </p>
+                <p class="cp-product-card__price">
+                  {multi ? 'from ' : ''}
+                  {formatMoney(low.price)}
+                </p>
+              </Card>
+            </a>
+          );
+        })
+      }
+    </div>
+
+    <div class="cp-product-grid-empty" data-shop-empty-state hidden>
+      <p>No products match your search or filter.</p>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import '../../scripts/shop-search.ts';
+</script>
+
+<style>
+  .cp-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .cp-shop-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 5rem;
+  }
+  .cp-shop-header {
+    max-width: 46rem;
+    margin-bottom: 2rem;
+  }
+  .cp-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem;
+  }
+  .cp-eyebrow--shop {
+    color: var(--terracotta-text);
+  }
+  .cp-shop-header__heading {
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: clamp(1.875rem, 4vw, var(--text-h1));
+    margin: 0 0 0.75rem;
+  }
+  .cp-shop-header__intro {
+    color: var(--text-secondary);
+    line-height: var(--text-body--line-height);
+    margin: 0 0 1rem;
+  }
+  .cp-shop-disclaimer {
+    font-size: var(--text-caption);
+    color: var(--text-muted);
+    background: var(--bg-sunken);
+    border-left: 3px solid var(--terracotta-text);
+    padding: 0.75rem 1rem;
+    margin: 0;
+  }
+
+  .cp-category-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .cp-category-card {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    border-radius: var(--radius-card);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+  }
+  .cp-category-card svg {
+    color: var(--terracotta-text);
+  }
+  .cp-category-card h2 {
+    font-family: var(--font-display);
+    font-size: 1.0625rem;
+    color: var(--text-primary);
+    margin: 0.75rem 0 0.875rem;
+  }
+  .cp-btn-outline {
+    padding: 0.5rem 1rem;
+    min-height: 40px;
+    border-radius: var(--radius-control);
+    border: 1.5px solid var(--terracotta-text);
+    background: transparent;
+    color: var(--terracotta-text);
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .cp-shop-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .cp-filter-btn {
+    padding: 0.4rem 0.875rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--border-subtle);
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    font-size: var(--text-caption);
+    cursor: pointer;
+  }
+  .cp-filter-btn.is-active {
+    background: var(--terracotta-strong);
+    border-color: var(--terracotta-strong);
+    color: var(--text-on-terracotta);
+  }
+
+  .cp-shop-search {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    background: var(--bg-elevated);
+    border: 1.5px solid var(--border-interactive);
+    border-radius: var(--radius-control);
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.75rem;
+    color: var(--text-muted);
+  }
+  .cp-shop-search input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: var(--text-body);
+    outline: none;
+  }
+
+  .cp-shop-count {
+    margin: 0 0 1rem;
+    color: var(--text-muted);
+    font-size: var(--text-caption);
+  }
+
+  .cp-product-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
+  }
+  .cp-product-card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    height: 100%;
+  }
+  .cp-product-card :global(.cp-card__body) {
+    display: flex;
+    flex-direction: column;
+  }
+  .cp-product-card__image {
+    height: 4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.75rem;
+  }
+  .cp-product-card__name {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.0625rem;
+    color: var(--text-primary);
+    margin: 0 0 0.25rem;
+  }
+  .cp-product-card__sub {
+    font-size: var(--text-caption);
+    color: var(--text-muted);
+    margin: 0 0 0.5rem;
+  }
+  .cp-product-card__price {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    color: var(--terracotta-text);
+    margin: 0;
+  }
+
+  .cp-product-grid-empty {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    color: var(--text-muted);
+  }
+
+  @media (max-width: 1100px) {
+    .cp-product-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  @media (max-width: 860px) {
+    .cp-category-row {
+      grid-template-columns: 1fr;
+    }
+    .cp-product-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 480px) {
+    .cp-product-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
