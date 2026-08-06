@@ -1,0 +1,18 @@
+# Local-only Cloudflare Worker secrets for `astro dev`/`astro preview`.
+# Copy this file to `.dev.vars` (gitignored, never committed) and fill
+# in real values. The real deployed staging Worker gets these via
+# `wrangler secret put <NAME>` instead — this file only affects local
+# dev/preview, and `wrangler deploy` never uploads it.
+#
+# RESEND_API_KEY: the Resend API key (server-only — read in
+#   src/pages/api/contact.ts and checkout.ts via
+#   `import { env } from 'cloudflare:workers'`, never exposed to
+#   client-shipped code). Leave empty locally until a Resend account
+#   and key exist; the routes return a clear 503 "not configured" error
+#   rather than crashing when this is unset.
+RESEND_API_KEY=
+
+# RESEND_FROM_ADDRESS: the verified sending address/domain in Resend
+# (e.g. "orders@yourdomain.com"). Must belong to a domain verified in
+# the Resend dashboard before real sends will work.
+RESEND_FROM_ADDRESS=

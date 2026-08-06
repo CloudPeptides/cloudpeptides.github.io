@@ -22,3 +22,24 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+/**
+ * Narrow, hand-written ambient types for the two Worker-only secrets
+ * (src/pages/api/contact.ts, checkout.ts) — deliberately NOT generated
+ * via `wrangler types` / worker-configuration.d.ts. That generated file
+ * pulls in Cloudflare's full Workers runtime type library, which
+ * declares its own global `Element` interface (part of their
+ * HTMLRewriter API) that merges with — and breaks — the browser DOM
+ * lib's `Element` used throughout this project's client scripts and
+ * tests (confirmed live: regenerating it caused 45 cascading
+ * `HTMLSelectElement`/`dispatchEvent`/`.value` type errors in files
+ * that were never touched). Hand-typing just the two var names needed
+ * avoids that collision entirely; extend this if more Worker-only env
+ * vars are ever added.
+ */
+declare module 'cloudflare:workers' {
+  export const env: {
+    RESEND_API_KEY?: string;
+    RESEND_FROM_ADDRESS?: string;
+  };
+}
