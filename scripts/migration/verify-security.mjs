@@ -120,25 +120,36 @@ async function main() {
     'link_health_checks',
     'batch_coas',
   ];
-  // pg_catalog tables aren't exposed through the Data API. A
-  // SECURITY DEFINER helper function exists for this
-  // (supabase/migrations/20260806144908_rls_check_helper.sql) but
-  // PostgREST's schema-cache pickup of newly-created functions after a
-  // direct `db push` was observed to lag unpredictably (confirmed the
-  // function itself exists correctly via direct SQL — this is a caching
-  // delay, not a real problem). Shelling out to `supabase db query
-  // --linked` instead is slower but deterministic and doesn't depend on
-  // that cache.
+  // pg_catalog tables aren't exposed through the Data API. Primary path:
+  // the SECURITY DEFINER helper function (supabase/migrations/
+  // 20260806144908_rls_check_helper.sql), callable with just the
+  // service-role key — no Management API access token required, so this
+  // works for routine re-runs even after that token has been revoked
+  // (as recommended immediately after Phase 2). Right after a fresh
+  // `db push` this can 404 briefly from PostgREST's schema-cache pickup
+  // lag (confirmed via direct SQL that the function itself exists
+  // correctly the moment it's created — purely a caching delay), so
+  // `supabase db query --linked` remains as a fallback for that narrow
+  // window, at the cost of needing a temporary access token.
   let rlsCheck;
-  try {
-    const raw = execSync(
-      `npx supabase db query --linked --output json "select c.relname as table_name, c.relrowsecurity as rowsecurity from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and c.relname = any(array[${tables.map((t) => `'${t}'`).join(',')}]);"`,
-      { encoding: 'utf8' },
-    );
-    rlsCheck = JSON.parse(raw).rows;
-  } catch (err) {
-    record('RLS enabled on every exposed table', false, `query failed: ${err.message}`);
-    rlsCheck = null;
+  const rpcResult = await admin.rpc('check_rls_enabled', { table_names: tables });
+  if (!rpcResult.error) {
+    rlsCheck = rpcResult.data;
+  } else {
+    try {
+      const raw = execSync(
+        `npx supabase db query --linked --output json "select c.relname as table_name, c.relrowsecurity as rowsecurity from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and c.relname = any(array[${tables.map((t) => `'${t}'`).join(',')}]);"`,
+        { encoding: 'utf8' },
+      );
+      rlsCheck = JSON.parse(raw).rows;
+    } catch (err) {
+      record(
+        'RLS enabled on every exposed table',
+        false,
+        `both the RPC (${rpcResult.error.message}) and the CLI fallback failed: ${err.message}`,
+      );
+      rlsCheck = null;
+    }
   }
   if (rlsCheck) {
     const checkedNames = new Set(rlsCheck.map((r) => r.table_name));
