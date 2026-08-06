@@ -63,7 +63,11 @@ async function main() {
         category: c.category,
         status: 'draft',
         legacy_source_path: `legacy-site/${c.filename}`,
-        raw_import_metadata: c.raw_import_metadata,
+        // Extraction warnings (e.g. "stub page, zero claims", "entity_kind
+        // assigned via human review") ride along in the DB record itself,
+        // not just the markdown report, so editors querying the table
+        // directly still see the caveats.
+        raw_import_metadata: { ...c.raw_import_metadata, import_warnings: c.warnings },
       })
       .select('id')
       .single();
@@ -144,9 +148,17 @@ async function main() {
   }
 
   // Pass 3 — stack_components, resolved by matching component names
-  // against already-inserted compound names (case-insensitive).
+  // against already-inserted compound names (case-insensitive). Runs
+  // over the *entire* importable set every time (not just newly-inserted
+  // compounds) so previously-unresolved links (e.g. a stack referencing a
+  // compound that only just became importable) get retried — so this
+  // must be idempotent: check for an existing (stack_id,
+  // component_compound_id) row before inserting, since the primary key
+  // would otherwise reject a duplicate on every re-run and the error
+  // would be silently swallowed below, undercounting real links.
   const nameToSlug = new Map(importable.map((c) => [c.name.toLowerCase(), c.slug]));
   let stackComponentsInserted = 0;
+  let stackComponentsAlreadyLinked = 0;
   const unresolvedComponents = [];
   for (const c of importable) {
     if (!c.stack_component_names) continue;
@@ -158,11 +170,25 @@ async function main() {
         unresolvedComponents.push({ stack: c.slug, componentName });
         continue;
       }
+      const { data: existingLink } = await supabase
+        .from('stack_components')
+        .select('stack_id')
+        .eq('stack_id', stackId)
+        .eq('component_compound_id', componentId)
+        .maybeSingle();
+      if (existingLink) {
+        stackComponentsAlreadyLinked++;
+        continue;
+      }
       const { error } = await supabase.from('stack_components').insert({
         stack_id: stackId,
         component_compound_id: componentId,
       });
-      if (!error) stackComponentsInserted++;
+      if (!error) {
+        stackComponentsInserted++;
+      } else {
+        unresolvedComponents.push({ stack: c.slug, componentName, error: error.message });
+      }
     }
   }
 
@@ -190,14 +216,14 @@ async function main() {
   report += `Run at ${new Date().toISOString()} against the Supabase staging project.\n\n`;
   report += `**Compounds:** ${inserted} inserted, ${skipped} skipped (already existed), ${errored} had an error.\n`;
   report += `**Claims:** ${totalClaimsInserted} inserted.\n`;
-  report += `**Stack components:** ${stackComponentsInserted} inserted${unresolvedComponents.length ? `, ${unresolvedComponents.length} unresolved` : ''}.\n\n`;
+  report += `**Stack components:** ${stackComponentsInserted} newly inserted, ${stackComponentsAlreadyLinked} already linked (idempotent re-run)${unresolvedComponents.length ? `, ${unresolvedComponents.length} unresolved` : ''}.\n\n`;
   report += `**Live DB verification:** ${compoundCount} total compounds rows, ${claimCount} total claims rows. `;
   report += `${draftCompoundCount} draft, ${nonDraftCompoundCount} non-draft (expected: 0 — every imported compound must be a draft).\n\n`;
 
   if (unresolvedComponents.length) {
     report += `## Unresolved stack components\n\n`;
     for (const u of unresolvedComponents)
-      report += `- ${u.stack}: could not resolve "${u.componentName}" to a compound\n`;
+      report += `- ${u.stack}: could not resolve "${u.componentName}" to a compound${u.error ? ` (insert error: ${u.error})` : ''}\n`;
     report += `\n`;
   }
 

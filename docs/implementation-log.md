@@ -2,6 +2,59 @@
 
 Append-only. One entry per meaningful step, per [CLAUDE.md](../CLAUDE.md) §3/§11/§12.
 
+## Phase 2/3 Closeout — Correction & Completion (2026-08-06)
+
+**Correction:** the Phase 2 entry below states "48 imported, 8 correctly held
+back for human review" — that data-integrity claim was true, but this log's
+earlier closeout summary elsewhere had framed the migration as "48/48
+imported" without equal billing for the 8 held-back pages, which read as
+"the migration is done" rather than "48 of 56 candidate pages are done, 8
+are pending classification." Full explanation, root cause, and every
+verified number: [docs/migration/legacy-import-correction-2026-08-06.md](migration/legacy-import-correction-2026-08-06.md).
+
+**What changed:** the 8 held-back compounds (`5-amino-1mq`, `aicar`,
+`bpc-157-tb-500`, `cerebrolysin`, `cjc-1295-no-dac-ipamorelin`,
+`glutathione`, `nad-plus`, `semax`) received explicit human-reviewed
+`entity_kind` classifications and were imported as `draft` — same
+extraction/insert pipeline as the original 48, same "never invent claims"
+rule (`semax` has zero claims, deliberately, because its legacy page is a
+content-free stub; flagged both in the report and in its own
+`raw_import_metadata.import_warnings`). Blend component lists for
+`bpc-157-tb-500` (→ `bpc-157`, `tb-500`) and `cjc-1295-no-dac-ipamorelin`
+(→ `cjc-1295-no-dac`, `ipamorelin`) were extracted from each page's
+"Compounds Included" section (previously never attempted for non-stack
+pages) and linked via `stack_components`. This also resolved the 3 links
+that were correctly unresolved in the original Phase 2 run
+(`calm-focus-stack`/`neuro-cognitive-stack` → `semax`,
+`upgraded-glow-stack` → `glutathione`), now that those compounds exist.
+
+**Verified directly against the live staging project:**
+- 56 total `compounds` rows, 56 `draft`, 0 `published`.
+- All 8 target slugs present with the approved `entity_kind`; claims/sources
+  totals reconcile exactly (507 claims, 56 sources, 507 `claim_sources`).
+- 24 `stack_components` rows (15 original + 9 newly resolved); every
+  resolvable blend/stack link is now linked, nothing invented for the one
+  page (`klow-blend`) that has no itemized component list to extract.
+- Anonymous (`anon` key) reads return zero rows across all 56 compounds —
+  checked by direct query, not inferred from RLS policy text.
+- Full 14-check RLS/security suite: 14/14 passed.
+
+**Script fixes made along the way** (both real, durable bugfixes, not
+one-off hacks): `import-to-supabase.mjs`'s stack/blend-component pass
+wasn't idempotent (a second run would hit primary-key conflicts on already-
+linked pairs and silently undercount); fixed to check-before-insert.
+`extract-legacy-compounds.mjs`'s component-name extraction was scoped only
+to stack-type pages even though ordinary compound pages can have the same
+"Compounds Included" section (`bpc-157-tb-500`, `cjc-1295-no-dac-ipamorelin`)
+— broadened to an exact section-label match, verified against the raw HTML
+that a loose match would have misattributed unrelated tag lists (e.g.
+`nad-plus.html`'s `.compounds` div lists "Mitochondria", "ATP Production" —
+not compounds) as component links.
+
+**CI/deploy status:** see the note at the end of this log (or the latest
+entry above it, if since appended) for the live GitHub Actions/staging
+deployment result checked as part of this closeout.
+
 ## Phase 3 — Public Compound Directory & Profile Pages (complete)
 
 **Routes (both on-demand, `prerender: false` — everything else stays static):** `/research/compounds` (search/filter/sort directory) and `/research/compounds/[slug]` (full profile: identity, overview, mechanism, evidence-by-type grid, safety, regulatory, citations, stack components).
@@ -25,6 +78,11 @@ Append-only. One entry per meaningful step, per [CLAUDE.md](../CLAUDE.md) §3/§
 **Testing:** 9 unit tests (search/filter/sort against a simulated DOM, happy-dom — the only way to test this without publishing anything), 9 e2e tests (empty state desktop/mobile, draft-leakage boundary ×2, axe on 4 page states), all passing. `check:secrets` clean throughout.
 
 ## Phase 2 — Supabase Staging Database (complete)
+
+> **See the "Phase 2/3 Closeout — Correction & Completion" entry above:**
+> the "48 imported... 8 correctly held back" framing below was accurate but
+> was later summarized elsewhere as "48/48 imported" without equal billing
+> for the 8 — corrected 2026-08-06, all 8 since imported as `draft`.
 
 **Project:** `cloudpeptides-staging` (Supabase, separate from any other project on the account, free tier).
 

@@ -51,6 +51,23 @@ const ENTITY_KIND_OVERRIDES = {
   'hcg.html': 'biologic',
   'lemon-bottle.html': 'supplement',
 };
+// entity_kind values the script could NOT confidently infer (no "Peptide
+// Class" quickfact, no name-based override) and that instead went through
+// the Phase 2 closeout human-review decision table. These are explicit
+// user approvals recorded 2026-08-06 — kept in a separate map from
+// ENTITY_KIND_OVERRIDES above so the report/warnings can distinguish
+// "script inferred this with high confidence" from "a human classified
+// this after review." Do not add to this map without a recorded approval.
+const HUMAN_APPROVED_ENTITY_KIND = {
+  '5-amino-1mq.html': 'non_peptide_research_compound',
+  'aicar.html': 'small_molecule_drug',
+  'bpc-157-tb-500.html': 'peptide_blend',
+  'cerebrolysin.html': 'biologic',
+  'cjc-1295-no-dac-ipamorelin.html': 'peptide_blend',
+  'glutathione.html': 'peptide',
+  'nad-plus.html': 'non_peptide_research_compound',
+  'semax.html': 'peptide',
+};
 
 function slugify(filename) {
   return filename.replace(/\.html$/, '');
@@ -204,14 +221,23 @@ function parsePage(filename) {
     .map((_, a) => ({ text: textOf($(a).find('h3').first()), href: $(a).attr('href') }))
     .get();
 
-  if (classification.type === 'stack') {
-    result.componentSpans = $('.section-label')
-      .filter((_, el) => /Key Compounds/i.test(textOf($(el))))
-      .parent()
-      .find('.compounds span')
-      .map((_, s) => textOf($(s)))
-      .get();
-  }
+  // Component-compound lists use the same `.compounds span` markup as
+  // unrelated mechanism/pathway tag lists elsewhere on compound pages
+  // (e.g. nad-plus.html reuses `.compounds` for "Mitochondria", "ATP
+  // Production" — not compounds at all). Scoping to an *exact* match on
+  // the preceding section-label text ("Key Compounds" on stack pages,
+  // "Compounds Included" on multi-compound blend pages like
+  // bpc-157-tb-500.html/cjc-1295-no-dac-ipamorelin.html — verified
+  // against the raw legacy HTML, not guessed) avoids picking up those
+  // false positives. Applies to both stacks and ordinary compound pages;
+  // yields nothing where the section doesn't exist.
+  const componentSpans = $('.section-label')
+    .filter((_, el) => /^(Key Compounds|Compounds Included)$/i.test(textOf($(el))))
+    .parent()
+    .find('.compounds span')
+    .map((_, s) => textOf($(s)))
+    .get();
+  if (componentSpans.length > 0) result.componentSpans = componentSpans;
 
   return result;
 }
@@ -235,10 +261,16 @@ function warningsFor(page) {
   if (
     page.classification.type === 'compound' &&
     !page.quickfacts['Peptide Class'] &&
-    !ENTITY_KIND_OVERRIDES[page.filename]
+    !ENTITY_KIND_OVERRIDES[page.filename] &&
+    !HUMAN_APPROVED_ENTITY_KIND[page.filename]
   ) {
     warnings.push(
       'no "Peptide Class" quickfact and no known override — entity_kind cannot be confidently assigned, needs human classification',
+    );
+  }
+  if (HUMAN_APPROVED_ENTITY_KIND[page.filename]) {
+    warnings.push(
+      `entity_kind ("${HUMAN_APPROVED_ENTITY_KIND[page.filename]}") assigned via explicit human/editor review during the Phase 2 closeout (2026-08-06), not inferred automatically — see docs/migration/legacy-import-correction-2026-08-06.md.`,
     );
   }
   if (
@@ -254,6 +286,7 @@ function warningsFor(page) {
 
 function entityKindFor(page) {
   if (page.classification.type === 'stack') return 'stack';
+  if (HUMAN_APPROVED_ENTITY_KIND[page.filename]) return HUMAN_APPROVED_ENTITY_KIND[page.filename];
   if (ENTITY_KIND_OVERRIDES[page.filename]) return ENTITY_KIND_OVERRIDES[page.filename];
   if (KNOWN_BLEND_NAMES.has(page.filename)) return 'peptide_blend';
   if (page.quickfacts?.['Peptide Class']) return 'peptide';
@@ -335,7 +368,11 @@ function main() {
         url: `https://cloudpeptides.github.io/${page.filename}`,
       },
       warnings,
-      importable: entity_kind !== null && claims.length > 0,
+      // A stub page (zero extractable claims) is still imported as a
+      // draft shell once entity_kind is known — never silently dropped —
+      // so it's visible to editors for follow-up. The "zero claims
+      // extracted" warning above stays attached to the record either way.
+      importable: entity_kind !== null,
     };
     compounds.push(item);
     importItems.push(item);

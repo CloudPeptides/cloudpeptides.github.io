@@ -4,7 +4,7 @@
       "filename": "5-amino-1mq.html",
       "slug": "5-amino-1mq",
       "name": "5-Amino-1MQ",
-      "entity_kind": null,
+      "entity_kind": "non_peptide_research_compound",
       "category": "Weight Management",
       "description": "An educational overview of 5-Amino-1MQ, a small-molecule research compound investigated for nicotinamide N-methyltransferase (NNMT) inhibition, energy metabolism, adipose tissue biology, and body composition research.",
       "claims": [
@@ -126,10 +126,9 @@
         "url": "https://cloudpeptides.github.io/5-amino-1mq.html"
       },
       "warnings": [
-        "no \"Peptide Class\" quickfact and no known override — entity_kind cannot be confidently assigned, needs human classification",
-        "entity_kind is null — will NOT be imported until a human assigns one (see warnings)"
+        "entity_kind (\"non_peptide_research_compound\") assigned via explicit human/editor review during the Phase 2 closeout (2026-08-06), not inferred automatically — see docs/migration/legacy-import-correction-2026-08-06.md."
       ],
-      "importable": false
+      "importable": true
     },
     {
       "filename": "adamax.html",
@@ -359,7 +358,7 @@
       "filename": "aicar.html",
       "slug": "aicar",
       "name": "AICAR",
-      "entity_kind": null,
+      "entity_kind": "small_molecule_drug",
       "category": "Weight Management",
       "description": "An educational overview of AICAR, a research compound investigated for AMP-activated protein kinase (AMPK) activation, cellular energy sensing, exercise physiology, and metabolic regulation.",
       "claims": [
@@ -481,10 +480,9 @@
         "url": "https://cloudpeptides.github.io/aicar.html"
       },
       "warnings": [
-        "no \"Peptide Class\" quickfact and no known override — entity_kind cannot be confidently assigned, needs human classification",
-        "entity_kind is null — will NOT be imported until a human assigns one (see warnings)"
+        "entity_kind (\"small_molecule_drug\") assigned via explicit human/editor review during the Phase 2 closeout (2026-08-06), not inferred automatically — see docs/migration/legacy-import-correction-2026-08-06.md."
       ],
-      "importable": false
+      "importable": true
     },
     {
       "filename": "aod-9604.html",
@@ -844,7 +842,7 @@
       "filename": "bpc-157-tb-500.html",
       "slug": "bpc-157-tb-500",
       "name": "BPC-157 + TB-500",
-      "entity_kind": null,
+      "entity_kind": "peptide_blend",
       "category": "Recovery & Repair",
       "description": "An educational overview of one of the most commonly researched recovery peptide combinations, investigated for connective tissue biology, angiogenesis, cell migration, regenerative processes, and musculoskeletal research.",
       "claims": [
@@ -897,7 +895,10 @@
           "source_ref": "legacy:bpc-157-tb-500.html"
         }
       ],
-      "stack_component_names": null,
+      "stack_component_names": [
+        "BPC-157",
+        "TB-500"
+      ],
       "raw_import_metadata": {
         "quickfacts": {
           "Type": "Research Blend",
@@ -947,10 +948,9 @@
         "url": "https://cloudpeptides.github.io/bpc-157-tb-500.html"
       },
       "warnings": [
-        "no \"Peptide Class\" quickfact and no known override — entity_kind cannot be confidently assigned, needs human classification",
-        "entity_kind is null — will NOT be imported until a human assigns one (see warnings)"
+        "entity_kind (\"peptide_blend\") assigned via explicit human/editor review during the Phase 2 closeout (2026-08-06), not inferred automatically — see docs/migration/legacy-import-correction-2026-08-06.md."
       ],
-      "importable": false
+      "importable": true
     },
     {
       "filename": "bpc-157.html",
@@ -1470,7 +1470,7 @@
       "filename": "cerebrolysin.html",
       "slug": "cerebrolysin",
       "name": "Cerebrolysin",
-      "entity_kind": null,
+      "entity_kind": "biologic",
       "category": "Cognitive & Neurological",
       "description": "An educational overview of Cerebrolysin, a peptide-based neurotrophic research preparation investigated for neurobiology, cognitive function, neuronal signaling, brain injury models, and neuroprotection research.",
       "claims": [
@@ -1579,10 +1579,9 @@
         "url": "https://cloudpeptides.github.io/cerebrolysin.html"
       },
       "warnings": [
-        "no \"Peptide Class\" quickfact and no known override — entity_kind cannot be confidently assigned, needs human classification",
-        "entity_kind is null — will NOT be imported until a human assigns one (see warnings)"
+        "entity_kind (\"biologic\") assigned via explicit human/editor review during the Phase 2 closeout (2026-08-06), not inferred automatically — see docs/migration/legacy-import-correction-2026-08-06.md."
       ],
-      "importable": false
+      "importable": true
     },
     {
       "filename": "cjc-1295-dac.html",
@@ -1707,7 +1706,7 @@
       "filename": "cjc-1295-no-dac-ipamorelin.html",
       "slug": "cjc-1295-no-dac-ipamorelin",
       "name": "CJC-1295 No DAC + Ipamorelin",
-      "entity_kind": null,
+      "entity_kind": "peptide_blend",
       "category": "Growth Hormone",
       "description": "An educational overview of a commonly researched peptide combination that pairs a GHRH analog with a growth hormone secretagogue to investigate growth hormone physiology, IGF-1 biology, endocrine signaling, recovery, and body composition.",
       "claims": [
@@ -1760,7 +1759,10 @@
           "source_ref": "legacy:cjc-1295-no-dac-ipamorelin.html"
         }
       ],
-      "stack_component_names": null,
+      "stack_component_names": [
+        "CJC-1295 No DAC",
+        "Ipamorelin"
+      ],
       "raw_import_metadata": {
         "quickfacts": {
           "Type": "Research Blend",
@@ -1814,10 +1816,9 @@
         "url": "https://cloudpeptides.github.io/cjc-1295-no-dac-ipamorelin.html"
       },
       "warnings": [
-        "no \"Peptide Class\" quickfact and no known override — entity_kind cannot be confidently assigned, needs human classification",
-        "entity_kind is null — will NOT be imported until a human assigns one (see warnings)"
+        "entity_kind (\"peptide_blend\") assigned via explicit human/editor review during the Phase 2 closeout (2026-08-06), not inferred automatically — see docs/migration/legacy-import-correction-2026-08-06.md."
       ],
-      "importable": false
+      "importable": true
     },
     {
       "filename": "cjc-1295-no-dac.html",
@@ -2647,7 +2648,10 @@
           "source_ref": "legacy:glow-blend.html"
         }
       ],
-      "stack_component_names": null,
+      "stack_component_names": [
+        "GHK-Cu",
+        "TB-500"
+      ],
       "raw_import_metadata": {
         "quickfacts": {
           "Type": "Research Blend",
@@ -2722,7 +2726,7 @@
       "filename": "glutathione.html",
       "slug": "glutathione",
       "name": "Glutathione",
-      "entity_kind": null,
+      "entity_kind": "peptide",
       "category": "Skin & Beauty",
       "description": "An educational overview of Glutathione, a naturally occurring antioxidant investigated for oxidative stress, cellular defense, detoxification pathways, mitochondrial biology, and skin science.",
       "claims": [
@@ -2827,10 +2831,9 @@
         "url": "https://cloudpeptides.github.io/glutathione.html"
       },
       "warnings": [
-        "no \"Peptide Class\" quickfact and no known override — entity_kind cannot be confidently assigned, needs human classification",
-        "entity_kind is null — will NOT be imported until a human assigns one (see warnings)"
+        "entity_kind (\"peptide\") assigned via explicit human/editor review during the Phase 2 closeout (2026-08-06), not inferred automatically — see docs/migration/legacy-import-correction-2026-08-06.md."
       ],
-      "importable": false
+      "importable": true
     },
     {
       "filename": "growth-hormone-fat-loss-stack.html",
@@ -4267,7 +4270,7 @@
       "filename": "nad-plus.html",
       "slug": "nad-plus",
       "name": "NAD+",
-      "entity_kind": null,
+      "entity_kind": "non_peptide_research_compound",
       "category": "Longevity",
       "description": "An educational overview of NAD+ (nicotinamide adenine dinucleotide), a naturally occurring coenzyme investigated for cellular energy metabolism, mitochondrial biology, DNA repair pathways, healthy aging, and longevity research.",
       "claims": [
@@ -4372,10 +4375,9 @@
         "url": "https://cloudpeptides.github.io/nad-plus.html"
       },
       "warnings": [
-        "no \"Peptide Class\" quickfact and no known override — entity_kind cannot be confidently assigned, needs human classification",
-        "entity_kind is null — will NOT be imported until a human assigns one (see warnings)"
+        "entity_kind (\"non_peptide_research_compound\") assigned via explicit human/editor review during the Phase 2 closeout (2026-08-06), not inferred automatically — see docs/migration/legacy-import-correction-2026-08-06.md."
       ],
-      "importable": false
+      "importable": true
     },
     {
       "filename": "neuro-cognitive-stack.html",
@@ -5466,7 +5468,7 @@
       "filename": "semax.html",
       "slug": "semax",
       "name": "Semax",
-      "entity_kind": null,
+      "entity_kind": "peptide",
       "category": null,
       "description": "",
       "claims": [],
@@ -5487,11 +5489,10 @@
       "warnings": [
         "STUB PAGE: legacy-site file is a placeholder with no real content (\"...runtime reset. Replace with the full template if desired.\") — title confirms this was meant to be a real compound page, but no scientific content exists anywhere in the legacy site to migrate. Must not be silently dropped; needs an editor to write real content from scratch.",
         "no extractable prose paragraphs or FAQ content found — likely a placeholder/stub page (see raw HTML)",
-        "no \"Peptide Class\" quickfact and no known override — entity_kind cannot be confidently assigned, needs human classification",
-        "entity_kind is null — will NOT be imported until a human assigns one (see warnings)",
+        "entity_kind (\"peptide\") assigned via explicit human/editor review during the Phase 2 closeout (2026-08-06), not inferred automatically — see docs/migration/legacy-import-correction-2026-08-06.md.",
         "zero claims extracted from this page"
       ],
-      "importable": false
+      "importable": true
     },
     {
       "filename": "sermorelin.html",
