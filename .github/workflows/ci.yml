@@ -1,8 +1,11 @@
 name: CI
 
-# Phase 1A only — lint/typecheck/test/build/link-check gating.
-# No deployment job here: that's exclusively a Phase 1B addition, gated
-# on separate explicit approval per CLAUDE.md §9.
+# ci: lint/typecheck/test/build/link-check gating, every push and PR.
+# deploy-staging: Phase 1B — staging-only Cloudflare Workers deploy,
+# gated on `ci` passing, push-to-rebuild/astro-platform only (never on
+# pull_request, and never main). Requires secrets.CLOUDFLARE_API_TOKEN
+# and vars.CLOUDFLARE_ACCOUNT_ID to be configured in the repo; the job
+# is skipped entirely if the token secret isn't set.
 on:
   push:
     branches: [rebuild/astro-platform]
@@ -83,3 +86,42 @@ jobs:
       # itself, which just contains dist/client/ alongside build metadata).
       - name: Broken link check
         run: npm run check:links
+
+  deploy-staging:
+    needs: ci
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/rebuild/astro-platform' &&
+      vars.CLOUDFLARE_ACCOUNT_ID != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      # Staging only: wrangler.jsonc sets name "cloudpeptides-staging" and
+      # workers_dev: true, with no "routes"/custom domain configured —
+      # this always deploys to a Cloudflare-provided *.workers.dev URL,
+      # never a custom domain, and there is no production Worker for this
+      # command to ever touch.
+      - name: Deploy to Cloudflare Workers (staging)
+        id: deploy
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Print staging URL
+        run: echo "Staging URL — ${{ steps.deploy.outputs.deployment-url }}"
