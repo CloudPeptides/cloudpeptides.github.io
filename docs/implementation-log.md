@@ -7,7 +7,28 @@ Append-only. One entry per meaningful step, per [CLAUDE.md](../CLAUDE.md) §3/§
 - 2026-08-06 — Repository inspected; `docs/planning/cloudpeptides-platform-blueprint-v2_2.md` confirmed as the authoritative Blueprint v2 and renamed to `cloudpeptides-platform-blueprint-v2.md` via a Git-aware rename (history preserved, `R100`, no content change).
 - 2026-08-06 — `CLAUDE.md` drafted from the Blueprint and design handoff, approved verbatim, committed (`19272ad`), pushed to `origin/rebuild/astro-platform`. `main`/production untouched throughout.
 
-## Phase 1A — Repository Foundation (complete, local; staging deploy is Phase 1B — not started)
+## Phase 1B — Staging Deployment (complete)
+
+| Commit | What | Verification |
+| --- | --- | --- |
+| `fe40994` | Fixed `wrangler.jsonc`: `assets.directory` was `./dist` but the real static-output root for `output: "static"` builds is `./dist/client` (confirmed via `wrangler deploy --dry-run` and the adapter's own generated `dist/client/wrangler.json`, not assumed from generic docs). Renamed the Worker to `cloudpeptides-staging`, set `workers_dev: true`. Disabled the adapter's automatic Cloudflare Images and Session-KV binding provisioning (`imageService: 'passthrough'`, `session: false`) — nothing uses either, and Images can be a paid product; `--dry-run` confirmed "No bindings found" afterward. | Local build + `wrangler deploy --dry-run` clean; full local check suite (format/lint/typecheck/unit/e2e+axe) re-passed. |
+| `c5eb6c0` | Added a `deploy-staging` job to `ci.yml`, gated on `ci` passing, push-to-`rebuild/astro-platform` only, skipped entirely if `vars.CLOUDFLARE_ACCOUNT_ID` isn't set. Uses `cloudflare/wrangler-action@v4` with `secrets.CLOUDFLARE_API_TOKEN` + `vars.CLOUDFLARE_ACCOUNT_ID`. | You created a new Cloudflare account and a custom API token scoped to exactly `Account → Workers Scripts → Edit` (no Zone permissions, no KV/D1/R2) and added it as `CLOUDFLARE_API_TOKEN` (secret); the Account ID was added as `CLOUDFLARE_ACCOUNT_ID` (variable, non-secret identifier). |
+
+**Deployed:** `https://cloudpeptides-staging.jessica-holsopple3.workers.dev` — a Cloudflare-provided `*.workers.dev` URL, no custom domain, no production Worker.
+
+**Live-staging verification performed** (against the deployed URL, not just local):
+- Smoke: HTTP 200, correct title/content.
+- Navigation: brand link, nav link work.
+- Mobile: hamburger visible at mobile width, native `<dialog>` opens focus-trapped.
+- Dark theme: toggle flips `data-theme` and background color correctly (verified starting from system-preference dark, toggling to light).
+- Accessibility: real Playwright + axe-core scan against the live URL — **0 violations**.
+- Console errors: **0**.
+- Assets: favicon (`.ico`/`.svg`), all 4 brand SVGs, and the built CSS all return 200.
+- Broken links: `linkinator --recurse` against the live URL — 4/4 links, 0 broken.
+
+**Known limitation carried forward, unchanged:** the `undici` `npm audit` findings (4 moderate, 1 high), transitive through Cloudflare's own dev-tooling chain, remain unresolved — no non-breaking fix exists yet, `wrangler` was not downgraded. Confined to the local dev/build toolchain; does not affect the deployed Worker's runtime (Cloudflare's own `workerd`, not `undici`). Revisit when Cloudflare ships a compatible patch.
+
+## Phase 1A — Repository Foundation (complete)
 
 All commits below are on `rebuild/astro-platform` only. `main` and the live GitHub Pages site were never touched. No Cloudflare, Supabase, or Resend connection was made.
 
