@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /*
  * Cloud Peptides design tokens
@@ -62,7 +62,7 @@
   --border-width-interactive: 1.5px;
 }
 
-[data-theme="dark"] {
+[data-theme='dark'] {
   /* Dark theme — design handoff §15 */
   --bg: #14201a;
   --bg-elevated: #1c2a22;
@@ -122,9 +122,9 @@
   /* Typography — design handoff §16. Font files are not loaded yet (no
      webfont pipeline exists in Phase 1A); each stack falls back to a
      comparable system font until Fraunces / IBM Plex are actually added. */
-  --font-display: "Fraunces", ui-serif, Georgia, serif;
-  --font-body: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+  --font-display: 'Fraunces', ui-serif, Georgia, serif;
+  --font-body: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
 
   --text-display: 3.5rem;
   --text-display--line-height: 1.1;

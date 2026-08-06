@@ -31,8 +31,8 @@ const { title, description = 'Cloud Peptides research platform.' } = Astro.props
       // src/scripts/theme-toggle.ts once the DOM (and toggle buttons)
       // actually exist.
       (function () {
-        var stored = localStorage.getItem('cp-theme');
-        var theme =
+        const stored = localStorage.getItem('cp-theme');
+        const theme =
           stored === 'light' || stored === 'dark'
             ? stored
             : window.matchMedia('(prefers-color-scheme: dark)').matches

@@ -34,7 +34,8 @@ function initThemeToggle(): void {
 
   document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      const current =
+        document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
       const next: Theme = current === 'dark' ? 'light' : 'dark';
       localStorage.setItem(STORAGE_KEY, next);
       applyTheme(next);
