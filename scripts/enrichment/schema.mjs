@@ -54,10 +54,37 @@
  * @property {string} sourceKey
  * @property {string} [notes]
  *
+ * @typedef {Object} LegacyClaimReconciliation
+ * @property {string} legacyClaimId - The real, pre-existing `claims.id` UUID
+ *   for this legacy claim, queried from the staging DB before writing this
+ *   file (never invented). The pipeline never touches `statement`,
+ *   `content_section`, `compound_id`, or `status` on this row — only
+ *   `evidence_quality`, `quality_rationale`, and `interpretation_status`
+ *   are set, plus new claim_sources links. The original legacy text is
+ *   never overwritten.
+ * @property {string} legacyStatementExcerpt - First ~80 characters of the
+ *   original statement, recorded here only so a human reviewer can
+ *   cross-check this reconciliation against the right row — never written
+ *   to the DB.
+ * @property {'supported'|'revised'|'unsupported'|'contradicted'|'superseded'} disposition
+ *   Recorded in the pipeline's run log/report (there is no DB column for
+ *   this — it is not part of the Blueprint v2 schema) and folded into the
+ *   written `quality_rationale` as a dated, labeled note.
+ * @property {string} rationale - Human-readable explanation of the
+ *   disposition; becomes part of the written `quality_rationale`.
+ * @property {'high'|'moderate'|'low'|'very_low'|'not_assessed'} [evidenceQuality]
+ * @property {'established'|'supported'|'preliminary'|'conflicting'|'insufficient'|'unknown'} interpretationStatus
+ * @property {{sourceKey: string, relationship: 'directly_supports'|'indirectly_supports'|'contradicts'|'provides_context', locator?: string}[]} sources
+ *   New, verified sources (by local `key`, defined in this same file's
+ *   `sources` array) linked to this pre-existing legacy claim.
+ *
  * @typedef {Object} CompoundEnrichment
  * @property {string} slug - Must match an existing draft compound's slug exactly.
  * @property {EnrichmentSource[]} sources
  * @property {EnrichmentClaim[]} claims
  * @property {EnrichmentRegulatoryRecord[]} regulatoryRecords
+ * @property {LegacyClaimReconciliation[]} [legacyReconciliations] - Omit
+ *   entirely (or use []) for a compound with no pre-existing legacy claims
+ *   (e.g. Semax in the pilot).
  */
 export {};

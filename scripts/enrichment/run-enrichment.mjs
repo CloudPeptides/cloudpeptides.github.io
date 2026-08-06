@@ -36,6 +36,12 @@
  *    whose raw_import_metadata already carries an `enrichment_pilot`
  *    marker is skipped entirely (reported as 'already_enriched'), so
  *    claims/regulatory_records are never doubled by a repeat run.
+ *  - A data file may also declare `legacyReconciliations` (see
+ *    schema.mjs): each entry updates one pre-existing, DB-verified legacy
+ *    claim's evidence_quality/quality_rationale/interpretation_status and
+ *    links it to newly-verified sources, without ever touching that
+ *    claim's original `statement` text. Also idempotent — re-running
+ *    checks for an existing claim_sources link before inserting.
  */
 import { createClient } from '@supabase/supabase-js';
 
@@ -53,6 +59,11 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 });
 
 const PILOT_SLUGS = ['bpc-157', 'semaglutide', 'retatrutide', 'ghk-cu', 'semax'];
+// NOTE: keep this value stable across the whole rollout (pilot + every
+// later batch) — the 5 pilot compounds already have this exact string
+// stored in raw_import_metadata.enrichment_pilot.run_tag, and changing it
+// would break the already-enriched idempotency check for them (the
+// pipeline would treat them as un-enriched and duplicate their claims).
 const ENRICHMENT_RUN_TAG = 'research-enrichment-pilot-2026-08';
 
 async function loadDataFile(slug) {
@@ -164,6 +175,54 @@ function normalizeDate(value) {
   return value;
 }
 
+async function reconcileLegacyClaim(entry, sourceKeyToId, log) {
+  const { data: existing, error: fetchError } = await supabase
+    .from('claims')
+    .select('id, statement')
+    .eq('id', entry.legacyClaimId)
+    .maybeSingle();
+  if (fetchError) throw new Error(`legacy claim lookup failed for ${entry.legacyClaimId}: ${fetchError.message}`);
+  if (!existing) throw new Error(`legacy claim id ${entry.legacyClaimId} not found — refusing to reconcile a nonexistent row`);
+  if (!existing.statement.startsWith(entry.legacyStatementExcerpt.slice(0, 40))) {
+    throw new Error(
+      `legacy claim ${entry.legacyClaimId} statement does not match the recorded excerpt — refusing to reconcile a possibly-wrong row (expected prefix "${entry.legacyStatementExcerpt.slice(0, 40)}...", found "${existing.statement.slice(0, 40)}...")`,
+    );
+  }
+
+  const dated = `[Reconciliation ${new Date().toISOString().slice(0, 10)}, disposition: ${entry.disposition}] ${entry.rationale}`;
+  const { error: updateError } = await supabase
+    .from('claims')
+    .update({
+      evidence_quality: entry.evidenceQuality ?? null,
+      quality_rationale: dated,
+      interpretation_status: entry.interpretationStatus,
+    })
+    .eq('id', entry.legacyClaimId);
+  if (updateError) throw new Error(`legacy claim update failed for ${entry.legacyClaimId}: ${updateError.message}`);
+  log.legacyClaimsReconciled++;
+  log.legacyDispositions[entry.disposition] = (log.legacyDispositions[entry.disposition] || 0) + 1;
+
+  for (const link of entry.sources) {
+    const sourceId = sourceKeyToId.get(link.sourceKey);
+    if (!sourceId) throw new Error(`legacy reconciliation references unknown sourceKey "${link.sourceKey}"`);
+    const { data: existingLink } = await supabase
+      .from('claim_sources')
+      .select('claim_id')
+      .eq('claim_id', entry.legacyClaimId)
+      .eq('source_id', sourceId)
+      .maybeSingle();
+    if (existingLink) continue; // idempotent re-run
+    const { error: linkError } = await supabase.from('claim_sources').insert({
+      claim_id: entry.legacyClaimId,
+      source_id: sourceId,
+      relationship: link.relationship,
+      locator: link.locator ?? null,
+    });
+    if (linkError) throw new Error(`claim_sources insert failed for legacy claim ${entry.legacyClaimId}: ${linkError.message}`);
+    log.claimSourcesInserted++;
+  }
+}
+
 async function enrichCompound(slug) {
   const log = {
     slug,
@@ -174,6 +233,8 @@ async function enrichCompound(slug) {
     claimsInserted: 0,
     claimSourcesInserted: 0,
     regulatoryRecordsInserted: 0,
+    legacyClaimsReconciled: 0,
+    legacyDispositions: {},
     errors: [],
   };
 
@@ -273,6 +334,10 @@ async function enrichCompound(slug) {
       log.regulatoryRecordsInserted++;
     }
 
+    for (const reconciliation of data.legacyReconciliations || []) {
+      await reconcileLegacyClaim(reconciliation, sourceKeyToId, log);
+    }
+
     // Touch the compound row (status re-asserted as 'draft' explicitly)
     // purely to fire compounds_record_revision and capture a real
     // content_revisions snapshot, per the provenance requirement.
@@ -285,6 +350,8 @@ async function enrichCompound(slug) {
         sources_reused: log.sourcesReused,
         claims_added: log.claimsInserted,
         regulatory_records_added: log.regulatoryRecordsInserted,
+        legacy_claims_reconciled: log.legacyClaimsReconciled,
+        legacy_dispositions: log.legacyDispositions,
       },
     };
     const { error: touchError } = await supabase
