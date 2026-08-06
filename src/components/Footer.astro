@@ -1,0 +1,51 @@
+---
+/**
+ * Site footer — design handoff §19.
+ * "Footer: a barely-there cloud-lobe watermark (~5% opacity) in one
+ * corner" — reuses the same brand mark geometry rather than a separate
+ * decorative icon, aria-hidden since it's purely decorative.
+ */
+import Logo from './Logo.astro';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="cp-footer">
+  <div class="cp-footer__watermark" aria-hidden="true">
+    <Logo variant="primary" size={160} />
+  </div>
+  <div class="cp-footer__content">
+    <p>&copy; {year} Cloud Peptides. For research purposes only.</p>
+  </div>
+</footer>
+
+<style>
+  .cp-footer {
+    position: relative;
+    overflow: hidden;
+    border-top: 1px solid var(--border-subtle);
+    background: var(--bg-sunken);
+  }
+
+  .cp-footer__watermark {
+    position: absolute;
+    right: -1.5rem;
+    bottom: -1.5rem;
+    opacity: 0.05;
+    pointer-events: none;
+  }
+
+  .cp-footer__content {
+    position: relative;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+
+  .cp-footer__content p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--text-caption);
+    font-family: var(--font-body);
+  }
+</style>

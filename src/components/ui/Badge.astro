@@ -1,0 +1,92 @@
+---
+/**
+ * Base badge primitive — design handoff §20–21.
+ * Shared visual primitive only: a labeled, toned pill with an optional
+ * icon slot. Real evidence-type / interpretation-status data wiring
+ * (the two-badge system, regulatory rows, etc.) is later-phase content
+ * work — this component just gives those features a consistent shape
+ * to render into once that data model exists.
+ *
+ * Color never carries meaning alone (§15 rule) — always pair a tone
+ * with a label; an icon slot is available for the same reason.
+ */
+interface Props {
+  tone?:
+    | 'neutral'
+    | 'forest'
+    | 'sage'
+    | 'mint'
+    | 'terracotta'
+    | 'success'
+    | 'warning'
+    | 'danger'
+    | 'info';
+  class?: string;
+}
+
+const { tone = 'neutral', class: className } = Astro.props;
+---
+
+<span class:list={['cp-badge', `cp-badge--${tone}`, className]}>
+  <slot name="icon" />
+  <slot />
+</span>
+
+<style>
+  .cp-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-family: var(--font-body);
+    font-size: var(--text-caption);
+    font-weight: 500;
+    padding: 0.25rem 0.625rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    line-height: var(--text-caption--line-height);
+  }
+
+  .cp-badge--neutral {
+    background: var(--bg-sunken);
+    color: var(--text-secondary);
+    border-color: var(--border-subtle);
+  }
+  .cp-badge--forest {
+    background: var(--primary);
+    color: var(--text-on-primary);
+  }
+  .cp-badge--sage {
+    background: transparent;
+    color: var(--secondary);
+    border-color: var(--secondary);
+  }
+  .cp-badge--mint {
+    background: var(--accent-mint);
+    color: var(--text-primary);
+  }
+  .cp-badge--terracotta {
+    background: transparent;
+    color: var(--terracotta-text);
+    border-color: var(--terracotta-text);
+  }
+  .cp-badge--success {
+    background: transparent;
+    color: var(--success-text);
+    border-color: var(--success-text);
+  }
+  .cp-badge--warning {
+    background: transparent;
+    color: var(--warning-text);
+    border-color: var(--warning-text);
+  }
+  .cp-badge--danger {
+    background: transparent;
+    color: var(--danger-text);
+    border-color: var(--danger-text);
+  }
+  .cp-badge--info {
+    background: transparent;
+    color: var(--info-text);
+    border-color: var(--info-text);
+  }
+</style>

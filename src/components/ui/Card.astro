@@ -1,0 +1,42 @@
+---
+/**
+ * Base card primitive — design handoff §22.
+ * --bg-elevated, 16px radius, subtle shadow, 1px --border-subtle.
+ * `accent` optionally renders the top accent bar compound cards use
+ * (a muted category color) — omitted by default for generic content cards.
+ */
+interface Props {
+  accent?: string;
+  class?: string;
+}
+
+const { accent, class: className } = Astro.props;
+---
+
+<div class:list={['cp-card', className]}>
+  {accent && <div class="cp-card__accent" style={{ backgroundColor: accent }} />}
+  <div class="cp-card__body">
+    <slot />
+  </div>
+</div>
+
+<style>
+  .cp-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-resting);
+    overflow: hidden;
+    transition: box-shadow 150ms ease-out;
+  }
+  .cp-card:hover {
+    box-shadow: var(--shadow-hover);
+  }
+  .cp-card__accent {
+    height: 4px;
+    width: 100%;
+  }
+  .cp-card__body {
+    padding: 1.5rem;
+  }
+</style>
