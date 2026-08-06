@@ -2,10 +2,21 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "compatibility_date": "2026-08-06",
   "compatibility_flags": ["global_fetch_strictly_public"],
-  "name": "cloudpeptides",
+  // Staging only, per CLAUDE.md §9/§2 and the Phase 1B approval — a
+  // Cloudflare-provided *.workers.dev URL, no custom domain, no
+  // production Worker. "workers_dev: true" and the absence of any
+  // "routes"/"custom_domain" entry is what enforces that.
+  "name": "cloudpeptides-staging",
   "main": "@astrojs/cloudflare/entrypoints/server",
+  "workers_dev": true,
   "assets": {
-    "directory": "./dist",
+    // The actual static-output root for `output: "static"` builds is
+    // dist/client/, not dist/ itself — verified against the real build
+    // output (dist/client/wrangler.json's own resolved config resolves
+    // its assets directory to "." relative to itself), not assumed from
+    // generic docs describing the on-demand-rendering layout. See
+    // docs/implementation-log.md for the full verification.
+    "directory": "./dist/client",
     "binding": "ASSETS",
   },
   "observability": {
