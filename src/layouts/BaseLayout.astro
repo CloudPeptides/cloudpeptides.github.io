@@ -12,9 +12,21 @@
  * JSON-LD objects; the Organization+WebSite block is site-wide and
  * always included, page-specific data (BreadcrumbList, Product, etc.)
  * is passed in per-page. `noindex` is for pages that should never be
- * indexed even though they resolve with a 200 (none currently use it —
- * kept available for e.g. an eventual account/checkout-confirmation
- * page rather than added speculatively everywhere).
+ * indexed even though they resolve with a 200. Deliberately NOT
+ * defaulted from Astro.locals.indexable here: that would be correct for
+ * on-demand routes (middleware runs per-request, before the page
+ * renders) but wrong for prerendered/static routes, whose HTML is
+ * baked once at *build* time — Astro middleware doesn't run during
+ * prerendering, so `Astro.locals.indexable` would be permanently
+ * undefined in that HTML regardless of which environment later serves
+ * it, which would defeat "production builds must retain indexable
+ * behavior" the moment a real production build exists. The
+ * X-Robots-Tag response header (src/middleware.ts) is the authoritative,
+ * environment-aware signal instead — it wraps every response, static or
+ * on-demand, at actual request time, and search engines treat it as
+ * equivalent to this meta tag. This prop stays available for the one
+ * case that's genuinely a build-time constant regardless of environment
+ * (the profile 404 case, passed explicitly).
  */
 import '../styles/tokens.css';
 import Nav from '../components/Nav.astro';
@@ -89,7 +101,12 @@ const jsonLdBlocks = [
 
     {
       jsonLdBlocks.map((block) => (
-        <script is:inline type="application/ld+json" set:html={JSON.stringify(block)} />
+        <script
+          is:inline
+          type="application/ld+json"
+          nonce={Astro.locals.cspNonce}
+          set:html={JSON.stringify(block)}
+        />
       ))
     }
 
@@ -101,7 +118,7 @@ const jsonLdBlocks = [
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap"
     />
-    <script is:inline>
+    <script is:inline nonce={Astro.locals.cspNonce}>
       // Set the theme before first paint to avoid a flash of the wrong
       // theme. The full toggle interaction is wired later by
       // src/scripts/theme-toggle.ts once the DOM (and toggle buttons)

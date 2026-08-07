@@ -18,6 +18,17 @@
     // docs/implementation-log.md for the full verification.
     "directory": "./dist/client",
     "binding": "ASSETS",
+    // Launch-readiness hardening: without this, Cloudflare serves
+    // prerendered/static routes (the shop pages, homepage) directly from
+    // the assets binding and never invokes the Worker at all for them —
+    // which would mean src/middleware.ts's site-wide security headers
+    // and staging X-Robots-Tag noindex header silently never applied to
+    // roughly half the site. `true` routes every request through the
+    // Worker first; it still serves static assets via `env.ASSETS`
+    // internally (through Astro's own on-demand/static routing), so
+    // there's no behavior change for the pages themselves — only every
+    // response now actually passes through middleware.ts once.
+    "run_worker_first": true,
   },
   "observability": {
     "enabled": true,

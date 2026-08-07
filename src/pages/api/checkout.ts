@@ -13,6 +13,7 @@ import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { validateCheckoutSubmission } from '../../lib/form-validation';
 import { checkRateLimit, cooldownSetCookieHeader, isInCooldown } from '../../lib/rate-limit';
+import { readBodyWithLimit } from '../../lib/request-limits';
 import { sendEmail } from '../../lib/resend';
 import { verifyTurnstileToken } from '../../lib/turnstile';
 
@@ -37,9 +38,13 @@ function formatOrderSummary(
 }
 
 export const POST: APIRoute = async ({ request }) => {
+  const bodyRead = await readBodyWithLimit(request);
+  if (!bodyRead.ok) {
+    return json({ success: false, error: bodyRead.error ?? 'Invalid request body.' }, 413);
+  }
   let input: Record<string, unknown>;
   try {
-    input = await request.json();
+    input = JSON.parse(bodyRead.text ?? '');
   } catch {
     return json({ success: false, error: 'Invalid request body.' }, 400);
   }

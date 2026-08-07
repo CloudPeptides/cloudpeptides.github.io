@@ -27,6 +27,25 @@ interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
 
+declare namespace App {
+  interface Locals {
+    /** Set by src/middleware.ts — true only when the live request's
+     * hostname matches astro.config.mjs's configured `site` (the
+     * intended production domain). False on the *.workers.dev staging
+     * Worker, local dev, and any other host. Read by BaseLayout.astro
+     * to default the <meta name="robots"> tag. */
+    indexable: boolean;
+    /** Per-request Content-Security-Policy script-src nonce, set by
+     * src/middleware.ts before the page renders. Pass to every inline
+     * `<script>` tag's `nonce` attribute. Undefined for prerendered/
+     * static routes (middleware doesn't run at build time) — those
+     * routes' CSP (scripts/postbuild-headers.mjs) allows inline scripts
+     * by a different, documented allowance instead, so an absent nonce
+     * attribute there is expected, not a bug. */
+    cspNonce: string;
+  }
+}
+
 /**
  * Narrow, hand-written ambient types for the two Worker-only secrets
  * (src/pages/api/contact.ts, checkout.ts) — deliberately NOT generated

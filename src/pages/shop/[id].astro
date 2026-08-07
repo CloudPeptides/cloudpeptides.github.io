@@ -151,6 +151,7 @@ const breadcrumbJsonLd = {
 
 <script
   is:inline
+  nonce={Astro.locals.cspNonce}
   define:vars={{ productId: product.id, productName: product.name, options: product.options }}
 >
   window.__cpProduct = { id: productId, name: productName, options };
