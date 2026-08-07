@@ -1,0 +1,68 @@
+---
+/**
+ * Prominent, top-of-profile warning banner for the small set of
+ * compounds flagged during the research-enrichment audit (see
+ * src/lib/expert-review-flags.ts). Deliberately styled more assertively
+ * than the "Unsupported legacy claims" card — this is a whole-compound
+ * caution, not a single-claim caveat, and needs to be the first thing a
+ * reader sees, not something they have to scroll to find.
+ */
+interface Props {
+  reason: string;
+}
+const { reason } = Astro.props;
+---
+
+<div class="cp-expert-warning" role="note">
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 20 20"
+    width="20"
+    height="20"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    class="cp-expert-warning__icon"
+  >
+    <path d="M10 3 4 5.5v4c0 4 2.6 7 6 8 3.4-1 6-4 6-8v-4L10 3Z"></path>
+    <path d="M10 8v3.5M10 14v.01"></path>
+  </svg>
+  <div>
+    <p class="cp-expert-warning__title">Flagged for expert review</p>
+    <p class="cp-expert-warning__reason">{reason}</p>
+  </div>
+</div>
+
+<style>
+  .cp-expert-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    background: color-mix(in srgb, var(--danger-text) 10%, var(--bg-elevated));
+    border: 1.5px solid var(--danger-text);
+    border-radius: var(--radius-card);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+  .cp-expert-warning__icon {
+    color: var(--danger-text);
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+  }
+  .cp-expert-warning__title {
+    margin: 0 0 0.25rem;
+    font-weight: 700;
+    color: var(--danger-text);
+    font-size: var(--text-caption);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .cp-expert-warning__reason {
+    margin: 0;
+    color: var(--text-primary);
+    line-height: var(--text-body--line-height);
+    font-size: 0.9375rem;
+  }
+</style>

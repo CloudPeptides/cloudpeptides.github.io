@@ -7,15 +7,21 @@
  * Favorite/Compare actions from the concept are intentionally omitted —
  * they're Phase 5 (auth) features with no real persistence yet, and this
  * codebase's standing policy (see git history) is to never stub fake
- * interactivity. Evidence-type/interpretation badges from the concept
- * are also omitted here: they're claim-level data not included in the
- * lightweight directory list query (joining full claims into a list view
- * would be a heavier, later-phase query-performance decision) — the full
- * profile page already presents that richly.
+ * interactivity.
+ *
+ * Phase 3: now that listPublishedCompounds() computes real evidence
+ * aggregates (see src/lib/supabase.ts), the card surfaces a compact
+ * evidence-strength indicator and, for the small set of compounds
+ * flagged during the research-enrichment audit
+ * (src/lib/expert-review-flags.ts), a review-flagged badge — satisfying
+ * the directory's "evidence and expert-review warnings" requirement
+ * without duplicating the full profile-page evidence breakdown.
  */
 import type { CompoundListItem } from '../../lib/supabase';
 import Card from '../ui/Card.astro';
 import Badge from '../ui/Badge.astro';
+import { EVIDENCE_QUALITY_LABELS } from '../../lib/evidence';
+import { getExpertReviewFlag } from '../../lib/expert-review-flags';
 
 interface Props {
   compound: CompoundListItem;
@@ -47,6 +53,7 @@ const ENTITY_ICONS: Record<string, string> = {
     '<circle cx="10" cy="10" r="2.2"/><path d="M10 3v2.2M10 14.8V17M17 10h-2.2M5.2 10H3"/>',
 };
 const icon = ENTITY_ICONS[compound.entity_kind] ?? ENTITY_ICONS.non_peptide_research_compound;
+const reviewFlag = getExpertReviewFlag(compound.slug);
 ---
 
 <a href={`/research/compounds/${compound.slug}`} class="cp-compound-card-link">
@@ -68,11 +75,14 @@ const icon = ENTITY_ICONS[compound.entity_kind] ?? ENTITY_ICONS.non_peptide_rese
         stroke-linejoin="round"
         set:html={icon}
       />
-      {
-        compound.identity_confidence !== 'verified' && (
-          <Badge tone="warning">{compound.identity_confidence.replace(/_/g, ' ')}</Badge>
-        )
-      }
+      <div class="cp-compound-card__top-badges">
+        {reviewFlag && <Badge tone="danger">Review flagged</Badge>}
+        {
+          compound.identity_confidence !== 'verified' && (
+            <Badge tone="warning">{compound.identity_confidence.replace(/_/g, ' ')}</Badge>
+          )
+        }
+      </div>
     </div>
     <h2 class="cp-compound-card__name">{compound.name}</h2>
     {
@@ -87,6 +97,25 @@ const icon = ENTITY_ICONS[compound.entity_kind] ?? ENTITY_ICONS.non_peptide_rese
         {ENTITY_LABELS[compound.entity_kind] ?? compound.entity_kind}
       </Badge>
       {compound.category && <Badge tone="neutral">{compound.category}</Badge>}
+    </div>
+    <div class="cp-compound-card__evidence-strip">
+      <span>
+        {
+          compound.maxEvidenceQuality
+            ? `${EVIDENCE_QUALITY_LABELS[compound.maxEvidenceQuality]} evidence`
+            : 'Not yet assessed'
+        }
+      </span>
+      <span aria-hidden="true">·</span>
+      <span>{compound.studyCount} {compound.studyCount === 1 ? 'source' : 'sources'}</span>
+      {
+        compound.hasHumanEvidence && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span>Human evidence</span>
+          </>
+        )
+      }
     </div>
   </Card>
 </a>
@@ -109,6 +138,12 @@ const icon = ENTITY_ICONS[compound.entity_kind] ?? ENTITY_ICONS.non_peptide_rese
     justify-content: space-between;
     gap: 0.5rem;
     margin-bottom: 0.625rem;
+  }
+  .cp-compound-card__top-badges {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.375rem;
   }
   .cp-compound-card__icon {
     color: var(--primary);
@@ -133,5 +168,15 @@ const icon = ENTITY_ICONS[compound.entity_kind] ?? ENTITY_ICONS.non_peptide_rese
     gap: 0.4rem;
     margin-top: auto;
     padding-top: 0.625rem;
+  }
+  .cp-compound-card__evidence-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin-top: 0.625rem;
+    padding-top: 0.625rem;
+    border-top: 1px solid var(--border-subtle);
+    font-size: 0.75rem;
+    color: var(--text-muted);
   }
 </style>

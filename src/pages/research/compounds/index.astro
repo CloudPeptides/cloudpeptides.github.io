@@ -87,9 +87,16 @@ const breadcrumbJsonLd = {
               <div
                 data-compound-item
                 data-name={compound.name}
+                data-aliases={compound.compound_aliases.map((a) => a.alias).join(' | ')}
                 data-entity-kind={compound.entity_kind}
                 data-category={compound.category ?? ''}
                 data-identity-confidence={compound.identity_confidence}
+                data-evidence-types={compound.evidenceTypes.join(' ')}
+                data-evidence-quality={compound.maxEvidenceQuality ?? ''}
+                data-human-evidence={String(compound.hasHumanEvidence)}
+                data-regulatory-statuses={compound.regulatoryStatuses.join(' ')}
+                data-study-count={compound.studyCount}
+                data-updated-at={compound.updated_at}
               >
                 <CompoundCard compound={compound} />
               </div>

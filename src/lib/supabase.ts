@@ -3,12 +3,24 @@
  * key. Used from server-rendered Astro pages (runs in the Worker, not
  * shipped to the browser as this module is only imported in page
  * frontmatter) to read published research content. RLS is what actually
- * enforces "anon only sees status='published'" — the explicit
- * .eq('status', 'published') filters below are defense-in-depth, not
- * the real security boundary.
+ * enforces "anon only sees status='published' (or published-reachable)"
+ * rows — the explicit `.eq('status', 'published')` filters below are
+ * defense-in-depth, not the real security boundary. See
+ * supabase/migrations/20260807120000_anon_read_supporting_tables.sql for
+ * the Phase 3 policies that make the joins below possible at all.
  */
 import { createClient } from '@supabase/supabase-js';
-import type { CompoundWithRelations } from './database.types';
+import type {
+  CompoundWithRelations,
+  EvidenceQuality,
+  SourceType,
+  StudyDesign,
+} from './database.types';
+import {
+  maxEvidenceQuality,
+  resolveEvidenceDisplayType,
+  type EvidenceDisplayType,
+} from './evidence';
 
 const url = import.meta.env.PUBLIC_SUPABASE_URL;
 const anonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
@@ -24,11 +36,38 @@ function getClient() {
   return createClient(url, anonKey, { auth: { persistSession: false } });
 }
 
-// compound_aliases is joined here (an existing, approved relation already
-// used on the profile query) purely so directory cards can show the mono
-// "aka …" line from the design concept — not a new table or field.
-const COMPOUND_LIST_SELECT =
-  'id, slug, name, entity_kind, category, identity_confidence, status, compound_aliases (alias)';
+// Nested select used for the directory list. Deliberately heavier than
+// Phase 1's version (which had no way to power evidence-based filters/
+// sorting) but still bounded: 56 compounds total, each with a handful of
+// claims/sources — this is a single request, not an N+1 pattern.
+const COMPOUND_LIST_SELECT = `id, slug, name, entity_kind, category, identity_confidence, status, updated_at,
+      compound_aliases ( alias ),
+      claims!claims_compound_id_fkey (
+        evidence_quality,
+        claim_sources (
+          sources ( id, source_type, studies ( study_design ) )
+        )
+      ),
+      regulatory_records ( regulatory_status )`;
+
+interface RawListRow {
+  id: string;
+  slug: string;
+  name: string;
+  entity_kind: string;
+  category: string | null;
+  identity_confidence: string;
+  status: string;
+  updated_at: string;
+  compound_aliases: { alias: string }[];
+  claims: {
+    evidence_quality: EvidenceQuality | null;
+    claim_sources: {
+      sources: { id: string; source_type: string; studies: { study_design: string | null } | null };
+    }[];
+  }[];
+  regulatory_records: { regulatory_status: string }[];
+}
 
 export interface CompoundListItem {
   id: string;
@@ -38,7 +77,48 @@ export interface CompoundListItem {
   category: string | null;
   identity_confidence: string;
   status: string;
+  updated_at: string;
   compound_aliases: { alias: string }[];
+  /** Distinct sources cited across every claim — used as the directory's "study count." */
+  studyCount: number;
+  hasHumanEvidence: boolean;
+  maxEvidenceQuality: EvidenceQuality | null;
+  regulatoryStatuses: string[];
+  evidenceTypes: EvidenceDisplayType[];
+}
+
+function deriveListItem(row: RawListRow): CompoundListItem {
+  const sourceIds = new Set<string>();
+  const evidenceTypes = new Set<EvidenceDisplayType>();
+  let hasHumanEvidence = false;
+  for (const claim of row.claims) {
+    for (const cs of claim.claim_sources) {
+      sourceIds.add(cs.sources.id);
+      const design = cs.sources.studies?.study_design ?? null;
+      const displayType = resolveEvidenceDisplayType(
+        cs.sources.source_type as SourceType,
+        design as StudyDesign | null,
+      );
+      evidenceTypes.add(displayType);
+      if (displayType === 'human') hasHumanEvidence = true;
+    }
+  }
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    entity_kind: row.entity_kind,
+    category: row.category,
+    identity_confidence: row.identity_confidence,
+    status: row.status,
+    updated_at: row.updated_at,
+    compound_aliases: row.compound_aliases,
+    studyCount: sourceIds.size,
+    hasHumanEvidence,
+    maxEvidenceQuality: maxEvidenceQuality(row.claims.map((c) => c.evidence_quality)),
+    regulatoryStatuses: [...new Set(row.regulatory_records.map((r) => r.regulatory_status))],
+    evidenceTypes: [...evidenceTypes],
+  };
 }
 
 export async function listPublishedCompounds(): Promise<CompoundListItem[]> {
@@ -49,7 +129,7 @@ export async function listPublishedCompounds(): Promise<CompoundListItem[]> {
     .eq('status', 'published')
     .order('name');
   if (error) throw error;
-  return (data ?? []) as CompoundListItem[];
+  return ((data ?? []) as unknown as RawListRow[]).map(deriveListItem);
 }
 
 export async function getPublishedCompoundBySlug(
@@ -61,15 +141,30 @@ export async function getPublishedCompoundBySlug(
     .select(
       `*,
       compound_aliases (*),
-      claims!claims_compound_id_fkey ( *, claim_sources ( *, sources ( *, studies (*) ) ) ),
-      regulatory_records ( *, sources (*) ),
-      stack_components!stack_components_stack_id_fkey ( *, compounds!stack_components_component_compound_id_fkey ( id, slug, name ) )`,
+      claims!claims_compound_id_fkey ( *, claim_sources ( *, sources ( *, source_identifiers (*), studies (*) ) ) ),
+      regulatory_records ( *, sources ( *, source_identifiers (*) ) ),
+      stack_components!stack_components_stack_id_fkey ( *, compounds!stack_components_component_compound_id_fkey ( id, slug, name, status ) )`,
     )
     .eq('slug', slug)
     .eq('status', 'published')
     .maybeSingle();
   if (error) throw error;
-  return data as CompoundWithRelations | null;
+  if (!data) return null;
+  // stack_components' nested compound is fetched without a status filter
+  // (Postgres nested-select can't apply one), so a component that isn't
+  // itself published is filtered out here rather than trusted from the
+  // query shape — a stack should never link out to a component whose own
+  // profile 404s.
+  type StackComponentRow = CompoundWithRelations['stack_components'][number] & {
+    compounds: { status?: string };
+  };
+  const typed = data as unknown as Omit<CompoundWithRelations, 'stack_components'> & {
+    stack_components: StackComponentRow[];
+  };
+  typed.stack_components = typed.stack_components.filter(
+    (sc) => sc.compounds?.status === 'published',
+  );
+  return typed as CompoundWithRelations;
 }
 
 export interface RelatedCompound {

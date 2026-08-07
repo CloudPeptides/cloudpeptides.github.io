@@ -12,6 +12,11 @@
  * type is objective provenance, never a judgment call).
  */
 import type { SourceType, StudyDesign } from '../../lib/database.types';
+import {
+  resolveEvidenceDisplayType,
+  EVIDENCE_DISPLAY_LABELS,
+  type EvidenceDisplayType,
+} from '../../lib/evidence';
 
 interface Props {
   sourceType?: SourceType;
@@ -20,67 +25,11 @@ interface Props {
 }
 const { sourceType, studyDesign, class: className } = Astro.props;
 
-type DisplayType =
-  | 'human'
-  | 'animal'
-  | 'in-vitro'
-  | 'mechanistic'
-  | 'regulatory'
-  | 'anecdotal'
-  | 'database'
-  | 'review'
-  | 'other';
-
-function resolveDisplayType(): DisplayType {
-  if (studyDesign) {
-    if (
-      [
-        'rct_human',
-        'non_randomized_human_trial',
-        'human_observational',
-        'case_report_or_series',
-      ].includes(studyDesign)
-    )
-      return 'human';
-    if (studyDesign === 'animal_study') return 'animal';
-    if (studyDesign === 'in_vitro_study') return 'in-vitro';
-    if (studyDesign === 'mechanistic') return 'mechanistic';
-    if (['systematic_review', 'meta_analysis', 'narrative_review'].includes(studyDesign))
-      return 'review';
-  }
-  if (sourceType === 'anecdotal_report') return 'anecdotal';
-  if (
-    sourceType === 'fda_document' ||
-    sourceType === 'ema_document' ||
-    sourceType === 'wada_list' ||
-    sourceType === 'regulatory_announcement'
-  )
-    return 'regulatory';
-  if (
-    sourceType === 'official_database_record' ||
-    sourceType === 'pubchem_record' ||
-    sourceType === 'uniprot_record'
-  )
-    return 'database';
-  return 'other';
-}
-
-const displayType = resolveDisplayType();
-
-const LABELS: Record<DisplayType, string> = {
-  human: 'Human',
-  animal: 'Animal',
-  'in-vitro': 'In-vitro',
-  mechanistic: 'Mechanistic',
-  regulatory: 'Regulatory',
-  anecdotal: 'Anecdotal (not a study)',
-  database: 'Database record',
-  review: 'Review',
-  other: 'Other source',
-};
+const displayType = resolveEvidenceDisplayType(sourceType, studyDesign);
+const LABELS = EVIDENCE_DISPLAY_LABELS;
 
 // 1.5px stroke, rounded caps/joins, 20px grid — design handoff §18.
-const ICONS: Record<DisplayType, string> = {
+const ICONS: Record<EvidenceDisplayType, string> = {
   human: '<circle cx="10" cy="6" r="3"/><path d="M4 17c0-3.3 2.7-6 6-6s6 2.7 6 6"/>',
   animal:
     '<circle cx="6" cy="6" r="1.6"/><circle cx="14" cy="6" r="1.6"/><circle cx="3.5" cy="10.5" r="1.6"/><circle cx="16.5" cy="10.5" r="1.6"/><path d="M10 10c-2.5 0-4.5 2-4.5 4.2 0 1.6 1.4 2.8 3 2.4.7-.2 1-.2 1.5-.2s.8 0 1.5.2c1.6.4 3-.8 3-2.4C14.5 12 12.5 10 10 10Z"/>',

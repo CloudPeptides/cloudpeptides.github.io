@@ -4,18 +4,26 @@
  * §27, restyled to closely match
  * design-concepts/cloudpeptides_directory_concept.html: search bar with
  * icon, active-filter chips, a sidebar filter card (desktop) that
- * collapses to a toggleable panel (mobile — the concept hides filters
- * outright on mobile; a toggle keeps them reachable without a full
- * bottom-sheet build), sort + result count above the results slot.
+ * collapses to a toggleable panel (mobile), sort + result count above
+ * the results slot.
  *
- * The underlying filter controls are still plain <select> elements with
- * the same data-filter-* attributes/change events as before — that
- * contract is exactly what src/scripts/compound-search.ts and its full
- * existing test suite exercise, so none of that had to change to get
- * this visual rebuild; only layout/CSS plus the additive chips/echo
- * behavior are new.
+ * Phase 3: extends the original type/category/identity filters with
+ * evidence-based filters (evidence type, evidence strength, human
+ * evidence, regulatory status) and additional sort options (evidence
+ * strength, study count, recently updated) — the data these depend on
+ * (CompoundListItem's derived studyCount/hasHumanEvidence/
+ * maxEvidenceQuality/regulatoryStatuses/evidenceTypes) comes from
+ * src/lib/supabase.ts's listPublishedCompounds(). Underlying controls
+ * are still plain <select> elements with data-filter-* attributes/change
+ * events, read by src/scripts/compound-search.ts.
  */
 import type { CompoundListItem } from '../../lib/supabase';
+import {
+  EVIDENCE_DISPLAY_LABELS,
+  EVIDENCE_QUALITY_LABELS,
+  type EvidenceDisplayType,
+} from '../../lib/evidence';
+import type { EvidenceQuality } from '../../lib/database.types';
 
 interface Props {
   compounds: CompoundListItem[];
@@ -32,11 +40,46 @@ const ENTITY_LABELS: Record<string, string> = {
   non_peptide_research_compound: 'Research compound',
 };
 
+const REGULATORY_STATUS_LABELS: Record<string, string> = {
+  approved: 'Approved',
+  not_approved: 'Not approved',
+  withdrawn: 'Withdrawn',
+  discontinued: 'Discontinued',
+  investigational: 'Investigational',
+  banned_in_sport: 'Banned in sport',
+  scheduled_controlled_substance: 'Scheduled / controlled substance',
+  unscheduled: 'Unscheduled',
+  no_determination: 'No determination',
+  other: 'Other',
+};
+
 const entityKinds = [...new Set(compounds.map((c) => c.entity_kind))].sort();
 const categories = [
   ...new Set(compounds.map((c) => c.category).filter((c): c is string => Boolean(c))),
 ].sort();
 const confidences = [...new Set(compounds.map((c) => c.identity_confidence))].sort();
+const evidenceTypesPresent = [
+  ...new Set(compounds.flatMap((c) => c.evidenceTypes)),
+] as EvidenceDisplayType[];
+evidenceTypesPresent.sort();
+const evidenceStrengthsPresent = [
+  ...new Set(
+    compounds.map((c) => c.maxEvidenceQuality).filter((q): q is EvidenceQuality => Boolean(q)),
+  ),
+];
+const EVIDENCE_QUALITY_ORDER: EvidenceQuality[] = [
+  'high',
+  'moderate',
+  'low',
+  'very_low',
+  'not_assessed',
+];
+evidenceStrengthsPresent.sort(
+  (a, b) => EVIDENCE_QUALITY_ORDER.indexOf(a) - EVIDENCE_QUALITY_ORDER.indexOf(b),
+);
+const regulatoryStatusesPresent = [
+  ...new Set(compounds.flatMap((c) => c.regulatoryStatuses)),
+].sort();
 ---
 
 <div class="cp-search-filter-bar">
@@ -54,11 +97,12 @@ const confidences = [...new Set(compounds.map((c) => c.identity_confidence))].so
     >
       <circle cx="9" cy="9" r="6"></circle><path d="M17 17l-4-4"></path>
     </svg>
-    <label for="compound-search" class="cp-visually-hidden">Search compounds</label>
+    <label for="compound-search" class="cp-visually-hidden">Search compounds by name or alias</label
+    >
     <input
       id="compound-search"
       type="search"
-      placeholder="Search by name…"
+      placeholder="Search by name or alias…"
       data-compound-search
       autocomplete="off"
     />
@@ -115,7 +159,7 @@ const confidences = [...new Set(compounds.map((c) => c.identity_confidence))].so
 
       <div class="cp-filter-group">
         <p class="cp-filter-group__label">Category</p>
-        <select data-filter-category aria-label="Filter by category">
+        <select data-filter-category aria-label="Filter by research category">
           <option value="">All categories</option>
           {categories.map((c) => <option value={c}>{c}</option>)}
         </select>
@@ -126,6 +170,47 @@ const confidences = [...new Set(compounds.map((c) => c.identity_confidence))].so
         <select data-filter-confidence aria-label="Filter by identity status">
           <option value="">All</option>
           {confidences.map((c) => <option value={c}>{c.replace(/_/g, ' ')}</option>)}
+        </select>
+      </div>
+
+      <div class="cp-filter-group">
+        <p class="cp-filter-group__label">Evidence type</p>
+        <select data-filter-evidence-type aria-label="Filter by evidence type">
+          <option value="">Any evidence type</option>
+          {evidenceTypesPresent.map((t) => <option value={t}>{EVIDENCE_DISPLAY_LABELS[t]}</option>)}
+        </select>
+      </div>
+
+      <div class="cp-filter-group">
+        <p class="cp-filter-group__label">Evidence strength</p>
+        <select data-filter-evidence-strength aria-label="Filter by strongest evidence quality">
+          <option value="">Any strength</option>
+          {
+            evidenceStrengthsPresent.map((q) => (
+              <option value={q}>{EVIDENCE_QUALITY_LABELS[q]}</option>
+            ))
+          }
+        </select>
+      </div>
+
+      <div class="cp-filter-group">
+        <p class="cp-filter-group__label">Human evidence</p>
+        <select data-filter-human-evidence aria-label="Filter by presence of human evidence">
+          <option value="">Any</option>
+          <option value="yes">Has human evidence</option>
+          <option value="no">No human evidence identified</option>
+        </select>
+      </div>
+
+      <div class="cp-filter-group">
+        <p class="cp-filter-group__label">Regulatory status</p>
+        <select data-filter-regulatory-status aria-label="Filter by regulatory status">
+          <option value="">Any status</option>
+          {
+            regulatoryStatusesPresent.map((s) => (
+              <option value={s}>{REGULATORY_STATUS_LABELS[s] ?? s}</option>
+            ))
+          }
         </select>
       </div>
 
@@ -144,11 +229,21 @@ const confidences = [...new Set(compounds.map((c) => c.identity_confidence))].so
           <select data-sort>
             <option value="name-asc">Name (A–Z)</option>
             <option value="name-desc">Name (Z–A)</option>
+            <option value="evidence-desc">Evidence strength (strongest first)</option>
+            <option value="studies-desc">Study count (most first)</option>
+            <option value="updated-desc">Recently updated</option>
           </select>
         </label>
       </div>
 
       <slot />
+
+      <div class="cp-directory-pagination" data-pagination hidden>
+        <button type="button" data-load-more class="cp-directory-pagination__button">
+          Show more compounds
+        </button>
+        <p class="cp-directory-pagination__status" data-pagination-status aria-live="polite"></p>
+      </div>
     </div>
   </div>
 </div>
@@ -322,6 +417,33 @@ const confidences = [...new Set(compounds.map((c) => c.identity_confidence))].so
     background: var(--bg-sunken);
     color: var(--text-primary);
     min-height: 40px;
+  }
+
+  .cp-directory-pagination {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1.75rem;
+  }
+  .cp-directory-pagination__button {
+    min-height: 44px;
+    padding: 0 1.5rem;
+    border-radius: var(--radius-control);
+    border: 1.5px solid var(--border-interactive);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .cp-directory-pagination__button:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+  .cp-directory-pagination__status {
+    margin: 0;
+    font-size: var(--text-caption);
+    color: var(--text-muted);
   }
 
   @media (max-width: 860px) {

@@ -9,6 +9,8 @@ import RegulatoryRow from '../../../components/research/RegulatoryRow.astro';
 import StudyCard from '../../../components/research/StudyCard.astro';
 import EvidenceGrid from '../../../components/research/EvidenceGrid.astro';
 import ShopDisclosure from '../../../components/research/ShopDisclosure.astro';
+import ExpertReviewWarning from '../../../components/research/ExpertReviewWarning.astro';
+import UnsupportedClaimsCard from '../../../components/research/UnsupportedClaimsCard.astro';
 import EmptyState from '../../../components/ui/EmptyState.astro';
 import ErrorState from '../../../components/ui/ErrorState.astro';
 import {
@@ -19,6 +21,9 @@ import {
 } from '../../../lib/supabase';
 import { fixtureCompound, fixtureRelatedCompounds } from '../../../lib/fixtures';
 import type { ContentSection } from '../../../lib/database.types';
+import { partitionClaimsByDisposition } from '../../../lib/reconciliation';
+import { getExpertReviewFlag } from '../../../lib/expert-review-flags';
+import { resolveEvidenceDisplayType } from '../../../lib/evidence';
 
 const { slug } = Astro.params;
 
@@ -105,31 +110,32 @@ const RELATED_ICON =
   '<circle cx="6" cy="6" r="2.5"/><circle cx="14" cy="14" r="2.5"/><path d="M8 8l4 4"/>';
 
 type Claims = NonNullable<typeof compound>['claims'];
+
+// Phase 3 content-display rule: a legacy claim reconciled as
+// 'unsupported' (or, defensively, 'contradicted' — none currently exist
+// in the database) must never appear in a normal content section as if
+// it were an established fact. It is routed to a dedicated, clearly
+// labeled section instead (rendered near the end of the page) — see
+// src/lib/reconciliation.ts and src/components/research/UnsupportedClaimsCard.astro.
+const { visible: visibleClaims, unsupported: unsupportedClaims } = compound
+  ? partitionClaimsByDisposition(compound.claims)
+  : { visible: [] as Claims, unsupported: [] as Claims };
+
 const claimsBySection = new Map<ContentSection, Claims>();
-if (compound) {
-  for (const claim of compound.claims) {
-    const bucket = claimsBySection.get(claim.content_section) ?? [];
-    bucket.push(claim);
-    claimsBySection.set(claim.content_section, bucket);
-  }
-  for (const bucket of claimsBySection.values()) {
-    bucket.sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
-  }
+for (const claim of visibleClaims) {
+  const bucket = claimsBySection.get(claim.content_section) ?? [];
+  bucket.push(claim);
+  claimsBySection.set(claim.content_section, bucket);
+}
+for (const bucket of claimsBySection.values()) {
+  bucket.sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
 }
 
 type EvidenceGridType = 'human' | 'animal' | 'in-vitro' | 'mechanistic';
-const HUMAN_STUDY_DESIGNS = [
-  'rct_human',
-  'non_randomized_human_trial',
-  'human_observational',
-  'case_report_or_series',
-];
 
-// Mirrors EvidenceBadge's own resolveDisplayType — kept in sync manually
-// since this is a small, stable rule set. study_design (from the
-// joined studies row) is the real signal when present; source_type is
-// only a fallback for sources with no study attached (true for every
-// currently-migrated draft's provenance-only source).
+// Evidence-by-type counts are computed from VISIBLE claims only — an
+// unsupported legacy claim's citations (when it has any at all; most
+// have none) should never inflate the compound's apparent evidence base.
 function evidenceGridCounts() {
   const counts: Record<EvidenceGridType, number> = {
     human: 0,
@@ -137,37 +143,69 @@ function evidenceGridCounts() {
     'in-vitro': 0,
     mechanistic: 0,
   };
-  if (!compound) return counts;
-  for (const claim of compound.claims) {
+  for (const claim of visibleClaims) {
     for (const cs of claim.claim_sources) {
-      const design = cs.sources.studies?.study_design;
-      if (design) {
-        if (HUMAN_STUDY_DESIGNS.includes(design)) counts.human++;
-        else if (design === 'animal_study') counts.animal++;
-        else if (design === 'in_vitro_study') counts['in-vitro']++;
-        else if (design === 'mechanistic') counts.mechanistic++;
-        continue;
+      const design = cs.sources.studies?.study_design ?? null;
+      const type = resolveEvidenceDisplayType(cs.sources.source_type, design);
+      if (type === 'human' || type === 'animal' || type === 'in-vitro' || type === 'mechanistic') {
+        counts[type]++;
       }
-      if (cs.sources.source_type === 'clinicaltrials_gov') counts.human++;
     }
   }
   return counts;
 }
 const evidenceCounts = evidenceGridCounts();
 
-// Unique sources across every claim, for the citation-cards section.
-const allSources = compound
-  ? [
-      ...new Map(
-        compound.claims.flatMap((c) => c.claim_sources).map((cs) => [cs.sources.id, cs]),
-      ).values(),
-    ]
-  : [];
+// Unique sources across every VISIBLE claim, for the citation-cards
+// section — same rationale as evidenceGridCounts above.
+const allSources = [
+  ...new Map(
+    visibleClaims.flatMap((c) => c.claim_sources).map((cs) => [cs.sources.id, cs]),
+  ).values(),
+];
 
 const safetyClaims = [
   ...(claimsBySection.get('safety') ?? []),
   ...(claimsBySection.get('adverse_effects') ?? []),
 ];
+
+const reviewFlag = compound ? getExpertReviewFlag(compound.slug) : undefined;
+
+// Real, already-recorded provenance from the enrichment pipeline
+// (scripts/enrichment/run-enrichment.mjs) — surfaced here instead of the
+// Blueprint's human-editorial-review fields (last_reviewed_at/
+// reviewed_by), which are genuinely null for every compound in this
+// database (that authenticated editorial-review phase was explicitly
+// skipped for this integration, per instruction — see
+// docs/enrichment/full-coverage-report.md). This is real data already
+// written to raw_import_metadata, not fabricated to fill the card.
+interface EnrichmentProvenance {
+  runAt?: string;
+  sourcesAdded?: number;
+  claimsAdded?: number;
+  legacyClaimsReconciled?: number;
+  reconciliationPasses?: number;
+}
+function getProvenance(
+  raw: Record<string, unknown> | null | undefined,
+): EnrichmentProvenance | null {
+  const marker = raw?.enrichment_pilot as Record<string, unknown> | undefined;
+  if (!marker) return null;
+  const passes = Array.isArray(marker.reconciliation_passes)
+    ? marker.reconciliation_passes.length
+    : 0;
+  return {
+    runAt: typeof marker.run_at === 'string' ? marker.run_at : undefined,
+    sourcesAdded: typeof marker.sources_added === 'number' ? marker.sources_added : undefined,
+    claimsAdded: typeof marker.claims_added === 'number' ? marker.claims_added : undefined,
+    legacyClaimsReconciled:
+      typeof marker.legacy_claims_reconciled === 'number'
+        ? marker.legacy_claims_reconciled
+        : undefined,
+    reconciliationPasses: passes,
+  };
+}
+const provenance = compound ? getProvenance(compound.raw_import_metadata) : null;
 
 // Shop is now rebuilt natively in this app — no per-compound product-id
 // mapping exists between compound slugs (e.g. "bpc-157") and shop
@@ -251,6 +289,8 @@ const breadcrumbJsonLd = compound
             )}
             <span aria-current="page">{compound.name}</span>
           </nav>
+
+          {reviewFlag && <ExpertReviewWarning reason={reviewFlag.reason} />}
 
           <Card class="cp-identity-card">
             <div class="cp-identity-card__badges">
@@ -440,6 +480,8 @@ const breadcrumbJsonLd = compound
                   ))}
                 </Card>
               )}
+
+              <UnsupportedClaimsCard claims={unsupportedClaims} />
             </div>
 
             <div class="cp-profile-side">
@@ -506,6 +548,48 @@ const breadcrumbJsonLd = compound
                   </svg>
                   Last reviewed {new Date(compound.last_reviewed_at).toLocaleDateString()} by the
                   editorial team
+                </Card>
+              )}
+
+              {provenance && (
+                <Card class="cp-profile-section cp-provenance-card">
+                  <h2 class="cp-section-heading cp-section-heading--small">Provenance</h2>
+                  <dl class="cp-provenance-list">
+                    {provenance.runAt && (
+                      <>
+                        <dt>Research enrichment run</dt>
+                        <dd>{new Date(provenance.runAt).toLocaleDateString()}</dd>
+                      </>
+                    )}
+                    {typeof provenance.sourcesAdded === 'number' && (
+                      <>
+                        <dt>Sources added</dt>
+                        <dd>{provenance.sourcesAdded}</dd>
+                      </>
+                    )}
+                    {typeof provenance.claimsAdded === 'number' && (
+                      <>
+                        <dt>Claims added</dt>
+                        <dd>{provenance.claimsAdded}</dd>
+                      </>
+                    )}
+                    {typeof provenance.legacyClaimsReconciled === 'number' &&
+                      provenance.legacyClaimsReconciled > 0 && (
+                        <>
+                          <dt>Legacy claims reconciled</dt>
+                          <dd>{provenance.legacyClaimsReconciled}</dd>
+                        </>
+                      )}
+                    {provenance.reconciliationPasses ? (
+                      <>
+                        <dt>Later reconciliation passes</dt>
+                        <dd>{provenance.reconciliationPasses}</dd>
+                      </>
+                    ) : null}
+                  </dl>
+                  <p class="cp-provenance-note">
+                    A full revision history is recorded for every editorial change to this compound.
+                  </p>
                 </Card>
               )}
 
@@ -674,6 +758,32 @@ const breadcrumbJsonLd = compound
   .cp-reviewed-card svg {
     flex-shrink: 0;
     color: var(--text-muted);
+  }
+
+  .cp-provenance-card {
+    font-size: var(--text-caption);
+  }
+  .cp-provenance-list {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.25rem 0.75rem;
+    margin: 0 0 0.75rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-data);
+  }
+  .cp-provenance-list dt {
+    color: var(--text-muted);
+  }
+  .cp-provenance-list dd {
+    margin: 0;
+    color: var(--text-secondary);
+  }
+  .cp-provenance-note {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    padding-top: 0.625rem;
+    border-top: 1px solid var(--border-subtle);
   }
 
   @media (max-width: 900px) {

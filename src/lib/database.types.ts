@@ -112,6 +112,15 @@ export interface Claim {
   status: EditorialStatus;
 }
 
+export type IdentifierType =
+  'doi' | 'pmid' | 'nct_number' | 'patent_number' | 'cas_number' | 'pubchem_cid' | 'other';
+
+export interface SourceIdentifier {
+  source_id: string;
+  identifier_type: IdentifierType;
+  identifier_value: string;
+}
+
 export interface Source {
   id: string;
   source_type: SourceType;
@@ -122,10 +131,13 @@ export interface Source {
   publication_date: string | null;
   retrieved_date: string;
   retraction_status: 'none' | 'corrected' | 'retracted' | 'expression_of_concern';
+  retraction_note?: string | null;
   /** Joined via study_id — null whenever the source has none attached
    * (true for every currently-migrated draft; real editorial work adds
    * this later). */
   studies?: Study | null;
+  /** DOI/PMID/NCT/etc. — joined via source_identifiers (Phase 3). */
+  source_identifiers?: SourceIdentifier[];
 }
 
 export interface ClaimSource {
@@ -141,8 +153,12 @@ export interface Study {
   study_design: StudyDesign;
   population: string | null;
   sample_size: number | null;
+  comparator: string | null;
   intervention: string | null;
+  route: string | null;
   duration: string | null;
+  primary_outcomes: string | null;
+  secondary_outcomes: string | null;
   results_summary: string | null;
   limitations: string | null;
   registration_number: string | null;

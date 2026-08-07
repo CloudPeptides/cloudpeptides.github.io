@@ -9,6 +9,7 @@
  * any real scientific assertion about a real substance.
  */
 import type { CompoundWithRelations } from './database.types';
+import type { CompoundListItem } from './supabase';
 
 export const fixtureCompound: CompoundWithRelations = {
   id: 'fixture-0000-0000-0000-000000000000',
@@ -104,7 +105,7 @@ export const fixtureCompound: CompoundWithRelations = {
   stack_components: [],
 };
 
-export const fixtureListItems = [
+export const fixtureListItems: CompoundListItem[] = [
   {
     id: 'fixture-1',
     slug: 'erc-000',
@@ -113,7 +114,13 @@ export const fixtureListItems = [
     category: 'Example Category',
     identity_confidence: 'unverified',
     status: 'published',
+    updated_at: '2026-01-01T00:00:00Z',
     compound_aliases: [{ alias: 'ERC-000A' }],
+    studyCount: 1,
+    hasHumanEvidence: false,
+    maxEvidenceQuality: 'moderate',
+    regulatoryStatuses: ['investigational'],
+    evidenceTypes: ['mechanistic'],
   },
   {
     id: 'fixture-2',
@@ -123,7 +130,13 @@ export const fixtureListItems = [
     category: 'Example Category',
     identity_confidence: 'unverified',
     status: 'published',
+    updated_at: '2026-01-02T00:00:00Z',
     compound_aliases: [],
+    studyCount: 0,
+    hasHumanEvidence: false,
+    maxEvidenceQuality: null,
+    regulatoryStatuses: [],
+    evidenceTypes: [],
   },
   {
     id: 'fixture-3',
@@ -133,7 +146,13 @@ export const fixtureListItems = [
     category: 'Example Recovery Category',
     identity_confidence: 'verified',
     status: 'published',
+    updated_at: '2026-01-03T00:00:00Z',
     compound_aliases: [{ alias: 'ERC-002B' }, { alias: 'Example Synonym' }],
+    studyCount: 3,
+    hasHumanEvidence: true,
+    maxEvidenceQuality: 'high',
+    regulatoryStatuses: ['approved'],
+    evidenceTypes: ['human', 'animal'],
   },
 ];
 
