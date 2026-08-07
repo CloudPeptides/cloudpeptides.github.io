@@ -1,8 +1,11 @@
 /**
  * Server-side checkout-request route — same rationale and layered
- * protections as src/pages/api/contact.ts (honeypot + cookie cooldown
- * as secondary defenses, Cloudflare's native rate-limit binding +
- * Turnstile siteverify as primary). This is an order *request*, not
+ * protections as src/pages/api/contact.ts (body-size limit, honeypot +
+ * cookie cooldown as secondary defenses, Cloudflare's native rate-limit
+ * binding, then Resend+Turnstile activation gated together — this route
+ * is only "live" once BOTH are configured, so it can never send real
+ * email without the bot challenge that's supposed to gate it — and
+ * mandatory Turnstile siteverify). This is an order *request*, not
  * payment processing (matches the legacy site exactly: "Payment is not
  * collected at checkout" — no card/crypto processor is integrated here
  * or anywhere in this rebuild).
@@ -65,29 +68,33 @@ export const POST: APIRoute = async ({ request }) => {
     return json({ success: false, error: 'Too many requests. Please try again shortly.' }, 429);
   }
 
-  if (env.TURNSTILE_SECRET_KEY) {
-    const token = typeof input.turnstileToken === 'string' ? input.turnstileToken : '';
-    if (!token) {
-      return json({ success: false, error: 'Please complete the verification challenge.' }, 400);
-    }
-    const verification = await verifyTurnstileToken(env.TURNSTILE_SECRET_KEY, token, ip);
-    if (!verification.success) {
-      return json({ success: false, error: 'Verification failed. Please try again.' }, 400);
-    }
+  // Activation check — Resend AND Turnstile both required. Real, honest
+  // failure — never fake a success when nothing was sent, and never
+  // send an order request without the bot-defense that's supposed to
+  // gate it.
+  const apiKey = env.RESEND_API_KEY;
+  const fromAddress = env.RESEND_FROM_ADDRESS;
+  const turnstileSecret = env.TURNSTILE_SECRET_KEY;
+  if (!apiKey || !fromAddress || !turnstileSecret) {
+    return json(
+      { success: false, error: 'Order requests are not configured in this environment yet.' },
+      503,
+    );
+  }
+
+  // Turnstile — mandatory now that the secret is confirmed configured.
+  const token = typeof input.turnstileToken === 'string' ? input.turnstileToken : '';
+  if (!token) {
+    return json({ success: false, error: 'Please complete the verification challenge.' }, 400);
+  }
+  const verification = await verifyTurnstileToken(turnstileSecret, token, ip);
+  if (!verification.success) {
+    return json({ success: false, error: 'Verification failed. Please try again.' }, 400);
   }
 
   const { result, data } = validateCheckoutSubmission(input);
   if (!result.valid || !data) {
     return json({ success: false, error: result.error ?? 'Invalid submission.' }, 400);
-  }
-
-  const apiKey = env.RESEND_API_KEY;
-  const fromAddress = env.RESEND_FROM_ADDRESS;
-  if (!apiKey || !fromAddress) {
-    return json(
-      { success: false, error: 'Order requests are not configured in this environment yet.' },
-      503,
-    );
   }
 
   const orderSummary = formatOrderSummary(data.items);

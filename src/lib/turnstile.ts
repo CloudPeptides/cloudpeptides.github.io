@@ -7,12 +7,13 @@
  * Turnstile is free (no paid tier — unlike the Workers Rate Limiting
  * binding, there's no billing question here at all).
  *
- * Conditionally required: if TURNSTILE_SECRET_KEY isn't configured
- * (true right now — no Turnstile site has been created yet), this is
- * skipped entirely rather than blocking every submission on a feature
- * that was never activated, matching how the Resend-config check
- * already behaves. Once a real secret key is set, verification becomes
- * mandatory automatically — no code change needed.
+ * Mandatory whenever the calling route is active at all: src/pages/api/
+ * contact.ts and checkout.ts both gate on RESEND_API_KEY,
+ * RESEND_FROM_ADDRESS, AND TURNSTILE_SECRET_KEY together — a route that
+ * could send real email without a bot challenge configured would be a
+ * silent regression the moment someone sets the Resend keys alone. Right
+ * now none of the three are configured, so both routes stay in their
+ * honest "not configured" state and this function is never reached.
  */
 
 export interface TurnstileVerifyResult {
