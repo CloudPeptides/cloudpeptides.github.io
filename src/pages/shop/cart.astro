@@ -4,20 +4,28 @@
  * same business rules (2-kit minimum, $15/free shipping, $5 non-crypto
  * processing-fee disclosure that was never actually computed into the
  * total in the legacy site either — see src/lib/shop.ts). The checkout
- * form now posts to src/pages/api/checkout.ts (a server-side Worker
- * route calling Resend) instead of the legacy client-side Web3Forms
- * call, which embedded a public access key in browser JS.
+ * form posts to src/pages/api/checkout.ts (a server-side Worker route
+ * calling Resend) instead of the legacy client-side Web3Forms call,
+ * which embedded a public access key in browser JS.
  *
- * On-demand: cart state lives in the browser (localStorage), so this
- * page's content is entirely client-rendered after load — prerender
- * would just serve an empty shell regardless, but keeping it on-demand
- * matches the other interactive-state pages in this project (directory,
- * profile) for consistency and avoids caching a stale empty cart shell
- * aggressively at the edge.
+ * Research-platform-first launch: while COMMERCE_ENABLED is false
+ * (src/lib/launch-config.ts), this page never renders the interactive
+ * cart/checkout markup at all — no cart-page.ts import, no localStorage
+ * read, no <form> — only a static "coming soon" notice. This is
+ * deliberately more than just disabling the submit button: even a
+ * browser with items already sitting in `cp-shop-cart` localStorage
+ * from before this phase (or from local testing) sees the same static
+ * notice, never a live-looking cart it could try to check out from.
+ * src/pages/api/checkout.ts's own hard gate is the real backstop
+ * either way.
+ *
+ * On-demand: matches the other interactive-state pages in this project
+ * (directory, profile) for consistency.
  */
 export const prerender = false;
 
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { COMMERCE_ENABLED } from '../../lib/launch-config';
 ---
 
 <BaseLayout
@@ -32,96 +40,154 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
       <p class="cp-cart-header__intro">Review your order request before submitting.</p>
     </header>
 
-    <div id="cartItems" class="cp-cart-items"></div>
+    {
+      !COMMERCE_ENABLED && (
+        <div class="cp-cart-coming-soon">
+          <h2>Ordering isn't available yet</h2>
+          <p>
+            Cloud Peptides is launching as a research platform first. The shop catalog is a preview
+            — carts, checkout, and order requests are not active yet, and no order or payment
+            information can be submitted at this time.
+          </p>
+          <a href="/shop" class="cp-btn-outline">
+            Back to Shop
+          </a>
+        </div>
+      )
+    }
 
-    <div id="cartEmptyPanel" class="cp-cart-empty" hidden>
-      <h2>Your cart is empty</h2>
-      <p>Browse the shop to add products to your cart.</p>
-      <a href="/shop" class="cp-btn-outline">Shop Now</a>
-    </div>
+    {
+      COMMERCE_ENABLED && (
+        <Fragment>
+          <div id="cartItems" class="cp-cart-items" />
 
-    <div class="cp-cart-total">
-      <p class="cp-cart-rules">
-        Minimum order: 2 kits.<br />
-        $15 shipping on 2 kits.<br />
-        FREE shipping on 3+ kits.<br />
-        $5 processing fee for orders not paid with crypto.<br />
-        <span class="cp-cart-rules__note"
-          >This fee is applied during payment processing, not shown in the total below.</span
-        >
-      </p>
-      <div class="cp-cart-total__row"><span>Subtotal:</span> <span id="subtotal">$0.00</span></div>
-      <div class="cp-cart-total__row"><span>Shipping:</span> <span id="shipping">$0.00</span></div>
-      <div class="cp-cart-total__grand"><span>Total:</span> <span id="total">$0.00</span></div>
-    </div>
+          <div id="cartEmptyPanel" class="cp-cart-empty" hidden>
+            <h2>Your cart is empty</h2>
+            <p>Browse the shop to add products to your cart.</p>
+            <a href="/shop" class="cp-btn-outline">
+              Shop Now
+            </a>
+          </div>
 
-    <form id="checkoutForm" class="cp-checkout-form">
-      <h2>Checkout</h2>
+          <div class="cp-cart-total">
+            <p class="cp-cart-rules">
+              Minimum order: 2 kits.
+              <br />
+              $15 shipping on 2 kits.
+              <br />
+              FREE shipping on 3+ kits.
+              <br />
+              $5 processing fee for orders not paid with crypto.
+              <br />
+              <span class="cp-cart-rules__note">
+                This fee is applied during payment processing, not shown in the total below.
+              </span>
+            </p>
+            <div class="cp-cart-total__row">
+              <span>Subtotal:</span> <span id="subtotal">$0.00</span>
+            </div>
+            <div class="cp-cart-total__row">
+              <span>Shipping:</span> <span id="shipping">$0.00</span>
+            </div>
+            <div class="cp-cart-total__grand">
+              <span>Total:</span> <span id="total">$0.00</span>
+            </div>
+          </div>
 
-      <p class="cp-disclaimer">
-        Payment is not collected at checkout. After your order request is reviewed, we will contact
-        you with payment instructions. This is a research-supply order request, not a medical
-        purchase or a scientific/commerce endorsement of any kind.
-      </p>
+          <form id="checkoutForm" class="cp-checkout-form">
+            <h2>Checkout</h2>
 
-      <!-- Honeypot — hidden from real users via CSS, left blank by them;
-           bots that autofill every field trip it. Field name doesn't
-           look like a bot trap on purpose. -->
-      <div class="cp-honeypot" aria-hidden="true">
-        <label for="checkoutHoneypot">Leave this field blank</label>
-        <input id="checkoutHoneypot" name="website" type="text" tabindex="-1" autocomplete="off" />
-      </div>
+            <p class="cp-disclaimer">
+              Payment is not collected at checkout. After your order request is reviewed, we will
+              contact you with payment instructions. This is a research-supply order request, not a
+              medical purchase or a scientific/commerce endorsement of any kind.
+            </p>
 
-      <label for="customerName" class="cp-visually-hidden">Full name</label>
-      <input id="customerName" name="name" required placeholder="Full Name" />
+            <div class="cp-honeypot" aria-hidden="true">
+              <label for="checkoutHoneypot">Leave this field blank</label>
+              <input
+                id="checkoutHoneypot"
+                name="website"
+                type="text"
+                tabindex="-1"
+                autocomplete="off"
+              />
+            </div>
 
-      <label for="customerEmail" class="cp-visually-hidden">Email</label>
-      <input id="customerEmail" name="email" type="email" required placeholder="Email" />
+            <label for="customerName" class="cp-visually-hidden">
+              Full name
+            </label>
+            <input id="customerName" name="name" required placeholder="Full Name" />
 
-      <label for="customerContact" class="cp-visually-hidden">Contact</label>
-      <input
-        id="customerContact"
-        name="contact"
-        required
-        placeholder="Phone / Discord / WhatsApp"
-      />
+            <label for="customerEmail" class="cp-visually-hidden">
+              Email
+            </label>
+            <input id="customerEmail" name="email" type="email" required placeholder="Email" />
 
-      <label for="paymentMethod" class="cp-visually-hidden">Preferred payment method</label>
-      <select id="paymentMethod" name="payment" required>
-        <option value="">Preferred Payment Method</option>
-        <option value="Bitcoin (BTC)">Bitcoin (BTC)</option>
-        <option value="Ethereum (ETH)">Ethereum (ETH)</option>
-        <option value="Zelle">Zelle</option>
-        <option value="PayPal">PayPal</option>
-      </select>
+            <label for="customerContact" class="cp-visually-hidden">
+              Contact
+            </label>
+            <input
+              id="customerContact"
+              name="contact"
+              required
+              placeholder="Phone / Discord / WhatsApp"
+            />
 
-      <label for="customerNotes" class="cp-visually-hidden">Additional notes</label>
-      <textarea id="customerNotes" name="notes" placeholder="Additional notes (optional)"
-      ></textarea>
+            <label for="paymentMethod" class="cp-visually-hidden">
+              Preferred payment method
+            </label>
+            <select id="paymentMethod" name="payment" required>
+              <option value="">Preferred Payment Method</option>
+              <option value="Bitcoin (BTC)">Bitcoin (BTC)</option>
+              <option value="Ethereum (ETH)">Ethereum (ETH)</option>
+              <option value="Zelle">Zelle</option>
+              <option value="PayPal">PayPal</option>
+            </select>
 
-      <!-- Cloudflare Turnstile — see contact.astro for the same pattern. -->
-      <div class="cf-turnstile" data-turnstile></div>
+            <label for="customerNotes" class="cp-visually-hidden">
+              Additional notes
+            </label>
+            <textarea id="customerNotes" name="notes" placeholder="Additional notes (optional)" />
 
-      <p class="cp-form-message" data-tone="error" id="checkoutFormMessage" role="alert" hidden></p>
+            <div class="cf-turnstile" data-turnstile />
 
-      <button id="submitOrder" class="cp-btn-full" type="submit">Place Order Request</button>
-    </form>
+            <p
+              class="cp-form-message"
+              data-tone="error"
+              id="checkoutFormMessage"
+              role="alert"
+              hidden
+            />
 
-    <div id="successMessage" class="cp-cart-success" hidden>
-      <h2>♡ Thank you for your order!</h2>
-      <p>
-        Your order request has been received successfully. We will contact you shortly with payment
-        instructions.
-      </p>
-      <a href="/" class="cp-btn-outline">Return Home</a>
-    </div>
+            <button id="submitOrder" class="cp-btn-full" type="submit">
+              Place Order Request
+            </button>
+          </form>
+
+          <div id="successMessage" class="cp-cart-success" hidden>
+            <h2>♡ Thank you for your order!</h2>
+            <p>
+              Your order request has been received successfully. We will contact you shortly with
+              payment instructions.
+            </p>
+            <a href="/" class="cp-btn-outline">
+              Return Home
+            </a>
+          </div>
+        </Fragment>
+      )
+    }
   </section>
 </BaseLayout>
 
-<script>
-  import '../../scripts/cart-page.ts';
-  import '../../scripts/turnstile-widget.ts';
-</script>
+{
+  COMMERCE_ENABLED && (
+    <script>
+      import '../../scripts/cart-page.ts'; import '../../scripts/turnstile-widget.ts';
+    </script>
+  )
+}
 
 <style>
   .cp-visually-hidden {
@@ -166,6 +232,25 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
   .cp-cart-header__intro {
     color: var(--text-secondary);
     margin: 0;
+  }
+
+  .cp-cart-coming-soon {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+  }
+  .cp-cart-coming-soon h2 {
+    font-family: var(--font-display);
+    color: var(--text-primary);
+    margin: 0 0 0.75rem;
+  }
+  .cp-cart-coming-soon p {
+    color: var(--text-secondary);
+    line-height: var(--text-body--line-height);
+    max-width: 40ch;
+    margin: 0 auto;
   }
 
   .cp-cart-items {

@@ -1,6 +1,7 @@
 /**
  * Server-side checkout-request route — same rationale and layered
- * protections as src/pages/api/contact.ts (body-size limit, honeypot +
+ * protections as src/pages/api/contact.ts (launch-phase kill switch,
+ * body-size limit, honeypot +
  * cookie cooldown as secondary defenses, Cloudflare's native rate-limit
  * binding, then Resend+Turnstile activation gated together — this route
  * is only "live" once BOTH are configured, so it can never send real
@@ -15,6 +16,7 @@ export const prerender = false;
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { validateCheckoutSubmission } from '../../lib/form-validation';
+import { COMMERCE_ENABLED } from '../../lib/launch-config';
 import { checkRateLimit, cooldownSetCookieHeader, isInCooldown } from '../../lib/rate-limit';
 import { readBodyWithLimit } from '../../lib/request-limits';
 import { sendEmail } from '../../lib/resend';
@@ -41,6 +43,18 @@ function formatOrderSummary(
 }
 
 export const POST: APIRoute = async ({ request }) => {
+  // Research-platform-first launch: commerce is intentionally disabled
+  // for this phase (src/lib/launch-config.ts) — checked first, before
+  // any parsing/rate-limit/Turnstile work, so no order can ever be
+  // submitted or reach Resend while this is false, independent of
+  // whatever RESEND_API_KEY/TURNSTILE_SECRET_KEY happen to be set to.
+  if (!COMMERCE_ENABLED) {
+    return json(
+      { success: false, error: 'Ordering is not yet available. The shop launches soon.' },
+      503,
+    );
+  }
+
   const bodyRead = await readBodyWithLimit(request);
   if (!bodyRead.ok) {
     return json({ success: false, error: bodyRead.error ?? 'Invalid request body.' }, 413);

@@ -7,6 +7,11 @@
  *
  * Layered spam/abuse protection, ordered cheapest-and-most-decisive
  * first:
+ *  0. launch-phase kill switch (src/lib/launch-config.ts,
+ *     CONTACT_FORM_ENABLED) — activated 2026-08-07 on staging now that
+ *     Resend's sending domain is verified and all three secrets below
+ *     are configured; when false this route always returns an honest
+ *     "not yet available" response before anything else runs.
  *  1. request body-size limit (src/lib/request-limits.ts).
  *  2. honeypot field (`website`) — silently "succeeds" without sending
  *     anything, so a bot gets no signal it was caught. Secondary
@@ -32,6 +37,7 @@ export const prerender = false;
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { validateContactSubmission } from '../../lib/form-validation';
+import { CONTACT_FORM_ENABLED } from '../../lib/launch-config';
 import { checkRateLimit, cooldownSetCookieHeader, isInCooldown } from '../../lib/rate-limit';
 import { readBodyWithLimit } from '../../lib/request-limits';
 import { sendEmail } from '../../lib/resend';
@@ -47,6 +53,19 @@ function json(body: unknown, status: number, extraHeaders?: Record<string, strin
 }
 
 export const POST: APIRoute = async ({ request }) => {
+  // Research-platform-first launch: the contact form is intentionally
+  // disabled for this phase (src/lib/launch-config.ts) — checked
+  // first, before any parsing/rate-limit/Turnstile work, so no message
+  // can ever be submitted or reach Resend while this is false,
+  // independent of whatever RESEND_API_KEY/TURNSTILE_SECRET_KEY happen
+  // to be set to.
+  if (!CONTACT_FORM_ENABLED) {
+    return json(
+      { success: false, error: 'The contact form is not yet available. Please check back soon.' },
+      503,
+    );
+  }
+
   // 1. Body-size limit.
   const bodyRead = await readBodyWithLimit(request);
   if (!bodyRead.ok) {

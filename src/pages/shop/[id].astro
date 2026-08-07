@@ -9,6 +9,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { PRODUCTS } from '../../lib/shop-products';
 import { formatMoney } from '../../lib/shop';
+import { COMMERCE_ENABLED } from '../../lib/launch-config';
 
 export function getStaticPaths() {
   return PRODUCTS.map((product) => ({
@@ -26,28 +27,36 @@ const highPrice = Math.max(...prices);
 // Product + (Aggregate)Offer only — truthful fields alone: real name,
 // real price range, no fabricated availability/rating/review (none of
 // that data exists — CLAUDE.md: never invent inventory/reviews).
+// Research-platform-first launch: the `offers` block itself is a
+// purchasability claim (schema.org readers/crawlers reasonably treat a
+// Product's presence of `offers` as "this can be bought"), so it's
+// omitted entirely while commerce is disabled — the Product entity
+// (name/category) stays as plain, honest catalog-preview description,
+// but nothing here asserts an active offer to sell.
 const productJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'Product',
   name: product.name,
   category: product.category,
-  ...(product.options.length > 1
-    ? {
-        offers: {
-          '@type': 'AggregateOffer',
-          priceCurrency: 'USD',
-          lowPrice,
-          highPrice,
-          offerCount: product.options.length,
-        },
-      }
-    : {
-        offers: {
-          '@type': 'Offer',
-          priceCurrency: 'USD',
-          price: lowPrice,
-        },
-      }),
+  ...(COMMERCE_ENABLED
+    ? product.options.length > 1
+      ? {
+          offers: {
+            '@type': 'AggregateOffer',
+            priceCurrency: 'USD',
+            lowPrice,
+            highPrice,
+            offerCount: product.options.length,
+          },
+        }
+      : {
+          offers: {
+            '@type': 'Offer',
+            priceCurrency: 'USD',
+            price: lowPrice,
+          },
+        }
+    : {}),
 };
 
 const breadcrumbJsonLd = {
@@ -115,6 +124,15 @@ const breadcrumbJsonLd = {
           Supplied directly from the lab.
         </p>
 
+        {
+          !COMMERCE_ENABLED && (
+            <p class="cp-coming-soon-banner">
+              Coming soon — ordering is not yet available. Pricing shown below is informational
+              only.
+            </p>
+          )
+        }
+
         <div class="cp-selector">
           <label for="optionSelect">Select MG</label>
           <select id="optionSelect" data-option-select>
@@ -132,12 +150,23 @@ const breadcrumbJsonLd = {
           <p id="codeLine" class="cp-disclaimer" data-code-line>
             Code: {product.options[0].code} • {product.category}
           </p>
-          <button type="button" class="cp-btn-full" id="addToCart" data-add-to-cart>
-            Add To Cart
+          <button
+            type="button"
+            class="cp-btn-full"
+            id="addToCart"
+            data-add-to-cart
+            disabled={!COMMERCE_ENABLED}
+            aria-disabled={!COMMERCE_ENABLED}
+          >
+            {COMMERCE_ENABLED ? 'Add To Cart' : 'Coming Soon'}
           </button>
-          <p class="cp-add-feedback" data-add-feedback role="status" aria-live="polite" hidden>
-            Added to cart.
-          </p>
+          {
+            COMMERCE_ENABLED && (
+              <p class="cp-add-feedback" data-add-feedback role="status" aria-live="polite" hidden>
+                Added to cart.
+              </p>
+            )
+          }
         </div>
 
         <p class="cp-disclaimer">
@@ -250,6 +279,15 @@ const breadcrumbJsonLd = {
     font-size: var(--text-caption);
     color: var(--text-muted);
     margin: 0.5rem 0;
+  }
+  .cp-coming-soon-banner {
+    font-size: var(--text-caption);
+    font-weight: 500;
+    color: var(--warning-text);
+    background: var(--bg-sunken);
+    border-left: 3px solid var(--warning-text);
+    padding: 0.75rem 1rem;
+    margin: 0 0 1.25rem;
   }
   .cp-btn-full {
     width: 100%;

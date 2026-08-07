@@ -29,70 +29,73 @@ test.describe('shop directory', () => {
   });
 });
 
-test.describe('product detail + cart', () => {
+// Rewritten for the research-platform-first launch: COMMERCE_ENABLED is
+// false (src/lib/launch-config.ts) — Add to Cart is a genuinely disabled
+// button (native `disabled`, not just visually styled), the cart page
+// never renders the interactive cart/checkout markup at all, and
+// src/pages/api/checkout.ts hard-rejects every request before any
+// parsing/Resend/Turnstile work. The previous version of this file
+// exercised the live add-to-cart/checkout flow, which no longer exists
+// while commerce is disabled — this version tests the same underlying
+// guarantee the task asked for instead: no order can be placed, no
+// checkout email can be triggered, no misleading purchase CTA remains.
+test.describe('product detail + cart (commerce disabled)', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/shop/ghk-cu');
     await page.evaluate(() => localStorage.removeItem('cp-shop-cart'));
   });
 
-  test('selecting an option updates price, and add-to-cart persists it', async ({ page }) => {
-    await page.selectOption('[data-option-select]', '1'); // 100mg option
-    await expect(page.locator('[data-price]')).toHaveText('$170.00');
-
-    await page.locator('[data-add-to-cart]').click();
-    await expect(page.locator('[data-add-feedback]')).toBeVisible();
-
-    const cart = await page.evaluate(() => localStorage.getItem('cp-shop-cart'));
-    expect(JSON.parse(cart ?? '[]')).toEqual([
-      { productId: 'ghk-cu', optionCode: 'CU100', name: 'GHK-CU', spec: '100mg • 10 vial kit', price: 170, quantity: 1 },
-    ]);
-  });
-
-  test('cart page computes totals correctly and enforces the 2-kit minimum', async ({ page }) => {
-    await page.locator('[data-add-to-cart]').click(); // 1x 50mg = $120
-
-    await page.goto('/shop/cart');
-    await expect(page.getByText('$120.00', { exact: true })).toBeVisible(); // subtotal
-    await expect(page.locator('#shipping')).toHaveText('$15.00'); // 1 kit, under free-shipping threshold
-    await expect(page.locator('#total')).toHaveText('$135.00');
-
-    // Below the 2-kit minimum — submitting should be rejected client-side
-    // before any network call, with the cart still intact.
-    await page.fill('#customerName', 'Jane Doe');
-    await page.fill('#customerEmail', 'jane@example.com');
-    await page.fill('#customerContact', 'discord#1234');
-    await page.selectOption('#paymentMethod', 'Zelle');
-    await page.locator('#checkoutForm button[type="submit"]').click();
-    await expect(page.locator('#checkoutFormMessage')).toContainText('Minimum order is 2 kits');
-  });
-
-  test('increasing quantity to 3 kits gives free shipping', async ({ page }) => {
-    await page.locator('[data-add-to-cart]').click();
-    await page.goto('/shop/cart');
-    await page.locator('[data-qty-increase="0"]').click();
-    await page.locator('[data-qty-increase="0"]').click();
-    await expect(page.locator('#shipping')).toHaveText('FREE');
-  });
-
-  test('empty cart shows the honest empty state, not a fake $0 order form', async ({ page }) => {
-    await page.goto('/shop/cart');
-    await expect(page.getByText('Your cart is empty')).toBeVisible();
-    await expect(page.locator('#checkoutForm')).toBeHidden();
-  });
-
-  test('checkout with no Resend key configured shows an honest error, never a fake success', async ({
+  test('the option selector still updates displayed price (informational only)', async ({
     page,
   }) => {
-    await page.locator('[data-add-to-cart]').click();
-    await page.locator('[data-add-to-cart]').click(); // 2 kits, meets minimum
+    await page.selectOption('[data-option-select]', '1'); // 100mg option
+    await expect(page.locator('[data-price]')).toHaveText('$170.00');
+    await expect(page.getByText('Coming soon — ordering is not yet available')).toBeVisible();
+  });
+
+  test('Add to Cart is a genuinely disabled control, not just styled to look inert', async ({
+    page,
+  }) => {
+    const button = page.locator('[data-add-to-cart]');
+    await expect(button).toBeDisabled();
+    await expect(button).toHaveText('Coming Soon');
+
+    // A disabled native <button> cannot dispatch a click event at all —
+    // force:true bypasses Playwright's actionability check to prove
+    // that even a forced click reaches nothing (no cart mutation).
+    await button.click({ force: true }).catch(() => undefined);
+    const cart = await page.evaluate(() => localStorage.getItem('cp-shop-cart'));
+    expect(cart).toBeNull();
+  });
+
+  test('cart page shows a coming-soon notice, never a live cart or checkout form', async ({
+    page,
+  }) => {
     await page.goto('/shop/cart');
-    await page.fill('#customerName', 'Jane Doe');
-    await page.fill('#customerEmail', 'jane@example.com');
-    await page.fill('#customerContact', 'discord#1234');
-    await page.selectOption('#paymentMethod', 'Zelle');
-    await page.locator('#checkoutForm button[type="submit"]').click();
-    await expect(page.locator('#checkoutFormMessage')).toContainText('not configured');
-    await expect(page.locator('#successMessage')).toBeHidden();
+    await expect(page.getByText("Ordering isn't available yet")).toBeVisible();
+    await expect(page.locator('#checkoutForm')).toHaveCount(0);
+    await expect(page.locator('#cartItems')).toHaveCount(0);
+  });
+
+  test('the checkout API rejects every request while commerce is disabled, regardless of payload', async ({
+    request,
+  }) => {
+    const response = await request.post('/api/checkout', {
+      data: {
+        name: 'Jane Doe',
+        email: 'jane@example.com',
+        contact: 'discord#1234',
+        payment: 'Zelle',
+        items: [{ name: 'GHK-Cu', spec: '50mg', price: 120, quantity: 2 }],
+        subtotal: 240,
+        shipping: 0,
+        total: 240,
+      },
+    });
+    expect(response.status()).toBe(503);
+    const body = (await response.json()) as { success: boolean; error?: string };
+    expect(body.success).toBe(false);
+    expect(body.error).toContain('not yet available');
   });
 
   test('product page has no detectable automated accessibility violations', async ({ page }) => {
@@ -100,10 +103,9 @@ test.describe('product detail + cart', () => {
     expect(results.violations).toEqual([]);
   });
 
-  test('cart page (populated) has no detectable automated accessibility violations', async ({
+  test('cart (coming-soon) page has no detectable automated accessibility violations', async ({
     page,
   }) => {
-    await page.locator('[data-add-to-cart]').click();
     await page.goto('/shop/cart');
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations).toEqual([]);
@@ -126,6 +128,14 @@ test.describe('contact form', () => {
   test('a real submission with no Resend key configured shows an honest error', async ({
     page,
   }) => {
+    // Still accurate locally/in CI even though CONTACT_FORM_ENABLED is
+    // now true (src/lib/launch-config.ts) and the form is genuinely
+    // active on staging: .dev.vars (the local/CI Worker-runtime secrets
+    // file, distinct from .env.local) has no real RESEND_API_KEY/
+    // RESEND_FROM_ADDRESS/TURNSTILE_SECRET_KEY, so contact.ts's own
+    // Resend+Turnstile activation check still falls through to this
+    // same "not configured" response here — the launch-phase gate and
+    // the credential-activation gate are two independent checks.
     await page.goto('/contact');
     await page.fill('#name', 'Jane Doe');
     await page.fill('#email', 'jane@example.com');

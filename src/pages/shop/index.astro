@@ -17,6 +17,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import Card from '../../components/ui/Card.astro';
 import { PRODUCTS } from '../../lib/shop-products';
 import { formatMoney, lowestPriceOption } from '../../lib/shop';
+import { COMMERCE_ENABLED } from '../../lib/launch-config';
 
 const CATEGORIES = [
   { name: 'Beauty + Repair', icon: '<circle cx="10" cy="10" r="6"/><path d="M10 7v3l2 2"/>' },
@@ -56,6 +57,14 @@ const breadcrumbJsonLd = {
     <header class="cp-shop-header">
       <p class="cp-eyebrow cp-eyebrow--shop">Shop</p>
       <h1 class="cp-shop-header__heading">Shop 10 Vial Kits</h1>
+      {
+        !COMMERCE_ENABLED && (
+          <p class="cp-coming-soon-banner">
+            Coming soon — this is a preview catalog. Ordering, carts, and checkout are not active
+            yet, and nothing shown here can currently be purchased.
+          </p>
+        )
+      }
       <p class="cp-shop-header__intro">
         Browse by category or search by product name/code. Click any product to view its available
         mg options and pricing.
@@ -241,6 +250,15 @@ const breadcrumbJsonLd = {
     border-left: 3px solid var(--terracotta-text);
     padding: 0.75rem 1rem;
     margin: 0;
+  }
+  .cp-coming-soon-banner {
+    font-size: var(--text-caption);
+    font-weight: 500;
+    color: var(--warning-text);
+    background: var(--bg-sunken);
+    border-left: 3px solid var(--warning-text);
+    padding: 0.75rem 1rem;
+    margin: 0 0 1rem;
   }
 
   .cp-category-row {
