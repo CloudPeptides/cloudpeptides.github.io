@@ -1,0 +1,93 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { createUserScopedClient } from '../../../lib/auth';
+import { listStudyOptions } from '../../../lib/admin/queries';
+import { RETRACTION_STATUSES, SOURCE_TYPES } from '../../../lib/admin/validation';
+
+const session = Astro.locals.session!;
+const client = createUserScopedClient(session.accessToken);
+const studyOptions = await listStudyOptions(client);
+---
+
+<AdminLayout title="New Source">
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">Editorial</p>
+      <h1>New source</h1>
+    </div>
+    <a href="/admin/sources" class="cp-admin-btn cp-admin-btn--secondary">&larr; Back to sources</a>
+  </div>
+
+  <div class="cp-admin-section">
+    <form
+      data-admin-form
+      data-table="sources"
+      data-method="POST"
+      data-redirect="/admin/sources/{id}"
+      class="cp-admin-form"
+    >
+      <div class="cp-admin-form-grid">
+        <div class="cp-admin-field">
+          <label for="source_type">Type <span class="cp-admin-required">*</span></label>
+          <select id="source_type" name="source_type" required>
+            {SOURCE_TYPES.map((t) => <option value={t}>{t.replace(/_/g, ' ')}</option>)}
+          </select>
+        </div>
+        <div class="cp-admin-field">
+          <label for="publisher_or_agency">Publisher / agency</label>
+          <input id="publisher_or_agency" name="publisher_or_agency" />
+        </div>
+        <div class="cp-admin-field">
+          <label for="publication_date">Publication date</label>
+          <input id="publication_date" name="publication_date" type="date" />
+        </div>
+        <div class="cp-admin-field">
+          <label for="retraction_status">Retraction status</label>
+          <select id="retraction_status" name="retraction_status">
+            {
+              RETRACTION_STATUSES.map((s) => (
+                <option value={s} selected={s === 'none'}>
+                  {s.replace(/_/g, ' ')}
+                </option>
+              ))
+            }
+          </select>
+        </div>
+        <div class="cp-admin-field">
+          <label for="study_id">Linked study</label>
+          <select id="study_id" name="study_id">
+            <option value="">none</option>
+            {
+              studyOptions.map((s) => (
+                <option value={s.id}>
+                  {s.study_design.replace(/_/g, ' ')}
+                  {s.population ? ` — ${s.population}` : ''}
+                </option>
+              ))
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="cp-admin-field">
+        <label for="title">Title <span class="cp-admin-required">*</span></label>
+        <input id="title" name="title" required />
+      </div>
+      <div class="cp-admin-field">
+        <label for="url">URL <span class="cp-admin-required">*</span></label>
+        <input id="url" name="url" type="url" required placeholder="https://…" />
+      </div>
+
+      <p class="cp-admin-form-message" data-tone="error" data-form-error hidden></p>
+      <div class="cp-admin-form-actions">
+        <button type="submit" class="cp-admin-btn cp-admin-btn--primary">Create source</button>
+      </div>
+    </form>
+  </div>
+</AdminLayout>
+
+<script>
+  import '../../../scripts/admin-form.ts';
+</script>

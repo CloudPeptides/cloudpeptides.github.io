@@ -1,0 +1,112 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Pagination from '../../components/admin/Pagination.astro';
+import ErrorState from '../../components/ui/ErrorState.astro';
+import { createUserScopedClient, hasMinRole } from '../../lib/auth';
+import { listAuditLog } from '../../lib/admin/queries';
+
+const session = Astro.locals.session!;
+const isAdmin = hasMinRole(session.role, 'admin');
+if (!isAdmin) Astro.response.status = 403;
+
+const page = Math.max(1, Number(Astro.url.searchParams.get('page') ?? '1') || 1);
+const PAGE_SIZE = 30;
+
+let loadError: string | null = null;
+let rows: Awaited<ReturnType<typeof listAuditLog>>['rows'] = [];
+let total = 0;
+if (isAdmin) {
+  try {
+    const client = createUserScopedClient(session.accessToken);
+    const result = await listAuditLog(client, { page, pageSize: PAGE_SIZE });
+    rows = result.rows;
+    total = result.total;
+  } catch {
+    loadError = 'Could not load the audit log right now.';
+  }
+}
+const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+---
+
+<AdminLayout title="Audit Log">
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">Admin</p>
+      <h1>Audit log</h1>
+      <p>Append-only record of every service-role action (user creation, role changes).</p>
+    </div>
+  </div>
+
+  {
+    !isAdmin && (
+      <div class="cp-admin-section">
+        <p class="cp-admin-empty-row">Admins only.</p>
+      </div>
+    )
+  }
+
+  {isAdmin && loadError && <ErrorState message={loadError} retryHref="/admin/audit-log" />}
+
+  {
+    isAdmin && !loadError && rows.length === 0 && (
+      <div class="cp-admin-section">
+        <p class="cp-admin-empty-row">No audit log entries yet.</p>
+      </div>
+    )
+  }
+
+  {
+    isAdmin && !loadError && rows.length > 0 && (
+      <>
+        <div class="cp-admin-table-wrap">
+          <table class="cp-admin-table">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Actor</th>
+                <th>Action</th>
+                <th>Target</th>
+                <th class="cp-admin-table__wrap">Detail</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((entry) => (
+                <tr>
+                  <td>{new Date(entry.created_at).toLocaleString()}</td>
+                  <td>
+                    {entry.actor_user_id === session.userId
+                      ? 'You'
+                      : (entry.actor_user_id ?? 'system')}
+                  </td>
+                  <td>{entry.action}</td>
+                  <td>
+                    {entry.target_table ?? '—'}
+                    {entry.target_id ? ` (${entry.target_id.slice(0, 8)}…)` : ''}
+                  </td>
+                  <td class="cp-admin-table__wrap">
+                    <pre class="cp-admin-detail">
+                      {entry.detail ? JSON.stringify(entry.detail) : '—'}
+                    </pre>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <Pagination currentUrl={Astro.url} page={page} totalPages={totalPages} />
+      </>
+    )
+  }
+</AdminLayout>
+
+<style>
+  .cp-admin-detail {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+</style>

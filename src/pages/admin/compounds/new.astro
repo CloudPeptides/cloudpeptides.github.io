@@ -1,0 +1,77 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { ENTITY_KINDS, IDENTITY_CONFIDENCES } from '../../../lib/admin/validation';
+---
+
+<AdminLayout title="New Compound">
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">Editorial</p>
+      <h1>New compound</h1>
+      <p>Created as a draft. Add claims, sources, and regulatory records after creating it.</p>
+    </div>
+  </div>
+
+  <div class="cp-admin-section">
+    <form
+      data-admin-form
+      data-table="compounds"
+      data-method="POST"
+      data-redirect="/admin/compounds/{id}"
+      class="cp-admin-form"
+    >
+      <div class="cp-admin-form-grid">
+        <div class="cp-admin-field">
+          <label for="slug">Slug <span class="cp-admin-required">*</span></label>
+          <input
+            id="slug"
+            name="slug"
+            required
+            pattern="[a-z0-9]+(-[a-z0-9]+)*"
+            placeholder="e.g. bpc-157"
+          />
+          <p class="cp-admin-field__hint">Lowercase letters, numbers, and hyphens only.</p>
+        </div>
+        <div class="cp-admin-field">
+          <label for="name">Name <span class="cp-admin-required">*</span></label>
+          <input id="name" name="name" required placeholder="e.g. BPC-157" />
+        </div>
+        <div class="cp-admin-field">
+          <label for="entity_kind">Entity kind <span class="cp-admin-required">*</span></label>
+          <select id="entity_kind" name="entity_kind" required>
+            {ENTITY_KINDS.map((k) => <option value={k}>{k.replace(/_/g, ' ')}</option>)}
+          </select>
+        </div>
+        <div class="cp-admin-field">
+          <label for="identity_confidence">Identity confidence</label>
+          <select id="identity_confidence" name="identity_confidence">
+            {
+              IDENTITY_CONFIDENCES.map((c) => (
+                <option value={c} selected={c === 'unverified'}>
+                  {c.replace(/_/g, ' ')}
+                </option>
+              ))
+            }
+          </select>
+        </div>
+        <div class="cp-admin-field">
+          <label for="category">Category</label>
+          <input id="category" name="category" placeholder="optional" />
+        </div>
+      </div>
+
+      <p class="cp-admin-form-message" data-tone="error" data-form-error hidden></p>
+
+      <div class="cp-admin-form-actions">
+        <button type="submit" class="cp-admin-btn cp-admin-btn--primary">Create compound</button>
+        <a href="/admin/compounds" class="cp-admin-btn cp-admin-btn--secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</AdminLayout>
+
+<script>
+  import '../../../scripts/admin-form.ts';
+</script>

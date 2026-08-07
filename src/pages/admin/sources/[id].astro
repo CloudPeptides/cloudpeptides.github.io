@@ -1,0 +1,176 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { createUserScopedClient } from '../../../lib/auth';
+import { getSourceForEdit, listStudyOptions } from '../../../lib/admin/queries';
+import { IDENTIFIER_TYPES, RETRACTION_STATUSES, SOURCE_TYPES } from '../../../lib/admin/validation';
+
+const session = Astro.locals.session!;
+const client = createUserScopedClient(session.accessToken);
+const id = Astro.params.id!;
+const source = await getSourceForEdit(client, id);
+if (!source) return new Response(null, { status: 404 });
+const studyOptions = await listStudyOptions(client);
+---
+
+<AdminLayout title={source.title}>
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">Editorial</p>
+      <h1>Edit source</h1>
+    </div>
+    <a href="/admin/sources" class="cp-admin-btn cp-admin-btn--secondary">&larr; Back to sources</a>
+  </div>
+
+  <div class="cp-admin-section">
+    <form data-admin-form data-table="sources" data-method="PATCH" class="cp-admin-form">
+      <input type="hidden" name="id" value={source.id} />
+      <div class="cp-admin-form-grid">
+        <div class="cp-admin-field">
+          <label for="source_type">Type</label>
+          <select id="source_type" name="source_type">
+            {
+              SOURCE_TYPES.map((t) => (
+                <option value={t} selected={t === source.source_type}>
+                  {t.replace(/_/g, ' ')}
+                </option>
+              ))
+            }
+          </select>
+        </div>
+        <div class="cp-admin-field">
+          <label for="publisher_or_agency">Publisher / agency</label>
+          <input
+            id="publisher_or_agency"
+            name="publisher_or_agency"
+            value={source.publisher_or_agency ?? ''}
+          />
+        </div>
+        <div class="cp-admin-field">
+          <label for="publication_date">Publication date</label>
+          <input
+            id="publication_date"
+            name="publication_date"
+            type="date"
+            value={source.publication_date ?? ''}
+          />
+        </div>
+        <div class="cp-admin-field">
+          <label for="retraction_status">Retraction status</label>
+          <select id="retraction_status" name="retraction_status">
+            {
+              RETRACTION_STATUSES.map((s) => (
+                <option value={s} selected={s === source.retraction_status}>
+                  {s.replace(/_/g, ' ')}
+                </option>
+              ))
+            }
+          </select>
+        </div>
+        <div class="cp-admin-field">
+          <label for="study_id">Linked study</label>
+          <select id="study_id" name="study_id">
+            <option value="" selected={!source.study_id}>none</option>
+            {
+              studyOptions.map((s) => (
+                <option value={s.id} selected={s.id === source.study_id}>
+                  {s.study_design.replace(/_/g, ' ')}
+                  {s.population ? ` — ${s.population}` : ''}
+                </option>
+              ))
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="cp-admin-field">
+        <label for="title">Title</label>
+        <input id="title" name="title" value={source.title} />
+      </div>
+      <div class="cp-admin-field">
+        <label for="url">URL</label>
+        <input id="url" name="url" type="url" value={source.url} />
+      </div>
+      <div class="cp-admin-field">
+        <label for="retraction_note">Retraction note</label>
+        <textarea id="retraction_note" name="retraction_note"
+          >{source.retraction_note ?? ''}</textarea
+        >
+      </div>
+
+      <p class="cp-admin-form-message" data-tone="error" data-form-error hidden></p>
+      <div class="cp-admin-form-actions">
+        <button type="submit" class="cp-admin-btn cp-admin-btn--primary">Save source</button>
+        <button
+          type="button"
+          class="cp-admin-btn cp-admin-btn--danger"
+          data-admin-delete
+          data-table="sources"
+          data-key="id"
+          data-key-value={source.id}
+          data-confirm="Delete this source? Any claim or regulatory record citing it will lose that citation."
+        >
+          Delete source
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <section class="cp-admin-section">
+    <h2>Identifiers</h2>
+    {
+      (source.source_identifiers ?? []).length === 0 ? (
+        <p class="cp-admin-empty-row">No identifiers recorded.</p>
+      ) : (
+        source.source_identifiers.map(
+          (sid: { identifier_type: string; identifier_value: string }) => (
+            <div class="cp-admin-repeat-row">
+              <span class="cp-admin-repeat-row__main">
+                {sid.identifier_type.toUpperCase()}: {sid.identifier_value}
+              </span>
+              <button
+                type="button"
+                class="cp-admin-btn cp-admin-btn--danger cp-admin-btn--sm"
+                data-admin-delete
+                data-table="source_identifiers"
+                data-key="source_id,identifier_type,identifier_value"
+                data-key-value={`${source.id},${sid.identifier_type},${sid.identifier_value}`}
+                data-confirm="Remove this identifier?"
+              >
+                Remove
+              </button>
+            </div>
+          ),
+        )
+      )
+    }
+    <form
+      data-admin-form
+      data-table="source_identifiers"
+      data-method="POST"
+      class="cp-admin-form-grid"
+      style="margin-top:0.75rem;"
+    >
+      <input type="hidden" name="source_id" value={source.id} />
+      <div class="cp-admin-field">
+        <label for="identifier_type">Type</label>
+        <select id="identifier_type" name="identifier_type" required>
+          {IDENTIFIER_TYPES.map((t) => <option value={t}>{t.replace(/_/g, ' ')}</option>)}
+        </select>
+      </div>
+      <div class="cp-admin-field">
+        <label for="identifier_value">Value</label>
+        <input id="identifier_value" name="identifier_value" required />
+      </div>
+      <div class="cp-admin-field" style="align-self:end;">
+        <button type="submit" class="cp-admin-btn cp-admin-btn--secondary">Add identifier</button>
+      </div>
+      <p class="cp-admin-form-message" data-tone="error" data-form-error hidden></p>
+    </form>
+  </section>
+</AdminLayout>
+
+<script>
+  import '../../../scripts/admin-form.ts';
+</script>

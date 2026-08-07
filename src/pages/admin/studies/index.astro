@@ -1,0 +1,98 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Pagination from '../../../components/admin/Pagination.astro';
+import ErrorState from '../../../components/ui/ErrorState.astro';
+import { createUserScopedClient } from '../../../lib/auth';
+import { listStudiesForAdmin } from '../../../lib/admin/queries';
+
+const session = Astro.locals.session!;
+const client = createUserScopedClient(session.accessToken);
+
+const params = Astro.url.searchParams;
+const q = params.get('q') ?? '';
+const page = Math.max(1, Number(params.get('page') ?? '1') || 1);
+const PAGE_SIZE = 25;
+
+let loadError: string | null = null;
+let rows: Awaited<ReturnType<typeof listStudiesForAdmin>>['rows'] = [];
+let total = 0;
+try {
+  const result = await listStudiesForAdmin(client, {
+    q: q || undefined,
+    page,
+    pageSize: PAGE_SIZE,
+  });
+  rows = result.rows;
+  total = result.total;
+} catch {
+  loadError = 'Could not load the studies library right now.';
+}
+const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+---
+
+<AdminLayout title="Studies">
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">Editorial</p>
+      <h1>Studies</h1>
+      <p>Study-level detail (design, population, outcomes) attachable to any source.</p>
+    </div>
+    <a href="/admin/studies/new" class="cp-admin-btn cp-admin-btn--primary">+ New study</a>
+  </div>
+
+  <form method="get" class="cp-admin-toolbar">
+    <input
+      type="search"
+      name="q"
+      placeholder="Search by population…"
+      value={q}
+      aria-label="Search studies"
+    />
+    <button type="submit" class="cp-admin-btn cp-admin-btn--secondary">Apply</button>
+    <span class="cp-admin-toolbar__spacer"></span>
+    <span class="cp-admin-toolbar__count">{total} stud{total === 1 ? 'y' : 'ies'}</span>
+  </form>
+
+  {loadError && <ErrorState message={loadError} retryHref="/admin/studies" />}
+
+  {
+    !loadError && rows.length === 0 && (
+      <div class="cp-admin-section">
+        <p class="cp-admin-empty-row">No studies match that search.</p>
+      </div>
+    )
+  }
+
+  {
+    !loadError && rows.length > 0 && (
+      <div class="cp-admin-table-wrap">
+        <table class="cp-admin-table">
+          <thead>
+            <tr>
+              <th>Design</th>
+              <th>Population</th>
+              <th>Sample size</th>
+              <th>Peer review</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((s) => (
+              <tr>
+                <td>
+                  <a href={`/admin/studies/${s.id}`}>{s.study_design.replace(/_/g, ' ')}</a>
+                </td>
+                <td>{s.population ?? '—'}</td>
+                <td>{s.sample_size ?? '—'}</td>
+                <td>{s.peer_review_status ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  <Pagination currentUrl={Astro.url} page={page} totalPages={totalPages} />
+</AdminLayout>

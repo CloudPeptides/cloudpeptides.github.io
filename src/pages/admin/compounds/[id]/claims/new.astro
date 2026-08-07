@@ -1,0 +1,91 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../../../../layouts/AdminLayout.astro';
+import { createUserScopedClient } from '../../../../../lib/auth';
+import { getCompoundForEdit } from '../../../../../lib/admin/queries';
+import {
+  CONTENT_SECTIONS,
+  EVIDENCE_QUALITIES,
+  INTERPRETATION_STATUSES,
+} from '../../../../../lib/admin/validation';
+
+const session = Astro.locals.session!;
+const client = createUserScopedClient(session.accessToken);
+const compoundId = Astro.params.id!;
+const compound = await getCompoundForEdit(client, compoundId);
+if (!compound) return new Response(null, { status: 404 });
+---
+
+<AdminLayout title={`New claim — ${compound.name}`}>
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">{compound.name}</p>
+      <h1>New claim</h1>
+    </div>
+    <a href={`/admin/compounds/${compound.id}`} class="cp-admin-btn cp-admin-btn--secondary"
+      >&larr; Back to compound</a
+    >
+  </div>
+
+  <div class="cp-admin-section">
+    <form
+      data-admin-form
+      data-table="claims"
+      data-method="POST"
+      data-redirect={`/admin/compounds/${compound.id}/claims/{id}`}
+      class="cp-admin-form"
+    >
+      <input type="hidden" name="compound_id" value={compound.id} />
+      <div class="cp-admin-form-grid">
+        <div class="cp-admin-field">
+          <label for="content_section">Section <span class="cp-admin-required">*</span></label>
+          <select id="content_section" name="content_section" required>
+            {CONTENT_SECTIONS.map((s) => <option value={s}>{s.replace(/_/g, ' ')}</option>)}
+          </select>
+        </div>
+        <div class="cp-admin-field">
+          <label for="evidence_quality">Evidence quality</label>
+          <select id="evidence_quality" name="evidence_quality">
+            <option value="">not set</option>
+            {EVIDENCE_QUALITIES.map((q) => <option value={q}>{q.replace(/_/g, ' ')}</option>)}
+          </select>
+        </div>
+        <div class="cp-admin-field">
+          <label for="interpretation_status">Interpretation status</label>
+          <select id="interpretation_status" name="interpretation_status">
+            <option value="">not set</option>
+            {INTERPRETATION_STATUSES.map((s) => <option value={s}>{s}</option>)}
+          </select>
+        </div>
+        <div class="cp-admin-field">
+          <label for="display_order">Display order</label>
+          <input id="display_order" name="display_order" type="number" />
+        </div>
+      </div>
+
+      <div class="cp-admin-field">
+        <label for="statement">Statement <span class="cp-admin-required">*</span></label>
+        <textarea id="statement" name="statement" required></textarea>
+      </div>
+
+      <div class="cp-admin-field">
+        <label for="quality_rationale">Quality rationale</label>
+        <textarea id="quality_rationale" name="quality_rationale"></textarea>
+        <p class="cp-admin-field__hint">
+          Required whenever evidence quality is set to anything other than "not assessed".
+        </p>
+      </div>
+
+      <p class="cp-admin-form-message" data-tone="error" data-form-error hidden></p>
+
+      <div class="cp-admin-form-actions">
+        <button type="submit" class="cp-admin-btn cp-admin-btn--primary">Create claim</button>
+      </div>
+    </form>
+  </div>
+</AdminLayout>
+
+<script>
+  import '../../../../../scripts/admin-form.ts';
+</script>

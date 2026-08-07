@@ -1,0 +1,89 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../../../layouts/AdminLayout.astro';
+import { hasMinRole, createUserScopedClient } from '../../../../lib/auth';
+import { getCompoundForEdit, listRevisionsForCompound } from '../../../../lib/admin/queries';
+
+const session = Astro.locals.session!;
+if (!hasMinRole(session.role, 'editor')) {
+  Astro.response.status = 403;
+}
+const client = createUserScopedClient(session.accessToken);
+const id = Astro.params.id!;
+const compound = await getCompoundForEdit(client, id);
+if (!compound) return new Response(null, { status: 404 });
+
+const revisions = hasMinRole(session.role, 'editor')
+  ? await listRevisionsForCompound(client, id)
+  : [];
+---
+
+<AdminLayout title={`History — ${compound.name}`}>
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">{compound.name}</p>
+      <h1>Revision history</h1>
+    </div>
+    <a href={`/admin/compounds/${compound.id}`} class="cp-admin-btn cp-admin-btn--secondary"
+      >&larr; Back to compound</a
+    >
+  </div>
+
+  {
+    !hasMinRole(session.role, 'editor') ? (
+      <div class="cp-admin-section">
+        <p class="cp-admin-empty-row">Revision history is visible to editors and admins only.</p>
+      </div>
+    ) : revisions.length === 0 ? (
+      <div class="cp-admin-section">
+        <p class="cp-admin-empty-row">
+          No revisions recorded yet — a snapshot is captured automatically every time this
+          compound's core fields are updated.
+        </p>
+      </div>
+    ) : (
+      revisions.map((rev, i) => {
+        const snapshot = rev.snapshot as {
+          compound?: { status?: string; name?: string };
+          claims?: unknown[];
+          regulatory_records?: unknown[];
+        };
+        return (
+          <div class="cp-admin-section">
+            <h2>
+              Revision {revisions.length - i} &middot; {new Date(rev.created_at).toLocaleString()}
+            </h2>
+            <p>
+              Editor: {rev.editor_id === session.userId ? 'You' : (rev.editor_id ?? 'unknown')}
+              {' · '}
+              Status at this point: {snapshot.compound?.status ?? 'unknown'}
+              {' · '}
+              Claims: {snapshot.claims?.length ?? 0}
+              {' · '}
+              Regulatory records: {snapshot.regulatory_records?.length ?? 0}
+            </p>
+            <details>
+              <summary>View raw snapshot</summary>
+              <pre class="cp-admin-snapshot">{JSON.stringify(rev.snapshot, null, 2)}</pre>
+            </details>
+          </div>
+        );
+      })
+    )
+  }
+</AdminLayout>
+
+<style>
+  .cp-admin-snapshot {
+    max-height: 20rem;
+    overflow: auto;
+    background: var(--bg-sunken);
+    border-radius: var(--radius-control);
+    padding: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+</style>

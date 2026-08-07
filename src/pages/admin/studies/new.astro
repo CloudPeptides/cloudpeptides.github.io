@@ -1,0 +1,113 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { PEER_REVIEW_STATUSES, STUDY_DESIGNS } from '../../../lib/admin/validation';
+---
+
+<AdminLayout title="New Study">
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">Editorial</p>
+      <h1>New study</h1>
+    </div>
+    <a href="/admin/studies" class="cp-admin-btn cp-admin-btn--secondary">&larr; Back to studies</a>
+  </div>
+
+  <div class="cp-admin-section">
+    <form
+      data-admin-form
+      data-table="studies"
+      data-method="POST"
+      data-redirect="/admin/studies/{id}"
+      class="cp-admin-form"
+    >
+      <div class="cp-admin-form-grid">
+        <div class="cp-admin-field">
+          <label for="study_design">Design <span class="cp-admin-required">*</span></label>
+          <select id="study_design" name="study_design" required>
+            {STUDY_DESIGNS.map((d) => <option value={d}>{d.replace(/_/g, ' ')}</option>)}
+          </select>
+        </div>
+        <div class="cp-admin-field">
+          <label for="population">Population</label>
+          <input id="population" name="population" />
+        </div>
+        <div class="cp-admin-field">
+          <label for="sample_size">Sample size</label>
+          <input id="sample_size" name="sample_size" type="number" min="0" />
+        </div>
+        <div class="cp-admin-field">
+          <label for="peer_review_status">Peer review status</label>
+          <select id="peer_review_status" name="peer_review_status">
+            <option value="">not set</option>
+            {PEER_REVIEW_STATUSES.map((p) => <option value={p}>{p.replace(/_/g, ' ')}</option>)}
+          </select>
+        </div>
+        <div class="cp-admin-field">
+          <label for="comparator">Comparator</label>
+          <input id="comparator" name="comparator" />
+        </div>
+        <div class="cp-admin-field">
+          <label for="intervention">Intervention</label>
+          <input id="intervention" name="intervention" />
+        </div>
+        <div class="cp-admin-field">
+          <label for="route">Route</label>
+          <input id="route" name="route" />
+        </div>
+        <div class="cp-admin-field">
+          <label for="duration">Duration</label>
+          <input id="duration" name="duration" />
+        </div>
+        <div class="cp-admin-field">
+          <label for="registration_number">Registration number</label>
+          <input id="registration_number" name="registration_number" />
+        </div>
+      </div>
+
+      <div class="cp-admin-field">
+        <label for="published_research_dose">Published research dose</label>
+        <p class="cp-admin-field__hint">
+          Contextualized study data only — never usage instructions (CLAUDE.md §6).
+        </p>
+        <input id="published_research_dose" name="published_research_dose" />
+      </div>
+      <div class="cp-admin-field">
+        <label for="primary_outcomes">Primary outcomes</label>
+        <textarea id="primary_outcomes" name="primary_outcomes"></textarea>
+      </div>
+      <div class="cp-admin-field">
+        <label for="secondary_outcomes">Secondary outcomes</label>
+        <textarea id="secondary_outcomes" name="secondary_outcomes"></textarea>
+      </div>
+      <div class="cp-admin-field">
+        <label for="results_summary">Results summary</label>
+        <textarea id="results_summary" name="results_summary"></textarea>
+      </div>
+      <div class="cp-admin-field">
+        <label for="limitations">Limitations</label>
+        <textarea id="limitations" name="limitations"></textarea>
+      </div>
+      <div class="cp-admin-form-grid">
+        <div class="cp-admin-field">
+          <label for="funding_source">Funding source</label>
+          <input id="funding_source" name="funding_source" />
+        </div>
+        <div class="cp-admin-field">
+          <label for="conflicts_of_interest">Conflicts of interest</label>
+          <input id="conflicts_of_interest" name="conflicts_of_interest" />
+        </div>
+      </div>
+
+      <p class="cp-admin-form-message" data-tone="error" data-form-error hidden></p>
+      <div class="cp-admin-form-actions">
+        <button type="submit" class="cp-admin-btn cp-admin-btn--primary">Create study</button>
+      </div>
+    </form>
+  </div>
+</AdminLayout>
+
+<script>
+  import '../../../scripts/admin-form.ts';
+</script>

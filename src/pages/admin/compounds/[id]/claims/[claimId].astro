@@ -1,0 +1,207 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../../../../layouts/AdminLayout.astro';
+import { createUserScopedClient, hasMinRole } from '../../../../../lib/auth';
+import { getCompoundForEdit, listSourceOptions } from '../../../../../lib/admin/queries';
+import {
+  CLAIM_SOURCE_RELATIONSHIPS,
+  CONTENT_SECTIONS,
+  EVIDENCE_QUALITIES,
+  INTERPRETATION_STATUSES,
+} from '../../../../../lib/admin/validation';
+
+const session = Astro.locals.session!;
+const client = createUserScopedClient(session.accessToken);
+const compoundId = Astro.params.id!;
+const claimId = Astro.params.claimId!;
+
+const compound = await getCompoundForEdit(client, compoundId);
+if (!compound) return new Response(null, { status: 404 });
+const claim = compound.claims.find((c) => c.id === claimId);
+if (!claim) return new Response(null, { status: 404 });
+
+const sourceOptions = await listSourceOptions(client);
+const attachedSourceIds = new Set(claim.claim_sources.map((cs) => cs.source_id));
+const availableSources = sourceOptions.filter((s) => !attachedSourceIds.has(s.id));
+
+const canDelete = hasMinRole(session.role, 'editor');
+---
+
+<AdminLayout title={`Edit claim — ${compound.name}`}>
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">{compound.name}</p>
+      <h1>Edit claim</h1>
+    </div>
+    <a href={`/admin/compounds/${compound.id}`} class="cp-admin-btn cp-admin-btn--secondary"
+      >&larr; Back to compound</a
+    >
+  </div>
+
+  <div class="cp-admin-section">
+    <form data-admin-form data-table="claims" data-method="PATCH" class="cp-admin-form">
+      <input type="hidden" name="id" value={claim.id} />
+      <div class="cp-admin-form-grid">
+        <div class="cp-admin-field">
+          <label for="content_section">Section</label>
+          <select id="content_section" name="content_section">
+            {
+              CONTENT_SECTIONS.map((s) => (
+                <option value={s} selected={s === claim.content_section}>
+                  {s.replace(/_/g, ' ')}
+                </option>
+              ))
+            }
+          </select>
+        </div>
+        <div class="cp-admin-field">
+          <label for="evidence_quality">Evidence quality</label>
+          <select id="evidence_quality" name="evidence_quality">
+            <option value="" selected={!claim.evidence_quality}>not set</option>
+            {
+              EVIDENCE_QUALITIES.map((q) => (
+                <option value={q} selected={q === claim.evidence_quality}>
+                  {q.replace(/_/g, ' ')}
+                </option>
+              ))
+            }
+          </select>
+        </div>
+        <div class="cp-admin-field">
+          <label for="interpretation_status">Interpretation status</label>
+          <select id="interpretation_status" name="interpretation_status">
+            <option value="" selected={!claim.interpretation_status}>not set</option>
+            {
+              INTERPRETATION_STATUSES.map((s) => (
+                <option value={s} selected={s === claim.interpretation_status}>
+                  {s}
+                </option>
+              ))
+            }
+          </select>
+        </div>
+        <div class="cp-admin-field">
+          <label for="display_order">Display order</label>
+          <input
+            id="display_order"
+            name="display_order"
+            type="number"
+            value={claim.display_order ?? ''}
+          />
+        </div>
+      </div>
+
+      <div class="cp-admin-field">
+        <label for="statement">Statement</label>
+        <textarea id="statement" name="statement">{claim.statement}</textarea>
+      </div>
+
+      <div class="cp-admin-field">
+        <label for="quality_rationale">Quality rationale</label>
+        <textarea id="quality_rationale" name="quality_rationale"
+          >{claim.quality_rationale ?? ''}</textarea
+        >
+      </div>
+
+      <p class="cp-admin-form-message" data-tone="error" data-form-error hidden></p>
+
+      <div class="cp-admin-form-actions">
+        <button type="submit" class="cp-admin-btn cp-admin-btn--primary">Save claim</button>
+        {
+          canDelete && (
+            <button
+              type="button"
+              class="cp-admin-btn cp-admin-btn--danger"
+              data-admin-delete
+              data-table="claims"
+              data-key="id"
+              data-key-value={claim.id}
+              data-confirm="Delete this claim entirely? This cannot be undone."
+            >
+              Delete claim
+            </button>
+          )
+        }
+      </div>
+    </form>
+  </div>
+
+  <section class="cp-admin-section">
+    <h2>Cited sources</h2>
+    {
+      claim.claim_sources.length === 0 ? (
+        <p class="cp-admin-empty-row">
+          No sources cited yet — this claim cannot be published until it has at least one.
+        </p>
+      ) : (
+        claim.claim_sources.map((cs) => (
+          <div class="cp-admin-repeat-row">
+            <span class="cp-admin-repeat-row__main">
+              {cs.sources.title}{' '}
+              <span class="cp-admin-repeat-row__meta">({cs.relationship.replace(/_/g, ' ')})</span>
+            </span>
+            <button
+              type="button"
+              class="cp-admin-btn cp-admin-btn--danger cp-admin-btn--sm"
+              data-admin-delete
+              data-table="claim_sources"
+              data-key="claim_id,source_id"
+              data-key-value={`${claim.id},${cs.source_id}`}
+              data-confirm="Detach this source?"
+            >
+              Detach
+            </button>
+          </div>
+        ))
+      )
+    }
+    {
+      availableSources.length > 0 ? (
+        <form
+          data-admin-form
+          data-table="claim_sources"
+          data-method="POST"
+          class="cp-admin-form-grid"
+          style="margin-top:0.75rem;"
+        >
+          <input type="hidden" name="claim_id" value={claim.id} />
+          <div class="cp-admin-field">
+            <label for="source_id">Source</label>
+            <select id="source_id" name="source_id" required>
+              {availableSources.map((s) => (
+                <option value={s.id}>{s.title}</option>
+              ))}
+            </select>
+          </div>
+          <div class="cp-admin-field">
+            <label for="relationship">Relationship</label>
+            <select id="relationship" name="relationship" required>
+              {CLAIM_SOURCE_RELATIONSHIPS.map((r) => (
+                <option value={r}>{r.replace(/_/g, ' ')}</option>
+              ))}
+            </select>
+          </div>
+          <div class="cp-admin-field">
+            <label for="locator">Locator</label>
+            <input id="locator" name="locator" placeholder="e.g. p.4, Table 2" />
+          </div>
+          <div class="cp-admin-field" style="align-self:end;">
+            <button type="submit" class="cp-admin-btn cp-admin-btn--secondary">
+              Attach source
+            </button>
+          </div>
+          <p class="cp-admin-form-message" data-tone="error" data-form-error hidden />
+        </form>
+      ) : (
+        <p class="cp-admin-field__hint">
+          No more unattached sources — <a href="/admin/sources/new">create a new source</a>.
+        </p>
+      )
+    }
+  </section>
+</AdminLayout>
+
+<script>
+  import '../../../../../scripts/admin-form.ts';
+</script>
