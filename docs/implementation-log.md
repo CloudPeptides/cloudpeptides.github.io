@@ -2,6 +2,179 @@
 
 Append-only. One entry per meaningful step, per [CLAUDE.md](../CLAUDE.md) §3/§11/§12.
 
+## Combined Phase — Supabase Authentication + Editorial/Admin Dashboard (2026-08-08)
+
+**Scope, as approved in chat:** Phase 5 narrowed to authentication
+infrastructure only (no public favorites/reading-list/comparisons —
+never requested this session) combined with Phase 6's full admin
+dashboard scope. Staging only throughout; `main`/production/DNS/custom
+domain untouched; checkout stays disabled (`COMMERCE_ENABLED = false`,
+unchanged).
+
+**Note on log continuity:** this entry picks up after several
+enrichment/launch commits (`8f30fd2` publish all 56 compounds+claims,
+`4390acd` compound_aliases population, `2bb6ba0` security hardening,
+`4be06ec`–`0e88bb8` Resend/Turnstile/domain/contact-form work) that
+were never individually logged here — a pre-existing gap in this file
+from before this session, not backfilled now (out of scope for this
+phase; the git history and each commit's own message remain the
+authoritative record for that work).
+
+### Authentication (Supabase Auth, email/password)
+
+- `src/lib/auth.ts` — cookie-based session handling. The access-token
+  cookie is re-verified against Supabase Auth on every request
+  (`auth.getUser(token)`, a real network check) before its `user_role`
+  custom JWT claim (injected by the already-enabled Custom Access
+  Token Hook — confirmed live, not assumed) is ever read; transparent
+  refresh via the refresh-token cookie. `createUserScopedClient()`
+  (the acting user's own verified JWT — RLS is the real boundary for
+  every ordinary editorial write) and `createServiceClient()` (service-
+  role, reserved for `user_roles`/`audit_log`, the two tables with zero
+  client write grant) are the only two ways this app ever talks to
+  Supabase server-side.
+- `src/pages/api/auth/login.ts` / `logout.ts` — rate-limited (reuses
+  `FORM_RATE_LIMITER`), same-origin-checked, generic
+  "invalid email or password" on failure (never reveals which). A
+  `member` gets a genuine "no dashboard access" 403 and an immediate
+  session revoke rather than a live-but-useless cookie.
+- `src/middleware.ts` extended: every `/admin*`/`/api/admin/*` request
+  resolves a real session and enforces a contributor+ baseline before
+  the page/route runs; `/admin/login` is the one exempted path.
+  Individual pages/routes still do their own finer role check (editor
+  for publish/delete, admin for user management) — the baseline is
+  never the only gate (CLAUDE.md §8).
+- `src/layouts/BaseLayout.astro` gained an opt-in `hideChrome` prop
+  (skips the public Nav/Footer) so `/admin` reuses the same
+  theme/meta/CSP-nonce/skip-link machinery instead of a duplicated
+  `<html>` shell.
+
+### Admin dashboard
+
+- `src/lib/admin/{queries,validation,mutations,users}.ts` — read
+  queries (status counts, evidence gaps, unsupported/contradicted
+  legacy-claim counts via the existing `reconciliation.ts` parser,
+  expert-review flags via the existing static list, revision/audit-log
+  reads), field validation mirroring every CHECK constraint in
+  `20260806144903_research_schema.sql` by hand (no generated-types
+  pipeline exists here — same reasoning as `database.types.ts`), and
+  Blueprint v2 §17's pre-publish checks (every claim needs ≥1 citation;
+  a set evidence quality needs a rationale; every regulatory record
+  needs a source) as real hard blockers, not just client-side hints.
+- `src/pages/api/admin/content/[table].ts` — one allow-listed,
+  RLS-enforced CRUD route covering nine editorial tables (compounds,
+  aliases, stack components, claims, claim sources, sources, source
+  identifiers, studies, regulatory records). Every write goes through
+  the caller's own JWT; column allow-lists prevent mass-assignment
+  (`compounds.status`/`claims` deletion are deliberately excluded —
+  see below). `src/pages/api/admin/compounds/[id]/status.ts` is the
+  one place a compound's status ever changes — runs the §17 blocker
+  check before attempting the write, sets `last_reviewed_at`/
+  `reviewed_by` on a successful publish.
+- Deliberately not built: a "delete compound" UI. Not requested, and
+  far less reversible than anything else here — archiving via the
+  status route is the supported way to remove a compound from public
+  view. Deleting an individual claim is supported (editor+, per RLS).
+- Pages: `/admin` (dashboard), `/admin/compounds` (search/filter/
+  paginate) + `/admin/compounds/[id]` (identity, aliases, stack
+  components, regulatory records, claims, publish workflow) +
+  `/admin/compounds/[id]/claims/{new,[claimId]}` (claim + claim-source
+  citation management) + `/admin/compounds/[id]/history` (revision
+  snapshots), `/admin/sources` + `/admin/sources/{new,[id]}` (incl.
+  identifiers), `/admin/studies` + `/admin/studies/{new,[id]}`,
+  `/admin/audit-log` (admin-only), `/admin/users` (admin-only — create
+  user, change role). Every list page: real search/filter/pagination
+  via query params (no client JS required), loading is inherent to SSR,
+  and explicit empty/error/success states throughout
+  (`EmptyState`/`ErrorState` reused from Phase 3).
+- `src/pages/api/admin/users/index.ts` (create) and
+  `[id]/role.ts` (change role) are the only two service-role routes —
+  rate-limited, audit-logged (`audit_log`, via the acting admin's own
+  user id), and **refuse any self-role-change outright** (not just
+  self-elevation — the simplest rule that fully satisfies the
+  "editor/admin cannot grant themselves admin" requirement with no
+  edge case, and sidesteps a "last admin locks themselves out" footgun
+  without a separate check). User creation sets `email_confirm: true`
+  — no confirmation/invite email is ever sent (CLAUDE.md §9: sending
+  real external email needs separate explicit approval, and there's no
+  product need for one here); the creating admin relays the password
+  out of band.
+- One shared client script (`src/scripts/admin-form.ts`) drives every
+  create/update/delete form across every entity via `data-*` attributes
+  against the generic content route — avoided ~15 hand-written
+  near-duplicate fetch handlers.
+
+### Testing — real, not asserted
+
+- **Unit (Vitest):** 28 new tests — `src/lib/auth.ts`'s pure helpers
+  (role ranking, same-origin/CSRF check, cookie build/clear/read) and
+  `src/lib/admin/validation.ts` (field validation, the
+  quality-rationale-required rule, `checkPublishReadiness`). Added a
+  `cloudflare:workers` Vitest alias (`tests/mocks/cloudflare-workers.ts`)
+  so `auth.ts` — the one file that imports the real Workers-only virtual
+  module — is unit-testable at all. **96/96 unit tests pass** (68
+  pre-existing + 28 new).
+- **`scripts/migration/verify-admin-security.mjs`** (new) — HTTP-level
+  integration suite, driving a real locally-built-and-previewed copy of
+  the app through real `fetch()` calls against the real staging
+  Supabase project (disposable test users + a disposable fully-cited
+  compound, cleaned up after). Temporarily writes
+  `SUPABASE_SERVICE_ROLE_KEY` into `.dev.vars` for the run only
+  (verified byte-for-byte restored afterward — confirmed directly, not
+  assumed). **18/18 checks passed**, proving: unauthenticated requests
+  are rejected by both `/admin` pages and `/api/admin/*`; a `member`
+  cannot obtain a dashboard session; a `contributor` cannot publish
+  even a compound with zero content blockers (isolates the role check
+  from the completeness check); an `editor` CAN publish a fully-cited
+  compound and the database reflects it; only an `admin` can create
+  users or change roles (`contributor`/`editor` both rejected); nobody
+  — including an admin acting on themselves — can change their own
+  role, verified both by response status and by re-reading the actual
+  database state afterward.
+- **`scripts/migration/verify-security.mjs` (existing suite) re-run: 14/14
+  passed**, including two checks fixed this session — both were stale
+  assumptions from when every compound was still `draft` (before the
+  Phase 3.5 publish step), not security regressions: "contributor can
+  read drafts" now checks against a disposable draft compound created
+  for the purpose rather than assuming a real one exists; "every
+  compound is draft" is now a before/after non-draft-count comparison
+  (proves the test run itself changed nothing) instead of a stale global
+  assertion.
+- **Existing suites re-run clean:** `npm run lint` (0 issues), `npm run
+  typecheck` (0 errors/warnings/hints across 194 files), `npm run
+  format:check` (clean on every file touched this session — pre-existing
+  unformatted files elsewhere in the repo, e.g. `scripts/enrichment/
+  data/*.mjs`, were left untouched, out of scope), `npm test` (96/96),
+  `npm run test:e2e` (24/24, the full pre-existing Playwright+axe suite,
+  unaffected by the middleware changes), `npm run build` (clean),
+  `npm run check:secrets` (clean).
+- **`npm run check:links`: 3 pre-existing broken external citation
+  URLs found** (an FDA consumer-update page now 404s, a JAMA DOI now
+  403s for two different compounds' claims) — live third-party sources
+  going stale/bot-blocked, exactly the category Blueprint v2 §18
+  describes as a low-priority editorial warning, not a defect in this
+  session's work. Not fixed here: editing research-claim citation
+  content is outside this phase's scope.
+
+### Known limitations, disclosed
+
+- Role changes take effect on next token refresh/re-login, not
+  instantly for an already-open session — inherent to JWT-claim-based
+  RBAC (Supabase's own documented pattern, not a bug introduced here).
+- No automated link-health-check job exists yet (Blueprint v2 §18 —
+  explicitly later-phase infrastructure), so `checkPublishReadiness()`
+  never factors in source reachability; the 3 links above were only
+  caught by the unrelated `check:links` script, not the publish
+  workflow itself.
+- `docs/implementation-log.md`'s pre-existing gap for the Phase 3.5
+  enrichment/publish/launch-hardening commits (noted above) was not
+  backfilled — flagged, not fixed, per this phase's scope.
+
+**Manual step required from you (nothing else is blocked):** see the
+end-of-turn chat report for exactly one step — bootstrapping the first
+admin account, since no admin exists yet to use the in-app user
+management screen.
+
 ## Phase 2/3 Closeout — Correction & Completion (2026-08-06)
 
 **Correction:** the Phase 2 entry below states "48 imported, 8 correctly held
