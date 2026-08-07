@@ -1,0 +1,146 @@
+---
+/**
+ * Admin sign-in. Not gated by src/middleware.ts (it's the one /admin
+ * path exempted — see PUBLIC_ADMIN_PATHS) — reachable while signed out
+ * by definition. If a session already resolves here (someone revisits
+ * /admin/login while already signed in), bounce straight to /admin or
+ * wherever `next` points, rather than showing the form again.
+ */
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const next = Astro.url.searchParams.get('next');
+const redirectTarget = next && next.startsWith('/admin') ? next : '/admin';
+if (Astro.locals.session) {
+  return Astro.redirect(redirectTarget);
+}
+---
+
+<BaseLayout title="Admin Sign In" noindex hideChrome>
+  <section class="cp-login-container">
+    <div class="cp-login-card">
+      <h1>Cloud Peptides Admin</h1>
+      <p class="cp-login-intro">Sign in with your editorial account.</p>
+
+      <form id="adminLoginForm" class="cp-login-form" data-redirect={redirectTarget}>
+        <label for="email">Email</label>
+        <input type="email" name="email" id="email" required autocomplete="email" />
+
+        <label for="password">Password</label>
+        <input
+          type="password"
+          name="password"
+          id="password"
+          required
+          autocomplete="current-password"
+        />
+
+        <p class="cp-form-message" data-tone="error" id="loginFormMessage" role="alert" hidden></p>
+
+        <button class="cp-btn-full" type="submit" id="loginSubmit">Sign In</button>
+      </form>
+
+      <p class="cp-login-back"><a href="/">&larr; Back to the site</a></p>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import '../../scripts/admin-login-form.ts';
+</script>
+
+<style>
+  .cp-login-container {
+    min-height: calc(100vh - 4rem);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+  }
+  .cp-login-card {
+    width: 100%;
+    max-width: 24rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    padding: 2rem;
+    box-shadow: var(--shadow-resting);
+  }
+  .cp-login-card h1 {
+    font-family: var(--font-display);
+    font-size: var(--text-h3);
+    color: var(--text-primary);
+    margin: 0 0 0.375rem;
+  }
+  .cp-login-intro {
+    color: var(--text-secondary);
+    margin: 0 0 1.5rem;
+    font-size: var(--text-caption);
+  }
+  .cp-login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+  .cp-login-form label {
+    font-size: var(--text-caption);
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-top: 0.625rem;
+  }
+  .cp-login-form label:first-child {
+    margin-top: 0;
+  }
+  .cp-login-form input {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    border-radius: var(--radius-control);
+    border: 1.5px solid var(--border-interactive);
+    background: var(--bg-sunken);
+    color: var(--text-primary);
+    font-size: var(--text-body);
+    font-family: var(--font-body);
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+  .cp-form-message {
+    font-size: var(--text-caption);
+    padding: 0.625rem 0.875rem;
+    border-radius: var(--radius-control);
+    margin: 0.875rem 0 0;
+  }
+  .cp-form-message[data-tone='error'] {
+    background: var(--bg-sunken);
+    color: var(--danger-text);
+    border: 1px solid var(--danger-text);
+  }
+  .cp-btn-full {
+    width: 100%;
+    min-height: 48px;
+    margin-top: 1.25rem;
+    background: var(--primary);
+    color: var(--text-on-primary);
+    border: none;
+    border-radius: var(--radius-control);
+    font-weight: 600;
+    font-size: var(--text-body);
+    cursor: pointer;
+  }
+  .cp-btn-full:hover {
+    background: var(--primary-hover);
+  }
+  .cp-btn-full:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .cp-login-back {
+    margin: 1.25rem 0 0;
+    text-align: center;
+    font-size: var(--text-caption);
+  }
+  .cp-login-back a {
+    color: var(--text-secondary);
+    text-decoration: underline;
+  }
+</style>

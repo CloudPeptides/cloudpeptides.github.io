@@ -43,6 +43,13 @@ declare namespace App {
      * by a different, documented allowance instead, so an absent nonce
      * attribute there is expected, not a bug. */
     cspNonce: string;
+    /** Resolved, server-verified admin session (src/lib/auth.ts),
+     * populated by src/middleware.ts for every /admin and /api/admin
+     * request so pages/routes don't each re-verify the cookie
+     * themselves. Null for every other route (never resolved there —
+     * no reason to pay the verification round-trip on public pages)
+     * and for /admin/login itself. */
+    session: import('./lib/auth').Session | null;
   }
 }
 
@@ -76,5 +83,14 @@ declare module 'cloudflare:workers' {
     FORM_RATE_LIMITER: {
       limit(options: { key: string }): Promise<{ success: boolean }>;
     };
+    /** Server-only, bypasses RLS entirely — read only by
+     * src/lib/auth.ts's createServiceClient(), used only inside
+     * src/pages/api/admin/users/* (user_roles/audit_log have no client
+     * write grant at all, per supabase/migrations/20260806144905_grants.sql,
+     * so no other code path is even possible). Never referenced from
+     * client-shipped code. Set via `wrangler secret put
+     * SUPABASE_SERVICE_ROLE_KEY --config wrangler.jsonc`, never written
+     * to any file. */
+    SUPABASE_SERVICE_ROLE_KEY?: string;
   };
 }

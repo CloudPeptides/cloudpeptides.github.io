@@ -40,6 +40,13 @@ interface Props {
   ogType?: 'website' | 'article' | 'product';
   noindex?: boolean;
   structuredData?: Record<string, unknown> | Record<string, unknown>[];
+  /** Skips the public Nav/Footer — used only by the /admin surface,
+   * which has its own AdminNav (src/components/admin/AdminNav.astro)
+   * and no public-site footer. Everything else here (theme bootstrap,
+   * meta/OG tags, skip-link, tokens.css, focus/reduced-motion rules)
+   * still applies — a single source of truth for the page shell rather
+   * than a second, duplicated <html> boilerplate for admin pages. */
+  hideChrome?: boolean;
 }
 
 const {
@@ -50,6 +57,7 @@ const {
   ogType = 'website',
   noindex = false,
   structuredData,
+  hideChrome = false,
 } = Astro.props;
 
 const ORG_WEBSITE_JSONLD = {
@@ -135,18 +143,22 @@ const jsonLdBlocks = [
   </head>
   <body>
     <a href="#main-content" class="cp-skip-link">Skip to content</a>
-    <Nav
-      links={[
-        { label: 'Home', href: '/' },
-        { label: 'Research', href: '/research/compounds' },
-        { label: 'Shop', href: '/shop' },
-        { label: 'Contact', href: '/contact' },
-      ]}
-    />
+    {
+      !hideChrome && (
+        <Nav
+          links={[
+            { label: 'Home', href: '/' },
+            { label: 'Research', href: '/research/compounds' },
+            { label: 'Shop', href: '/shop' },
+            { label: 'Contact', href: '/contact' },
+          ]}
+        />
+      )
+    }
     <main id="main-content">
       <slot />
     </main>
-    <Footer />
+    {!hideChrome && <Footer />}
     <script>
       import '../scripts/theme-toggle.ts';
       import '../scripts/cart-badge.ts';
