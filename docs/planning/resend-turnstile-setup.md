@@ -8,6 +8,14 @@ document is the reference for doing that, one step at a time, when you
 choose to (CLAUDE.md §9: creating external accounts and activating a
 paid service both require your explicit action, not mine).
 
+`cloudpeptides.org` was purchased 2026-08-07 and its nameservers are
+propagating to Cloudflare — DNS is **not active yet**. Resend
+specifically cannot be set up until that propagation finishes and the
+zone is live (it needs to create real DNS records); this document
+names the intended domains now so the eventual walkthrough is concrete,
+not so you act on them today. Do not create the Resend domain or
+request any DNS record from this document until you say DNS is ready.
+
 ## What gets created
 
 1. A [Resend](https://resend.com) account, a verified sending domain,
@@ -49,36 +57,52 @@ Resend requires verifying the sending domain via DNS records (SPF,
 DKIM, and a DMARC recommendation) before it will deliver mail from
 that domain. This project's CLAUDE.md §9 requires your explicit
 approval before any DNS change, so this step is **out of scope until
-you actually reach it in the walkthrough** — documented here so you
-know what's coming:
+you actually reach it in the walkthrough — and it's mechanically
+blocked until `cloudpeptides.org`'s Cloudflare zone finishes
+propagating** (Resend needs a live zone to hand DNS records to):
 
-- A domain to send from (this project's current inbox is
-  `info.order.thecloud@proton.me`, referenced as the `to` address in
-  both routes — the `from` address needs to be on a domain you
-  control and can add DNS records to; it does not have to be
-  `cloudpeptides.github.io` specifically, and does not need to be the
-  eventual production domain).
-- Resend generates the exact TXT/CNAME records once you add the
-  domain in its dashboard — I cannot predict them in advance.
+- **Intended sending domain: `updates.cloudpeptides.org`** — a
+  subdomain of the production domain, not the bare domain itself.
+  Using a subdomain dedicated to transactional mail is standard
+  practice (keeps SPF/DKIM/DMARC scoped to outbound mail, isolated
+  from any future use of the bare domain or other subdomains for
+  something else) and is a low-risk, easily-changed choice — flag now
+  if you'd prefer a different subdomain or the bare domain instead.
+- **Suggested `RESEND_FROM_ADDRESS`: `notifications@updates.
+  cloudpeptides.org`.** This project's current destination inbox
+  (`info.order.thecloud@proton.me`, the `to` address both routes
+  already send to) is unaffected — this is only the outbound `from`.
+- Resend generates the exact TXT/CNAME records once you add
+  `updates.cloudpeptides.org` as a domain in its dashboard — I cannot
+  predict them in advance.
 - You (or I, with your explicit per-record approval at that point) add
-  those records at your DNS provider.
+  those records at Cloudflare (since the zone will already be there).
 - Resend re-checks and marks the domain verified — usually minutes,
   sometimes longer depending on DNS propagation.
 
 ## Turnstile — domain association
 
 Turnstile widgets are scoped to specific hostnames. When creating the
-widget in the Cloudflare dashboard, add:
+widget in the Cloudflare dashboard, add all of:
 - `cloudpeptides-staging.jessica-holsopple3.workers.dev` (the current
-  staging Worker) so the widget renders there now.
-- The eventual production domain, added later at cutover — Turnstile
-  widgets support multiple associated hostnames on one sitekey, so
-  this can be added to the *same* widget rather than creating a new
-  one, avoiding a credential rotation at cutover.
+  staging Worker) so the widget renders there now — this one can be
+  added today, independent of DNS.
+- `cloudpeptides.org` — the production apex domain.
+- `www.cloudpeptides.org` — in case `www` ever serves content directly
+  rather than only redirecting (see the production cutover plan §6's
+  open question on which form is canonical); harmless to list even if
+  `www` ends up being redirect-only and never actually serves the
+  widget.
 
+Turnstile widgets support multiple associated hostnames on one
+sitekey, so all three can be added to the *same* widget rather than
+creating separate ones — avoiding a credential rotation at cutover.
 No DNS or domain-ownership proof is required for Turnstile beyond
-listing the hostname in its dashboard — unlike Resend, it doesn't
-need a DNS record added.
+listing the hostname in its dashboard — unlike Resend, it doesn't need
+a DNS record added, so the `cloudpeptides.org`/`www` hostnames can be
+added to the widget now even before DNS finishes propagating (Turnstile
+doesn't verify the hostname resolves, only checks it against the
+Origin header of real requests later).
 
 ## What's already built and waiting
 
@@ -99,17 +123,25 @@ need a DNS record added.
 
 ## Order of operations for the walkthrough
 
-1. Create the Resend account (you).
-2. Add and verify a sending domain in Resend (you create the DNS
-   records, with my help reading Resend's instructions — I do not
-   apply DNS changes without your explicit approval per record).
+Steps 1 and 5–7 don't depend on DNS and can happen anytime; step 2
+(and therefore 3–4, which need a verified `from` address) is blocked
+until `cloudpeptides.org`'s Cloudflare zone is active.
+
+1. Create the Resend account (you) — can happen now.
+2. **Blocked until DNS is active.** Add and verify `updates.
+   cloudpeptides.org` as a sending domain in Resend (you create the
+   DNS records at Cloudflare, with my help reading Resend's
+   instructions — I do not apply DNS changes without your explicit
+   approval per record).
 3. Generate a Resend API key (you generate it in the dashboard; you
    store it via `wrangler secret put RESEND_API_KEY`, not pasted into
    chat).
-4. Set `RESEND_FROM_ADDRESS` as a Worker secret (the verified
-   send-from address from step 2).
-5. Create a Cloudflare Turnstile widget for the staging hostname (you,
-   in the Cloudflare dashboard).
+4. Set `RESEND_FROM_ADDRESS=notifications@updates.cloudpeptides.org`
+   (or whichever address you confirm) as a Worker secret.
+5. Create a Cloudflare Turnstile widget with the staging hostname —
+   can happen now; add `cloudpeptides.org` and `www.cloudpeptides.org`
+   to the same widget whenever convenient, before or after DNS is
+   live.
 6. Store `TURNSTILE_SECRET_KEY` as a Worker secret and
    `PUBLIC_TURNSTILE_SITE_KEY` as a Worker var (both via `wrangler
    secret put` / `wrangler.jsonc` `vars`, not chat).

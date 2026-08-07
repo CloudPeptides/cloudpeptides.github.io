@@ -1,0 +1,60 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "compatibility_date": "2026-08-06",
+  "compatibility_flags": ["global_fetch_strictly_public"],
+  // PREPARED, NOT DEPLOYED. Nothing in this repo currently invokes
+  // `wrangler deploy --config wrangler.production.jsonc` — no npm
+  // script, no CI job (the deploy-production job in
+  // .github/workflows/ci.yml is itself gated behind a GitHub
+  // Environment manual-approval step, and only triggers on a push to
+  // `main`, which nothing currently does). This file existing does not
+  // attach any route or touch DNS by itself; Cloudflare only does that
+  // at actual deploy time, which hasn't happened.
+  //
+  // cloudpeptides.org was purchased 2026-08-07; its nameservers are
+  // propagating to Cloudflare. No route/custom-domain has been
+  // attached yet — see the commented-out `routes` block below, and
+  // docs/planning/production-cutover-plan.md §3/§6 for the exact
+  // remaining steps and why each requires your explicit approval
+  // (CLAUDE.md §9).
+  "name": "cloudpeptides",
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  // Production should not also be reachable at a *.workers.dev URL —
+  // that's the staging Worker's identity, not this one. One fewer
+  // indexable duplicate surface, and it keeps "which URL is real
+  // production" unambiguous.
+  "workers_dev": false,
+  // Intentionally commented out until DNS is live and you explicitly
+  // approve attaching them — uncommenting this block and deploying is
+  // the literal act of cutover (production-cutover-plan.md §6), not
+  // preparation. Both the apex and `www` are listed; §6 also flags an
+  // open decision on whether `www` serves content directly or redirects
+  // to the apex — resolve that before uncommenting the `www` line.
+  //
+  // "routes": [
+  //   { "pattern": "cloudpeptides.org/*", "custom_domain": true },
+  //   { "pattern": "www.cloudpeptides.org/*", "custom_domain": true }
+  // ],
+  "assets": {
+    "directory": "./dist/client",
+    "binding": "ASSETS",
+    // Same reasoning as staging's wrangler.jsonc — every response,
+    // static or on-demand, must pass through src/middleware.ts for the
+    // security headers/HSTS to apply uniformly.
+    "run_worker_first": true,
+  },
+  "observability": {
+    "enabled": true,
+  },
+  // Production's OWN rate-limit binding — a distinct namespace_id from
+  // staging's "1001", so the two environments' request counts never
+  // share a bucket. Cloudflare provisions it automatically on first
+  // deploy to this config, same as staging's.
+  "ratelimits": [
+    {
+      "name": "FORM_RATE_LIMITER",
+      "namespace_id": "2001",
+      "simple": { "limit": 5, "period": 60 },
+    },
+  ],
+}

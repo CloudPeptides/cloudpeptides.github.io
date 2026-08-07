@@ -15,7 +15,7 @@ import type { APIRoute } from 'astro';
 import { isIndexableHost } from '../lib/site-env';
 
 export const GET: APIRoute = ({ site, url }) => {
-  const siteBase = site?.toString().replace(/\/$/, '') ?? 'https://cloudpeptides.github.io';
+  const siteBase = site?.toString().replace(/\/$/, '') ?? 'https://cloudpeptides.org';
   const indexable = isIndexableHost(url.hostname, site);
 
   const body = indexable

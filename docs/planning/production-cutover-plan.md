@@ -1,12 +1,15 @@
 # Production cutover plan
 
 Status: **plan only — nothing in this document has been executed.**
-No production Supabase project exists, no production Worker exists, no
-DNS has changed, `main` is untouched, GitHub Pages is still live and
-unmodified. This is the reference to work from when cutover is
-actually approved (Blueprint v2 §26 Phase 12), written against the
-real, currently-inspected state of the repo, Supabase staging project,
-and Cloudflare account — not a generic template.
+`cloudpeptides.org` was purchased 2026-08-07; its nameservers are
+propagating to Cloudflare, but no DNS record has been created, no
+route/custom-domain has been attached to any Worker, no production
+Supabase project exists, no production Worker exists, `main` is
+untouched, and GitHub Pages is still live and unmodified. This is the
+reference to work from when cutover is actually approved (Blueprint v2
+§26 Phase 12), written against the real, currently-inspected state of
+the repo, Supabase staging project, and Cloudflare account — not a
+generic template.
 
 ## 0. Honest readiness check first
 
@@ -93,26 +96,32 @@ generic caution:
 
 ## 3. Production Worker
 
-- New wrangler config, not a repurposed staging one — e.g.
-  `wrangler.production.jsonc`, with `name: "cloudpeptides"` (or
-  whatever final name you choose), the eventual custom domain under
-  `routes`, and `workers_dev: false` (staging is the one and only
-  `*.workers.dev` deployment; production should not also be reachable
-  at a `*.workers.dev` URL — one fewer indexable duplicate surface).
+A prepared-but-not-deployed config already exists:
+`wrangler.production.jsonc` (created this phase, never referenced by
+any deploy command or workflow yet). Key points, matching what's
+actually in that file:
+
+- `name: "cloudpeptides"` — distinct from `cloudpeptides-staging`.
+- `routes`: `cloudpeptides.org/*` and `www.cloudpeptides.org/*`, both
+  commented out until DNS is actually live and you approve attaching
+  them (CLAUDE.md §9) — activating them is the literal act of cutover,
+  not preparation.
+- `workers_dev: false` — production should not also be reachable at a
+  `*.workers.dev` URL (staging is the one and only such deployment;
+  one fewer indexable duplicate surface).
 - Its own `FORM_RATE_LIMITER` rate-limit binding (a new
   `namespace_id`, not shared with staging).
+- `astro.config.mjs`'s `site` field is **already** `https://
+  cloudpeptides.org` (updated this phase, ahead of DNS/attachment —
+  safe, because src/lib/site-env.ts's `isIndexableHost()` gates
+  indexing/HSTS on the *live request's actual hostname* matching
+  `site`, not on `site`'s value alone; staging's real
+  `*.workers.dev` hostname never matches it, so staging stays
+  noindexed regardless). No further `site` change needed at cutover.
 - Build step must set `SITE_ENV=production` (see
-  scripts/postbuild-headers.mjs and src/middleware.ts's
-  `isIndexableHost` — indexing/HSTS both key off this being the
-  actual production hostname; `SITE_ENV=production` only affects the
-  static-route `_headers` file, the on-demand middleware path is
-  already fully automatic based on hostname and needs no flag).
-- `astro.config.mjs`'s `site` field must be updated from
-  `https://cloudpeptides.github.io` to the real chosen custom domain
-  (still undecided per Blueprint §27.1) **before** the production
-  build — this one field is what canonical URLs, the sitemap, and the
-  indexability check all key off, by design (see src/lib/site-env.ts's
-  comment) — no other code changes needed once it's set correctly.
+  scripts/postbuild-headers.mjs — this only affects the static-route
+  `_headers` file's noindex/HSTS lines; the on-demand middleware path
+  is already fully automatic based on hostname and needs no flag).
 
 ## 4. Environment variables / secrets, by name only
 
@@ -130,11 +139,17 @@ the production Worker, never in a committed file:
   Worker that has the API key).
 - `PUBLIC_TURNSTILE_SITE_KEY` — same sitekey as staging, once the
   production hostname is added to that widget's allowed hostnames.
-- GitHub Actions repo config (for a production deploy job, §5 below):
-  a separate `CLOUDFLARE_API_TOKEN` secret scoped to the production
-  Worker only (least privilege — not the same broad token used for
-  staging deploys), and `CLOUDFLARE_ACCOUNT_ID` (same Cloudflare
-  account, already configured).
+- GitHub Actions repo config, matching the `deploy-production` job
+  already prepared in `.github/workflows/ci.yml` (§5 below) by exact
+  name:
+  - `secrets.CLOUDFLARE_API_TOKEN_PRODUCTION` — a separate token,
+    scoped to the production Worker only (least privilege — not
+    `secrets.CLOUDFLARE_API_TOKEN`, which `deploy-staging` uses).
+  - `vars.CLOUDFLARE_ACCOUNT_ID` — same Cloudflare account, already
+    configured for `deploy-staging`, reused as-is.
+  - `vars.PROD_SUPABASE_URL`, `vars.PROD_SUPABASE_ANON_KEY` — the
+    production Supabase project's own anon key, distinct from
+    `vars.SUPABASE_URL`/`vars.SUPABASE_ANON_KEY` (staging's).
 - No `SUPABASE_SERVICE_ROLE_KEY` in any Worker config, staging or
   production — it's used only by local one-off scripts, per
   CLAUDE.md §8, and that stays true at cutover.
@@ -153,30 +168,44 @@ the production Worker, never in a committed file:
   GitHub Pages naturally stops receiving *new* content the moment its
   own source files stop being edited, but it isn't retired by the
   merge itself (see §7).
-- Add a second GitHub Actions job (alongside the existing
-  `deploy-staging` in `.github/workflows/ci.yml`) — `deploy-
-  production`, gated on `github.ref == 'refs/heads/main'` and requiring
-  a GitHub Environment with manual approval (Settings → Environments →
-  "production", required reviewers) so a merge alone can never
-  auto-deploy production without a second, explicit human click.
+- The second GitHub Actions job — `deploy-production` — already exists
+  in `.github/workflows/ci.yml`, gated on `github.ref ==
+  'refs/heads/main'` and an `environment: production` block. It has no
+  effect yet: the `production` GitHub Environment doesn't exist in repo
+  Settings until you create it (Settings → Environments → New
+  environment → "production" → add required reviewers), and `main`
+  isn't being pushed to. Creating that Environment with required
+  reviewers is what turns the gate on — without it, GitHub treats an
+  environment reference to a nonexistent environment as a hard stop,
+  which is the safe default in the meantime.
 
 ## 6. Custom domain and DNS transition
 
-Blocked on a decision that hasn't been made yet (Blueprint §27.1:
-"still undecided, confirmed non-blocking"). Once a domain is chosen:
+Domain decided: `cloudpeptides.org`, purchased 2026-08-07. Its
+nameservers are currently propagating to Cloudflare (meaning it's
+already been added as a Cloudflare zone — that's what generates the
+nameservers you point the registrar at). Nothing further happens on
+its own; every step below still needs your explicit action/approval
+(CLAUDE.md §9), and none of them are done yet:
 
-1. Register/confirm ownership (your action — CLAUDE.md §9).
-2. Add the domain to the Cloudflare account (as a zone, if not
-   already there) — this is how Workers custom domains and DNS both
-   get managed from one place.
-3. Add a `routes` entry (or Cloudflare's "Custom Domains" UI, which
-   manages the DNS record for you) binding the domain to the
-   production Worker.
+1. Confirm nameserver propagation is complete (Cloudflare's dashboard
+   shows the zone as "Active") — not polled or checked repeatedly by
+   me per your instruction; check it yourself when convenient.
+2. Decide the `www` behavior: either `www.cloudpeptides.org` also
+   routes to the Worker directly (both routes are already prepared in
+   `wrangler.production.jsonc`), or `www` redirects to the bare
+   domain (or vice versa) via a Cloudflare redirect rule — pick one
+   canonical form; don't serve full content at both.
+3. Attach the `routes` entries in `wrangler.production.jsonc` (they're
+   present but require your explicit go-ahead to become live) —
+   binding the domain to the production Worker. This is the actual
+   "custom domain attachment" step, still not done.
 4. Cloudflare provisions the TLS certificate automatically once the
-   zone is active — no manual cert step.
-5. **DNS itself is not touched until this exact step, and only with
-   your explicit per-change approval** — CLAUDE.md §9 requires
-   approval for every DNS change, not just the first one.
+   route/zone is active — no manual cert step.
+5. **No DNS record is created and no route is attached until this
+   exact step, and only with your explicit approval** — confirmed
+   nothing beyond nameserver-level propagation (which you already
+   initiated at the registrar, not me) has happened.
 6. Verify the domain resolves to the production Worker and serves the
    expected content *before* the redirect/Pages-retirement steps below
    — those steps assume the new domain is already live and correct.
@@ -264,7 +293,8 @@ cutover, only the `astro.config.mjs` `site` update in §3 above:
   config; use it to watch error rates/latency immediately after
   cutover.
 - Rollback path, cheapest first:
-  1. `wrangler rollback` to the previous production Worker version
+  1. `wrangler rollback --config wrangler.production.jsonc` to the
+     previous production Worker version
      (Cloudflare keeps prior deployments) — for a bad code deploy.
   2. Revert the DNS/Custom-Domain binding back to GitHub Pages if the
      Worker itself is unhealthy and (1) doesn't resolve it — this is

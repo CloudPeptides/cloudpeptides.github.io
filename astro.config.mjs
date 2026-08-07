@@ -6,15 +6,21 @@ import tailwindcss from '@tailwindcss/vite';
 
 // https://astro.build/config
 export default defineConfig({
-  // The eventual production domain (CLAUDE.md §1: the live GitHub Pages
-  // site stays the production identity until an approved cutover) —
-  // used to build absolute canonical URLs and the sitemap, even though
-  // this currently only ever deploys to the *.workers.dev staging
-  // Worker (CLAUDE.md §9: no custom domain, no production deploy
-  // without explicit approval). Canonical tags pointing at the real
-  // eventual domain rather than the staging URL is standard practice
-  // and needs no code change at cutover.
-  site: 'https://cloudpeptides.github.io',
+  // The real production domain, purchased 2026-08-07 (nameservers were
+  // propagating to Cloudflare as of that date — DNS/custom-domain
+  // attachment is separate, later, explicit-approval work; this field
+  // only affects canonical URLs/sitemap/indexability logic, all
+  // request-time and dynamic, not DNS). Used to build absolute
+  // canonical URLs and the sitemap, even though this still currently
+  // only ever deploys to the *.workers.dev staging Worker (CLAUDE.md §9:
+  // no custom domain attached, no production deploy without explicit
+  // approval). src/lib/site-env.ts's isIndexableHost() compares every
+  // live request's actual hostname against this value — the staging
+  // Worker's *.workers.dev hostname never matches it, so staging stays
+  // noindexed/Disallow: / regardless of what this field says; this is
+  // what makes it safe for canonical tags to already point here before
+  // the domain is attached to anything.
+  site: 'https://cloudpeptides.org',
   adapter: cloudflare({
     // Nothing in this project uses Astro's <Image> component or
     // optimization yet — 'passthrough' avoids the adapter auto-

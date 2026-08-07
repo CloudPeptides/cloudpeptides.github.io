@@ -10,10 +10,19 @@
  * is a single fact that can't drift out of sync with itself. The
  * *.workers.dev staging Worker's hostname will never equal that
  * configured site, so it fails safe to "not indexable" with zero
- * per-environment configuration — and at cutover, once the Worker is
- * actually bound to the real production domain, indexing turns on
- * automatically with no code change, the same way canonical URLs already
- * work.
+ * per-environment configuration.
+ *
+ * `site` is now the real, purchased production domain
+ * (cloudpeptides.org, purchased 2026-08-07) — but that domain is not
+ * yet attached to any Worker and its DNS/nameserver propagation to
+ * Cloudflare is still pending, so nothing currently live can actually
+ * be reached at that hostname. This function is exactly what keeps
+ * that safe: the staging Worker's real hostname
+ * (cloudpeptides-staging.jessica-holsopple3.workers.dev) never equals
+ * `site`, so it stays noindexed and Disallow: / regardless of `site`'s
+ * value. At cutover, once a production Worker is actually bound to
+ * cloudpeptides.org, indexing turns on automatically with no code
+ * change here, the same way canonical URLs already work.
  */
 export function isIndexableHost(
   requestHostname: string,

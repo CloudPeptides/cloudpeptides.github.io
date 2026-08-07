@@ -19,7 +19,7 @@ function urlEntry(loc: string, changefreq: string, priority: string): string {
 }
 
 export const GET: APIRoute = async ({ site }) => {
-  const base = site?.toString().replace(/\/$/, '') ?? 'https://cloudpeptides.github.io';
+  const base = site?.toString().replace(/\/$/, '') ?? 'https://cloudpeptides.org';
 
   const staticEntries = [
     urlEntry(`${base}/`, 'weekly', '1.0'),
