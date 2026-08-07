@@ -14,6 +14,8 @@
  *
  * @type {import('../schema.mjs').CompoundEnrichment}
  */
+import { policyReconciliation } from '../legacy-boilerplate.mjs';
+
 export default {
   slug: 'retatrutide',
   sources: [
@@ -105,6 +107,65 @@ export default {
       sourceKey: 'fda-glp1-solution-warning-2025',
       notes:
         'No FDA-approved retatrutide drug product exists as of this review; the compound remains in Phase 3 clinical development. The FDA has taken enforcement action (warning letters) against compounding pharmacies and online sellers distributing unapproved compounded retatrutide directly to consumers. This regulatory source (an individual warning letter, cross-corroborated against several similar concurrent FDA warning letters) could not be fully re-verified by direct page fetch during this review — its existence and metadata were confirmed via FDA site search results, not full page content extraction; flagged for follow-up verification before publication.',
+    },
+  ],
+  // Closeout pass (2026-08-07): reconciles the 9 pre-existing legacy
+  // claims that predate this pipeline's legacy-claim-reconciliation
+  // feature. Retatrutide has NO FDA-approved drug product at all
+  // (confirmed above — genuinely investigational, unlike Semaglutide),
+  // so no molecule-vs-approved-product distinction applies here.
+  legacyReconciliations: [
+    {
+      legacyClaimId: '7903941f-707c-44ca-9b5e-c19b6b4b87a9',
+      legacyStatementExcerpt: 'Retatrutide is an investigational peptide designed to activate three biological receptors associated with metabolic regulation: GLP-1, GIP, and glucag',
+      disposition: 'supported',
+      rationale: '"Investigational" is accurate here (unlike the corresponding claim for Tirzepatide, corrected elsewhere in this closeout) — retatrutide genuinely has no FDA-approved product of any kind, confirmed by the verified regulatory record.',
+      evidenceQuality: 'high',
+      interpretationStatus: 'established',
+      sources: [{ sourceKey: 'fda-glp1-solution-warning-2025', relationship: 'directly_supports' }],
+    },
+    {
+      legacyClaimId: '8bfdb732-67a9-4fbd-885d-3d285fed3c15',
+      legacyStatementExcerpt: 'Researchers are studying how simultaneous activation of these pathways may influence appetite, energy balance, glucose regulation, body composition, a',
+      disposition: 'supported',
+      rationale: 'Directly confirmed by the verified Phase 2 obesity and type 2 diabetes trials.',
+      evidenceQuality: 'moderate',
+      interpretationStatus: 'preliminary',
+      sources: [
+        { sourceKey: 'pmid-37366315', relationship: 'directly_supports' },
+        { sourceKey: 'pmid-37385280', relationship: 'directly_supports' },
+      ],
+    },
+    {
+      legacyClaimId: 'a2693c28-a7c6-4102-b5a0-a9048b01dd83',
+      legacyStatementExcerpt: 'Unlike single-receptor compounds, Retatrutide is designed to activate three complementary signaling pathways. Researchers investigate how these pathwa',
+      disposition: 'supported',
+      rationale: 'Directly confirmed mechanism (triple GIP/GLP-1/glucagon receptor agonism).',
+      evidenceQuality: 'moderate',
+      interpretationStatus: 'preliminary',
+      sources: [{ sourceKey: 'pmid-37366315', relationship: 'directly_supports' }],
+    },
+    {
+      legacyClaimId: '1df45f63-cff4-4d87-b90f-9b3fea64ff73',
+      legacyStatementExcerpt: 'Q: Is Retatrutide approved for clinical use? A: Retatrutide remains an investigational compound and continues to be studied in clinical research',
+      disposition: 'supported',
+      rationale: 'Precisely accurate and directly confirmed by the verified FDA regulatory finding — retatrutide has no approved product of any kind.',
+      evidenceQuality: 'high',
+      interpretationStatus: 'established',
+      sources: [{ sourceKey: 'fda-glp1-solution-warning-2025', relationship: 'directly_supports' }],
+    },
+    policyReconciliation('16d7c6ce-2752-4014-9a59-0ed26f967a4b', 'Q: Does Cloud Peptides provide dosage recommendations? A: No.'),
+    policyReconciliation('6a8ffa03-574d-488f-86fd-05539a507eac', 'Q: Is this page educational? A: Yes.'),
+    policyReconciliation('e121956b-b3c0-484a-b91d-139a2c9fbcb2', 'This page is provided for educational purposes only.'),
+    policyReconciliation('75cdd221-ca53-42e2-8a1e-dd658b8f9b71', 'Cloud Peptides does not provide medical advice, treatment recommendations, or dosage information.'),
+    {
+      legacyClaimId: '165b449b-88f8-40fe-90ef-164fd5d4cc81',
+      legacyStatementExcerpt: 'All products are intended strictly for laboratory research purposes only and are not for human consumption',
+      disposition: 'supported',
+      rationale: 'Retatrutide has no FDA-approved drug product of any kind (confirmed above) — no molecule-vs-product nuance applies; the disclaimer is simply and fully accurate.',
+      evidenceQuality: 'high',
+      interpretationStatus: 'established',
+      sources: [{ sourceKey: 'fda-glp1-solution-warning-2025', relationship: 'directly_supports' }],
     },
   ],
 };

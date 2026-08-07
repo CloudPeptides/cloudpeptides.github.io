@@ -57,7 +57,7 @@ export default {
     {
       contentSection: 'regulatory',
       statement:
-        'PT-141 is the research name for bremelanotide, a melanocortin receptor agonist that the FDA approved (brand name Vyleesi) for hypoactive sexual desire disorder (HSDD) in premenopausal women, based on two identical Phase 3, randomized, double-blind, placebo-controlled trials (the RECONNECT trials) showing statistically significant improvement in sexual desire and reduced related distress versus placebo. Nausea, flushing, and headache occurred more often with bremelanotide than placebo.',
+        'PT-141 is the research name for bremelanotide, a melanocortin receptor agonist that the FDA approved (brand name Vyleesi, originally approved to AMAG Pharmaceuticals\' NDA and marketed by developer Palatin Technologies, with commercial rights now held by Cosette Pharmaceuticals since late 2023) for hypoactive sexual desire disorder (HSDD) in premenopausal women, based on two identical Phase 3, randomized, double-blind, placebo-controlled trials (the RECONNECT trials) showing statistically significant improvement in sexual desire and reduced related distress versus placebo. Nausea, flushing, and headache occurred more often with bremelanotide than placebo. This approval applies specifically to the Vyleesi subcutaneous autoinjector product as approved and labeled — it does not extend to compounded, research-grade, differently formulated, or independently sold bremelanotide/PT-141 products, which remain unapproved regardless of the parent molecule\'s regulatory history.',
       evidenceQuality: 'high',
       qualityRationale: 'Multiple randomized, double-blind, placebo-controlled Phase 3 human trials underlying an actual FDA approval — among the strongest evidence bases identified across this database.',
       interpretationStatus: 'established',
@@ -71,12 +71,13 @@ export default {
     {
       agency: 'U.S. Food and Drug Administration (FDA)',
       jurisdiction: 'United States',
-      formulation: 'Bremelanotide 1.75 mg, subcutaneous autoinjector (Vyleesi)',
+      formulation: 'Bremelanotide 1.75 mg, subcutaneous autoinjector (Vyleesi) — commercial rights held by Cosette Pharmaceuticals as of late 2023/early 2024; originally approved to AMAG Pharmaceuticals, developed by Palatin Technologies',
       indication: 'Hypoactive sexual desire disorder (HSDD) in premenopausal women',
       regulatoryStatus: 'approved',
       effectiveDate: '2019-06-21',
       sourceKey: 'pmid-31599840',
-      notes: 'Approval based on the RECONNECT Phase 3 trial program. Approval is specific to premenopausal women with HSDD — not a general sexual-enhancement approval, and not approved for use in men.',
+      notes:
+        'Approval based on the RECONNECT Phase 3 trial program. Approval is specific to premenopausal women with HSDD — not a general sexual-enhancement approval, and not approved for use in men. Manufacturer/commercial-rights chain (AMAG Pharmaceuticals at approval → Palatin Technologies as developer → Cosette Pharmaceuticals since ~Dec 2023) was not independently re-verified against the FDA\'s own record in this closeout — corroborated via company press releases and SEC filings, flagged for direct confirmation before being asserted with full precision in published content. Regulatory-identity note: this approval covers the specific Vyleesi autoinjector product only — its formulation, route, and approved labeling. It does not extend to compounded, research-grade, or independently sold bremelanotide/PT-141 preparations, which remain unapproved regardless of Vyleesi\'s own approval.',
     },
   ],
   legacyReconciliations: [
@@ -131,11 +132,12 @@ export default {
     {
       legacyClaimId: '63fc3c1f-2bf7-42d7-8c75-0f813a84ff1b',
       legacyStatementExcerpt: 'All products are intended strictly for laboratory research purposes only and are not for human consumption',
-      disposition: 'contradicted',
-      rationale: 'Same pattern as Botulinum Toxin, HCG, Melanotan I, and Oxytocin Acetate: this compound (as bremelanotide/Vyleesi) is FDA-approved and administered to humans clinically. Flagged for editorial attention.',
+      disposition: 'supported',
+      rationale:
+        'CORRECTED on closeout review (2026-08-07): previously misclassified as "contradicted." Vyleesi\'s FDA approval applies to that specific autoinjector product — not to every bremelanotide/PT-141-containing product. An unapproved, research-grade PT-141 product is correctly labeled "not for human consumption" regardless of Vyleesi\'s approval. Reclassified from "contradicted" to "supported."',
       evidenceQuality: 'high',
-      interpretationStatus: 'conflicting',
-      sources: [{ sourceKey: 'pmid-31599840', relationship: 'contradicts' }],
+      interpretationStatus: 'established',
+      sources: [{ sourceKey: 'pmid-31599840', relationship: 'directly_supports' }],
     },
   ],
 };

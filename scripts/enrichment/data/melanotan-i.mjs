@@ -30,7 +30,7 @@ export default {
     {
       contentSection: 'regulatory',
       statement:
-        'Melanotan I is the research name for afamelanotide, an alpha-MSH analog selective for the melanocortin-1 receptor (MC1R). The FDA approved afamelanotide (brand name Scenesse, a 16 mg subcutaneous bioresorbable implant) on 2019-10-08 to increase pain-free light exposure in adults with a history of phototoxic reactions from erythropoietic protoporphyria (EPP) — a genuine approved drug, previously also approved by the EMA (2014). There is NO FDA-approved cosmetic tanning indication for afamelanotide or any melanotan compound.',
+        'Melanotan I is the research name for afamelanotide, an alpha-MSH analog selective for the melanocortin-1 receptor (MC1R). The FDA approved afamelanotide (brand name Scenesse, manufactured by Clinuvel Pharmaceuticals under NDA 210797, a 16 mg subcutaneous bioresorbable implant) on 2019-10-08 to increase pain-free light exposure in adults with a history of phototoxic reactions from erythropoietic protoporphyria (EPP) — a genuine approved drug, previously also approved by the EMA (2014). There is NO FDA-approved cosmetic tanning indication for afamelanotide or any melanotan compound. This approval applies specifically to the Scenesse implant product manufactured by Clinuvel — it does not extend to compounded, research-grade, differently formulated (e.g. injectable rather than implant), or independently sold melanotan/afamelanotide products, which remain unapproved regardless of the parent molecule\'s regulatory history.',
       interpretationStatus: 'established',
       sources: [{ sourceKey: 'fda-scenesse-approval', relationship: 'directly_supports' }],
     },
@@ -39,12 +39,13 @@ export default {
     {
       agency: 'U.S. Food and Drug Administration (FDA)',
       jurisdiction: 'United States',
-      formulation: 'Afamelanotide (Scenesse) — 16 mg subcutaneous bioresorbable implant',
+      formulation: 'Afamelanotide (Scenesse), manufactured by Clinuvel Pharmaceuticals — 16 mg subcutaneous bioresorbable implant',
       indication: 'Increase pain-free light exposure in adults with a history of phototoxic reactions from erythropoietic protoporphyria (EPP)',
       regulatoryStatus: 'approved',
       effectiveDate: '2019-10-08',
       sourceKey: 'fda-scenesse-approval',
-      notes: 'Approved specifically for EPP phototoxicity prevention, administered by a trained clinician. NOT approved for cosmetic tanning — that use, if pursued via unregulated products, is off-label/unapproved regardless of this approval.',
+      notes:
+        'Approved under NDA 210797, manufacturer Clinuvel Pharmaceuticals, specifically for EPP phototoxicity prevention, administered by a trained clinician. NOT approved for cosmetic tanning — that use, if pursued via unregulated products, is off-label/unapproved regardless of this approval. Regulatory-identity note: this approval covers the specific Scenesse implant product only — its manufacturer, bioresorbable-implant formulation, and approved labeling. It does not extend to compounded, injectable, research-grade, or independently sold melanotan-I/afamelanotide preparations, which remain unapproved regardless of Scenesse\'s own approval.',
     },
   ],
   legacyReconciliations: [
@@ -100,11 +101,12 @@ export default {
     {
       legacyClaimId: '704ce644-b4ed-4d29-943b-bf326540eb68',
       legacyStatementExcerpt: 'All products are intended strictly for laboratory research purposes only and are not for human consumption',
-      disposition: 'contradicted',
-      rationale: 'Same pattern as Botulinum Toxin and HCG: this compound (as afamelanotide/Scenesse) is FDA-approved and administered to humans clinically. Flagged for editorial attention.',
+      disposition: 'supported',
+      rationale:
+        'CORRECTED on closeout review (2026-08-07): previously misclassified as "contradicted." Scenesse\'s FDA approval (Clinuvel Pharmaceuticals, NDA 210797, bioresorbable implant) applies to that specific product — not to every product containing the afamelanotide/melanotan-I molecule. This is especially clear here since the approved product is a specific implant formulation, while research-grade "Melanotan I" is typically sold as an injectable powder — a materially different, unapproved product. Reclassified from "contradicted" to "supported."',
       evidenceQuality: 'high',
-      interpretationStatus: 'conflicting',
-      sources: [{ sourceKey: 'fda-scenesse-approval', relationship: 'contradicts' }],
+      interpretationStatus: 'established',
+      sources: [{ sourceKey: 'fda-scenesse-approval', relationship: 'directly_supports' }],
     },
   ],
 };

@@ -36,7 +36,7 @@ export default {
     {
       contentSection: 'regulatory',
       statement:
-        'HCG (e.g. Novarel, and other brands) is FDA-approved for multiple indications, including: induction of ovulation/pregnancy in anovulatory, infertile women following appropriate follicular development with gonadotropins; selected cases of hypogonadotropic hypogonadism in males; and prepubertal cryptorchidism not due to anatomical obstruction.',
+        'HCG (e.g. Novarel, manufactured by Ferring Pharmaceuticals Inc. under NDA 017016, and other brands) is FDA-approved for multiple indications, including: induction of ovulation/pregnancy in anovulatory, infertile women following appropriate follicular development with gonadotropins; selected cases of hypogonadotropic hypogonadism in males; and prepubertal cryptorchidism not due to anatomical obstruction. This approval applies specifically to the Novarel product manufactured by Ferring under NDA 017016 (and separately, other named FDA-approved hCG brands) — it does not extend to compounded, research-grade, differently formulated, or independently sold hCG products, which remain unapproved regardless of the parent molecule\'s regulatory history.',
       interpretationStatus: 'established',
       sources: [{ sourceKey: 'fda-novarel-label', relationship: 'directly_supports' }],
     },
@@ -45,11 +45,13 @@ export default {
     {
       agency: 'U.S. Food and Drug Administration (FDA)',
       jurisdiction: 'United States',
-      formulation: 'Chorionic Gonadotropin for Injection, USP (e.g. Novarel and other brands)',
+      formulation: 'Chorionic Gonadotropin for Injection, USP (Novarel, manufactured by Ferring Pharmaceuticals Inc., NDA 017016; and other brands)',
       indication: 'Induction of ovulation and pregnancy in select infertile women; selected male hypogonadotropic hypogonadism; prepubertal cryptorchidism not due to anatomical obstruction',
       regulatoryStatus: 'approved',
+      effectiveDate: '1974-01-15',
       sourceKey: 'fda-novarel-label',
-      notes: 'This record covers the Novarel brand/NDA specifically, verified via its FDA label. Other hCG brands (e.g. Pregnyl) hold separate approvals not independently re-verified in this review.',
+      notes:
+        'This record covers the Novarel brand/NDA (017016, Ferring Pharmaceuticals Inc., originally approved 1974-01-15) specifically, verified via its FDA label. Other hCG brands (e.g. Pregnyl) hold separate approvals not independently re-verified in this review. Regulatory-identity note: this approval covers the specific Novarel drug product only — its manufacturer, formulation, and approved labeling. It does not extend to compounded, generic-looking, research-grade, differently formulated, or independently sold hCG preparations; those remain unapproved regardless of Novarel\'s own approval.',
     },
   ],
   legacyReconciliations: [
@@ -105,12 +107,12 @@ export default {
     {
       legacyClaimId: 'ae14a31a-d5b2-41d6-b82c-42b85496b7a4',
       legacyStatementExcerpt: 'All products are intended strictly for laboratory research purposes only and are not for human consumption',
-      disposition: 'contradicted',
+      disposition: 'supported',
       rationale:
-        'Same finding as Botulinum Toxin (batch 1): this boilerplate disclaimer is factually at odds with reality for HCG, an FDA-approved prescription drug administered to humans for decades. Flagged for editorial attention rather than silently reused.',
+        'CORRECTED on closeout review (2026-08-07): previously misclassified as "contradicted." FDA approval of Novarel (Ferring Pharmaceuticals, NDA 017016) applies to that specific manufactured drug product — not to every product containing hCG as an active ingredient. An unapproved, research-grade hCG product is correctly labeled "not for human consumption" regardless of Novarel\'s approval, because it is a different, non-reviewed product. Reclassified from "contradicted" to "supported."',
       evidenceQuality: 'high',
-      interpretationStatus: 'conflicting',
-      sources: [{ sourceKey: 'fda-novarel-label', relationship: 'contradicts' }],
+      interpretationStatus: 'established',
+      sources: [{ sourceKey: 'fda-novarel-label', relationship: 'directly_supports' }],
     },
   ],
 };

@@ -59,7 +59,7 @@ export default {
     {
       contentSection: 'summary',
       statement:
-        'In a randomized, placebo-controlled human trial of HIV-infected patients with abdominal fat accumulation (lipodystrophy), tesamorelin significantly reduced visceral adipose tissue and liver fat over 26 weeks, with the visceral-fat reduction maintained through a 52-week extension — the type of pivotal evidence underlying its FDA approval as Egrifta.',
+        'In a randomized, placebo-controlled human trial of HIV-infected patients with abdominal fat accumulation (lipodystrophy), tesamorelin significantly reduced visceral adipose tissue and liver fat over 26 weeks, with the visceral-fat reduction maintained through a 52-week extension — the type of pivotal evidence underlying its FDA approval as Egrifta (manufactured by Theratechnologies Inc., NDA 22-505). That approval applies specifically to the Egrifta drug product — it does not extend to compounded, research-grade, or independently sold tesamorelin products, which remain unapproved regardless of the parent molecule\'s regulatory history.',
       evidenceQuality: 'high',
       qualityRationale: 'Randomized, placebo-controlled trial in a top-tier journal (JAMA), part of the approved drug\'s pivotal evidence base.',
       interpretationStatus: 'established',
@@ -70,12 +70,13 @@ export default {
     {
       agency: 'U.S. Food and Drug Administration (FDA)',
       jurisdiction: 'United States',
-      formulation: 'Tesamorelin for injection (Egrifta)',
+      formulation: 'Tesamorelin for injection (Egrifta), manufactured by Theratechnologies Inc.',
       indication: 'Reduction of excess abdominal fat in HIV-infected patients with lipodystrophy',
       regulatoryStatus: 'approved',
       effectiveDate: '2010-11-10',
       sourceKey: 'fda-egrifta-approval',
-      notes: 'Approved under NDA 22-505 as a New Molecular Entity. Indication is specific to HIV-associated lipodystrophy — not a general approval for visceral fat reduction or body composition in other populations.',
+      notes:
+        'Approved under NDA 22-505 as a New Molecular Entity, manufacturer Theratechnologies Inc. Indication is specific to HIV-associated lipodystrophy — not a general approval for visceral fat reduction or body composition in other populations. Regulatory-identity note: this approval covers the specific Egrifta drug product only — its manufacturer, formulation, and approved labeling. It does not extend to compounded, generic-looking, research-grade, or independently sold tesamorelin preparations, which remain unapproved regardless of Egrifta\'s own approval.',
     },
   ],
   legacyReconciliations: [
@@ -122,11 +123,12 @@ export default {
     {
       legacyClaimId: '2f60235e-f765-41fe-8c9f-f947eaaa725b',
       legacyStatementExcerpt: 'All products are intended strictly for laboratory research purposes only and are not for human consumption',
-      disposition: 'contradicted',
-      rationale: 'Same pattern as other approved compounds in this database: Tesamorelin (as Egrifta) is FDA-approved and administered to humans clinically. Flagged for editorial attention.',
+      disposition: 'supported',
+      rationale:
+        'CORRECTED on closeout review (2026-08-07): previously misclassified as "contradicted." Egrifta\'s FDA approval (Theratechnologies Inc., NDA 22-505) applies to that specific drug product — not to every tesamorelin-containing research product. An unapproved, research-grade tesamorelin product is correctly labeled "not for human consumption" regardless of Egrifta\'s approval. Reclassified from "contradicted" to "supported."',
       evidenceQuality: 'high',
-      interpretationStatus: 'conflicting',
-      sources: [{ sourceKey: 'fda-egrifta-approval', relationship: 'contradicts' }],
+      interpretationStatus: 'established',
+      sources: [{ sourceKey: 'fda-egrifta-approval', relationship: 'directly_supports' }],
     },
   ],
 };

@@ -14,6 +14,8 @@
  *
  * @type {import('../schema.mjs').CompoundEnrichment}
  */
+import { policyReconciliation } from '../legacy-boilerplate.mjs';
+
 export default {
   slug: 'bpc-157',
   sources: [
@@ -277,6 +279,87 @@ export default {
       sourceKey: 'fda-pcac-2026',
       notes:
         'BPC-157 (free base and acetate) was discussed by FDA\'s Pharmacy Compounding Advisory Committee (PCAC) on July 23-24, 2026 as a nominee for the 503A Bulks List (docket FDA-2026-N-2979). PCAC recommendations are advisory only; no final FDA determination was identified as of this review. Not an approval, and not evidence of safety or effectiveness for any use.',
+    },
+  ],
+  // Closeout pass (2026-08-07): reconciles the 9 pre-existing legacy
+  // claims that predate this pipeline's legacy-claim-reconciliation
+  // feature (built after the 5-compound pilot ran). BPC-157 has NO
+  // FDA-approved drug product of any kind (confirmed above: WADA S0
+  // banned, FDA PCAC 'no_determination' only) — so unlike the molecule-
+  // vs-approved-product correction needed for Semaglutide and several
+  // batch compounds, no such nuance applies here; the "research
+  // purposes only" disclaimer is simply and fully accurate as written.
+  legacyReconciliations: [
+    {
+      legacyClaimId: '5cfe77a0-16f8-4a46-9c47-84ff716a3109',
+      legacyStatementExcerpt: 'BPC-157 is a synthetic peptide that has generated significant scientific interest for its potential role in tissue repair',
+      disposition: 'supported',
+      rationale: 'Accurate, generic framing consistent with the verified animal/in-vitro tendon, ligament, and muscle-healing literature.',
+      evidenceQuality: 'moderate',
+      interpretationStatus: 'preliminary',
+      sources: [
+        { sourceKey: 'pmid-20225319', relationship: 'directly_supports' },
+        { sourceKey: 'pmid-16609979', relationship: 'directly_supports' },
+      ],
+    },
+    {
+      legacyClaimId: '82438c93-8922-4c88-8424-520e514860b5',
+      legacyStatementExcerpt: 'Published studies have explored BPC-157 in relation to connective tissue, vascular biology, wound healing, tendon physiology, ligament repair, muscle',
+      disposition: 'supported',
+      rationale: 'Connective tissue, wound healing, tendon, ligament, and muscle findings are all directly confirmed by the verified animal studies.',
+      evidenceQuality: 'moderate',
+      interpretationStatus: 'preliminary',
+      sources: [
+        { sourceKey: 'pmid-20225319', relationship: 'directly_supports' },
+        { sourceKey: 'pmid-16583442', relationship: 'directly_supports' },
+      ],
+    },
+    {
+      legacyClaimId: '689eb7a7-0a23-4b6d-89c5-66d90ec97377',
+      legacyStatementExcerpt: 'Although research is ongoing, scientists investigate BPC-157 for its influence on angiogenesis, cellular signaling, collagen organization, nitric oxid',
+      disposition: 'unsupported',
+      rationale:
+        'BPC-157\'s angiogenesis and nitric-oxide-pathway mechanisms are discussed in the wider published literature (this is a genuinely real, commonly cited research area for this compound), but no source specifically verifying an angiogenesis or nitric-oxide finding for BPC-157 was included among the sources independently verified in this review — the verified sources cover tendon/ligament/muscle outgrowth and healing, not angiogenesis or NO signaling directly. Not established as false; flagged as currently unverified in this specific review rather than cited to a source that wasn\'t actually checked.',
+      evidenceQuality: 'not_assessed',
+      interpretationStatus: 'insufficient',
+      sources: [],
+    },
+    {
+      legacyClaimId: '4a4ab2ad-0731-450f-b84b-59e651215ffc',
+      legacyStatementExcerpt: 'Q: What is BPC-157 primarily researched for? A: Most published research investigates tissue repair, connective tissue biology, angiogenesis, and gastr',
+      disposition: 'revised',
+      rationale:
+        'Tissue repair and connective tissue biology are directly confirmed by the verified tendon/ligament/muscle literature. "Angiogenesis" and the gastrointestinal-protection framing (BPC-157 was originally isolated as a "gastric pentadecapeptide" and is widely discussed for GI protection in the broader literature) were not independently verified against a specific source in this review — represented as an open sub-claim rather than confirmed.',
+      evidenceQuality: 'moderate',
+      interpretationStatus: 'preliminary',
+      sources: [
+        { sourceKey: 'pmid-20225319', relationship: 'directly_supports' },
+        { sourceKey: 'pmid-16609979', relationship: 'directly_supports' },
+        { sourceKey: 'pmid-16583442', relationship: 'directly_supports' },
+      ],
+    },
+    {
+      legacyClaimId: 'd5e60d76-65ba-44bf-b586-93ec89086d11',
+      legacyStatementExcerpt: 'Q: Is BPC-157 approved for medical use? A: This page summarizes scientific literature only. Cloud Peptides does not make claims regarding medical use',
+      disposition: 'supported',
+      rationale:
+        'Accurate and appropriately hedged. Directly consistent with the verified regulatory findings: BPC-157 has no FDA approval, no determination from the PCAC 503A review (advisory only, no final action), and is WADA-banned — there is no approved medical use of any kind to conflict with this claim.',
+      evidenceQuality: 'high',
+      interpretationStatus: 'established',
+      sources: [{ sourceKey: 'fda-pcac-2026', relationship: 'directly_supports' }],
+    },
+    policyReconciliation('6e31469a-272f-42c6-a8a9-e537de764e8b', 'Q: Does Cloud Peptides provide dosage information? A: No.'),
+    policyReconciliation('a3fdffc0-31c9-4dea-b6e4-25e39a85a563', 'This page summarizes publicly available scientific literature for educational purposes only.'),
+    policyReconciliation('0faa79dc-d16a-4fd5-b3cc-97f2b737bdba', 'Cloud Peptides does not provide medical advice, treatment recommendations, or dosage information.'),
+    {
+      legacyClaimId: '21e98fea-5a7c-4f3c-87cf-9030ab6ffd19',
+      legacyStatementExcerpt: 'All products are intended strictly for laboratory research purposes only and are not for human consumption',
+      disposition: 'supported',
+      rationale:
+        'BPC-157 has no FDA-approved drug product of any kind (confirmed by the verified WADA S0 and FDA PCAC "no_determination" regulatory findings above) — unlike several other compounds in this database where an approved drug product containing the same active ingredient exists, there is no molecule-vs-product distinction to draw here. The disclaimer is simply and fully accurate.',
+      evidenceQuality: 'high',
+      interpretationStatus: 'established',
+      sources: [{ sourceKey: 'fda-pcac-2026', relationship: 'directly_supports' }],
     },
   ],
 };

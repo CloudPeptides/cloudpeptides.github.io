@@ -42,6 +42,20 @@
  *    links it to newly-verified sources, without ever touching that
  *    claim's original `statement` text. Also idempotent — re-running
  *    checks for an existing claim_sources link before inserting.
+ *  - Reconciliation-only closeout passes: if a compound was already
+ *    fully enriched in an earlier run (its already_enriched marker is
+ *    set) but its data file now declares NEW or REVISED
+ *    legacyReconciliations, the pipeline re-enters that compound in
+ *    "reconciliation_only" mode — sources are (re-)resolved (safe,
+ *    dedup'd, zero new inserts for already-existing ones), but the
+ *    claims/regulatoryRecords arrays are NOT re-inserted (they already
+ *    exist from the first pass), and only the legacyReconciliations are
+ *    processed. This is how a compound's legacy-claim reconciliation can
+ *    be revisited in a later closeout without duplicating its sources,
+ *    claims, or regulatory records. The compound's provenance metadata
+ *    preserves the original enrichment pass's counts and appends each
+ *    reconciliation pass under `reconciliation_passes`, so nothing about
+ *    the original run is lost or overwritten.
  */
 import { createClient } from '@supabase/supabase-js';
 
@@ -268,7 +282,15 @@ async function enrichCompound(slug) {
     log.errors.push(`compound status is "${compound.status}", not "draft" — refusing to touch a non-draft compound`);
     return log;
   }
-  if (compound.raw_import_metadata?.enrichment_pilot?.run_tag === ENRICHMENT_RUN_TAG) {
+  // A compound already fully enriched (sources/claims/regulatory records
+  // inserted in an earlier run) is only re-entered if its data file now
+  // declares legacyReconciliations — this supports closeout passes that
+  // reconcile a compound's remaining legacy claims (or revise an existing
+  // reconciliation's disposition) without re-inserting anything that's
+  // already there. A compound with nothing new to reconcile is still
+  // skipped entirely, exactly as before.
+  const alreadyEnriched = compound.raw_import_metadata?.enrichment_pilot?.run_tag === ENRICHMENT_RUN_TAG;
+  if (alreadyEnriched && !(data.legacyReconciliations && data.legacyReconciliations.length > 0)) {
     log.status = 'already_enriched';
     return log;
   }
@@ -277,61 +299,67 @@ async function enrichCompound(slug) {
   const sourceKeyToId = new Map();
 
   try {
+    // Sources are always processed (even in reconciliation-only mode) —
+    // legacyReconciliations reference sourceKeys, and upsertSource's
+    // dedup-by-identifier logic means re-declaring an already-existing
+    // source here is a safe, zero-new-rows no-op (reused, not inserted).
     for (const entry of data.sources) {
       const { id } = await upsertSource(entry, log);
       sourceKeyToId.set(entry.key, id);
     }
 
-    for (let i = 0; i < data.claims.length; i++) {
-      const claim = data.claims[i];
-      const { data: claimRow, error: claimError } = await supabase
-        .from('claims')
-        .insert({
-          compound_id: compoundId,
-          content_section: claim.contentSection,
-          statement: claim.statement,
-          evidence_quality: claim.evidenceQuality ?? null,
-          quality_rationale: claim.qualityRationale ?? null,
-          interpretation_status: claim.interpretationStatus,
-          display_order: i,
-          status: 'draft',
-        })
-        .select('id')
-        .single();
-      if (claimError) throw new Error(`claim insert failed ("${claim.statement.slice(0, 60)}..."): ${claimError.message}`);
-      log.claimsInserted++;
+    if (!alreadyEnriched) {
+      for (let i = 0; i < data.claims.length; i++) {
+        const claim = data.claims[i];
+        const { data: claimRow, error: claimError } = await supabase
+          .from('claims')
+          .insert({
+            compound_id: compoundId,
+            content_section: claim.contentSection,
+            statement: claim.statement,
+            evidence_quality: claim.evidenceQuality ?? null,
+            quality_rationale: claim.qualityRationale ?? null,
+            interpretation_status: claim.interpretationStatus,
+            display_order: i,
+            status: 'draft',
+          })
+          .select('id')
+          .single();
+        if (claimError) throw new Error(`claim insert failed ("${claim.statement.slice(0, 60)}..."): ${claimError.message}`);
+        log.claimsInserted++;
 
-      for (const link of claim.sources) {
-        const sourceId = sourceKeyToId.get(link.sourceKey);
-        if (!sourceId) throw new Error(`claim references unknown sourceKey "${link.sourceKey}"`);
-        const { error: linkError } = await supabase.from('claim_sources').insert({
-          claim_id: claimRow.id,
-          source_id: sourceId,
-          relationship: link.relationship,
-          locator: link.locator ?? null,
-        });
-        if (linkError) throw new Error(`claim_sources insert failed: ${linkError.message}`);
-        log.claimSourcesInserted++;
+        for (const link of claim.sources) {
+          const sourceId = sourceKeyToId.get(link.sourceKey);
+          if (!sourceId) throw new Error(`claim references unknown sourceKey "${link.sourceKey}"`);
+          const { error: linkError } = await supabase.from('claim_sources').insert({
+            claim_id: claimRow.id,
+            source_id: sourceId,
+            relationship: link.relationship,
+            locator: link.locator ?? null,
+          });
+          if (linkError) throw new Error(`claim_sources insert failed: ${linkError.message}`);
+          log.claimSourcesInserted++;
+        }
       }
-    }
 
-    for (const record of data.regulatoryRecords) {
-      const sourceId = sourceKeyToId.get(record.sourceKey);
-      if (!sourceId) throw new Error(`regulatory record references unknown sourceKey "${record.sourceKey}"`);
-      const { error: regError } = await supabase.from('regulatory_records').insert({
-        compound_id: compoundId,
-        agency: record.agency,
-        jurisdiction: record.jurisdiction,
-        formulation: record.formulation ?? null,
-        indication: record.indication ?? null,
-        regulatory_status: record.regulatoryStatus,
-        effective_date: record.effectiveDate ?? null,
-        status_change_date: record.statusChangeDate ?? null,
-        source_id: sourceId,
-        notes: record.notes ?? null,
-      });
-      if (regError) throw new Error(`regulatory_records insert failed: ${regError.message}`);
-      log.regulatoryRecordsInserted++;
+      for (const record of data.regulatoryRecords) {
+        const sourceId = sourceKeyToId.get(record.sourceKey);
+        if (!sourceId) throw new Error(`regulatory record references unknown sourceKey "${record.sourceKey}"`);
+        const { error: regError } = await supabase.from('regulatory_records').insert({
+          compound_id: compoundId,
+          agency: record.agency,
+          jurisdiction: record.jurisdiction,
+          formulation: record.formulation ?? null,
+          indication: record.indication ?? null,
+          regulatory_status: record.regulatoryStatus,
+          effective_date: record.effectiveDate ?? null,
+          status_change_date: record.statusChangeDate ?? null,
+          source_id: sourceId,
+          notes: record.notes ?? null,
+        });
+        if (regError) throw new Error(`regulatory_records insert failed: ${regError.message}`);
+        log.regulatoryRecordsInserted++;
+      }
     }
 
     for (const reconciliation of data.legacyReconciliations || []) {
@@ -340,19 +368,31 @@ async function enrichCompound(slug) {
 
     // Touch the compound row (status re-asserted as 'draft' explicitly)
     // purely to fire compounds_record_revision and capture a real
-    // content_revisions snapshot, per the provenance requirement.
+    // content_revisions snapshot, per the provenance requirement. In
+    // reconciliation-only mode this preserves the original enrichment
+    // pass's recorded counts (sources/claims/regulatory records already
+    // inserted then) rather than overwriting them with this pass's
+    // (partial or zero) numbers, and appends this pass's own record
+    // under reconciliation_passes so both are visible in history.
+    const priorMarker = compound.raw_import_metadata?.enrichment_pilot;
+    const thisPassRecord = {
+      run_at: new Date().toISOString(),
+      mode: alreadyEnriched ? 'reconciliation_only' : 'full_enrichment',
+      sources_added: log.sourcesInserted,
+      sources_reused: log.sourcesReused,
+      claims_added: log.claimsInserted,
+      regulatory_records_added: log.regulatoryRecordsInserted,
+      legacy_claims_reconciled: log.legacyClaimsReconciled,
+      legacy_dispositions: log.legacyDispositions,
+    };
     const updatedMetadata = {
       ...(compound.raw_import_metadata || {}),
-      enrichment_pilot: {
-        run_tag: ENRICHMENT_RUN_TAG,
-        run_at: new Date().toISOString(),
-        sources_added: log.sourcesInserted,
-        sources_reused: log.sourcesReused,
-        claims_added: log.claimsInserted,
-        regulatory_records_added: log.regulatoryRecordsInserted,
-        legacy_claims_reconciled: log.legacyClaimsReconciled,
-        legacy_dispositions: log.legacyDispositions,
-      },
+      enrichment_pilot: alreadyEnriched
+        ? {
+            ...priorMarker,
+            reconciliation_passes: [...(priorMarker?.reconciliation_passes || []), thisPassRecord],
+          }
+        : { run_tag: ENRICHMENT_RUN_TAG, ...thisPassRecord },
     };
     const { error: touchError } = await supabase
       .from('compounds')
@@ -360,7 +400,7 @@ async function enrichCompound(slug) {
       .eq('id', compoundId);
     if (touchError) throw new Error(`compound provenance touch failed: ${touchError.message}`);
 
-    log.status = 'success';
+    log.status = alreadyEnriched ? 'reconciliation_only' : 'success';
   } catch (err) {
     log.status = 'error';
     log.errors.push(err.message);

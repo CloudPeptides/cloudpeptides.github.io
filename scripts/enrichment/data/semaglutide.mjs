@@ -10,6 +10,8 @@
  *
  * @type {import('../schema.mjs').CompoundEnrichment}
  */
+import { policyReconciliation } from '../legacy-boilerplate.mjs';
+
 export default {
   slug: 'semaglutide',
   sources: [
@@ -166,7 +168,76 @@ export default {
       regulatoryStatus: 'approved',
       effectiveDate: '2021-06-04',
       sourceKey: 'fda-wegovy-label-2021',
-      notes: 'Original approval under NDA 215256. Subsequent label updates have added a cardiovascular-risk-reduction indication (based on the SELECT trial) and a MASH (liver disease) indication — not independently re-verified in this pilot review.',
+      notes: 'Original approval under NDA 215256, sponsor Novo Nordisk. Subsequent label updates have added a cardiovascular-risk-reduction indication (based on the SELECT trial) and a MASH (liver disease) indication — not independently re-verified in this pilot review. This approval applies specifically to the Wegovy (and separately, Ozempic) branded products manufactured by Novo Nordisk, in their approved formulations, routes, and indications — it does not extend to compounded, research-grade, differently-formulated, or independently-sold semaglutide products, which remain unapproved regardless of the parent molecule\'s regulatory history.',
+    },
+  ],
+  // Closeout pass (2026-08-07): reconciles the 9 pre-existing legacy
+  // claims that predate this pipeline's legacy-claim-reconciliation
+  // feature. One correction applied here that was NOT part of the
+  // original pilot: the site's "research purposes only, not for human
+  // consumption" disclaimer was initially assumed to be in tension with
+  // semaglutide's real FDA approval (Ozempic/Wegovy) — on review, that
+  // reasoning was wrong. FDA approval attaches to a specific drug
+  // product (manufacturer, formulation, route, indication, labeling),
+  // not to every product containing the same molecular entity. A
+  // vendor's unapproved, research-grade semaglutide product is
+  // correctly labeled "not for human consumption" even though Novo
+  // Nordisk's Ozempic/Wegovy are approved — those are not the same
+  // product. See the batch closeout for the fuller correction of this
+  // same reasoning error across 8 other compounds.
+  legacyReconciliations: [
+    {
+      legacyClaimId: 'fd3faf20-adf6-4f9c-bc30-5aade7fc5e20',
+      legacyStatementExcerpt: 'Semaglutide is a GLP-1 receptor agonist that has become one of the most extensively studied compounds in metabolic research',
+      disposition: 'supported',
+      rationale: 'Directly confirmed by the large STEP/SELECT trial program verified in this file.',
+      evidenceQuality: 'high',
+      interpretationStatus: 'established',
+      sources: [{ sourceKey: 'pmid-33567185', relationship: 'directly_supports' }],
+    },
+    {
+      legacyClaimId: '23ae369d-ec5b-4f71-a91a-e76d804164db',
+      legacyStatementExcerpt: 'By selectively activating the GLP-1 receptor, researchers explore how this pathway influences food intake, energy balance, and cardiometabolic physiol',
+      disposition: 'supported',
+      rationale: 'Food intake/energy balance confirmed by the STEP trials; cardiometabolic physiology confirmed by the SELECT trial.',
+      evidenceQuality: 'high',
+      interpretationStatus: 'established',
+      sources: [
+        { sourceKey: 'pmid-33567185', relationship: 'directly_supports' },
+        { sourceKey: 'pmid-37952131', relationship: 'directly_supports' },
+      ],
+    },
+    {
+      legacyClaimId: 'd30fdb5d-9558-4f91-aef0-1cda8561e05b',
+      legacyStatementExcerpt: 'Semaglutide activates the GLP-1 receptor, a signaling pathway involved in appetite regulation and metabolic control',
+      disposition: 'supported',
+      rationale: 'Directly confirmed mechanism.',
+      evidenceQuality: 'high',
+      interpretationStatus: 'established',
+      sources: [{ sourceKey: 'pmid-33567185', relationship: 'directly_supports' }],
+    },
+    {
+      legacyClaimId: '13fc5dd2-d408-48e9-8a58-c16d9247569f',
+      legacyStatementExcerpt: 'Q: What receptor does Semaglutide target? A: Semaglutide is designed to activate the GLP-1 receptor',
+      disposition: 'supported',
+      rationale: 'Directly confirmed.',
+      evidenceQuality: 'high',
+      interpretationStatus: 'established',
+      sources: [{ sourceKey: 'pmid-33567185', relationship: 'directly_supports' }],
+    },
+    policyReconciliation('99e0482e-2530-4e8c-a4af-026d7829c9c8', 'Q: Does Cloud Peptides provide dosage information? A: No.'),
+    policyReconciliation('0bd75aab-c207-4ab0-b91f-f2a5a2ddcfa5', 'Q: Is this page educational? A: Yes.'),
+    policyReconciliation('22ccf701-842e-452b-8e82-5076b1aaa2e8', 'This page is provided for educational purposes only.'),
+    policyReconciliation('88c65715-e38e-4423-92ed-7b00d18bf1f2', 'Cloud Peptides does not provide medical advice, treatment recommendations, or dosage information.'),
+    {
+      legacyClaimId: '36f30fd8-4862-4cfb-ac7d-f43afd0aefdd',
+      legacyStatementExcerpt: 'All products are intended strictly for laboratory research purposes only and are not for human consumption',
+      disposition: 'supported',
+      rationale:
+        'Semaglutide has real FDA-approved drug products (Ozempic for type 2 diabetes, Wegovy for chronic weight management — both manufactured by Novo Nordisk). This does NOT make the disclaimer wrong: FDA approval attaches to a specific drug product — its manufacturer, formulation, route, indication, and labeling — not to every product containing the same molecular entity. An unapproved, research-grade semaglutide product sold for research use is correctly and appropriately labeled "not for human consumption," regardless of Ozempic/Wegovy\'s approval, because it is not that approved product: different manufacturing process/quality controls, different (or absent) formulation/excipients, and no FDA review of this specific material. This distinction is recorded in the regulatory record above (Novo Nordisk, NDA 215256, Wegovy-specific).',
+      evidenceQuality: 'high',
+      interpretationStatus: 'established',
+      sources: [{ sourceKey: 'fda-wegovy-label-2021', relationship: 'directly_supports' }],
     },
   ],
 };

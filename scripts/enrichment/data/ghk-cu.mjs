@@ -15,6 +15,8 @@
  *
  * @type {import('../schema.mjs').CompoundEnrichment}
  */
+import { policyReconciliation } from '../legacy-boilerplate.mjs';
+
 export default {
   slug: 'ghk-cu',
   sources: [
@@ -146,4 +148,73 @@ export default {
     },
   ],
   regulatoryRecords: [],
+  // Closeout pass (2026-08-07): reconciles the 9 pre-existing legacy
+  // claims that predate this pipeline's legacy-claim-reconciliation
+  // feature. GHK-Cu has no FDA drug approval (sold as a cosmetic
+  // ingredient — see the note above on why no regulatory_records exist
+  // for this compound), so no molecule-vs-approved-product distinction
+  // applies to its "research purposes only" disclaimer.
+  legacyReconciliations: [
+    {
+      legacyClaimId: 'b462d655-0e70-4954-abfe-f394e2602a2b',
+      legacyStatementExcerpt: 'GHK-Cu is a naturally occurring copper-binding peptide that has been widely investigated in regenerative biology and dermatologic research',
+      disposition: 'supported',
+      rationale: 'Directly confirmed by the verified in-vitro fibroblast/MMP-2 literature and the one human RCT identified.',
+      evidenceQuality: 'moderate',
+      interpretationStatus: 'preliminary',
+      sources: [{ sourceKey: 'pmid-11045606', relationship: 'directly_supports' }],
+    },
+    {
+      legacyClaimId: '00063439-61c9-4273-a7c3-32bb87582409',
+      legacyStatementExcerpt: 'Current literature explores GHK-Cu in skin health, connective tissue biology, hair follicle research, cosmetic science, and healthy aging',
+      disposition: 'revised',
+      rationale:
+        'Skin health, connective tissue biology, and cosmetic science are directly confirmed by the verified fibroblast/collagen/MMP-2 sources. "Hair follicle research" was NOT independently verified for GHK-Cu specifically in this review — that finding belongs to the related-but-distinct compound AHK-Cu (see ahk-cu.mjs, batch 1), and conflating the two would repeat the exact GHK-Cu/AHK-Cu mix-up already caught and corrected on AHK-Cu\'s own page. "Healthy aging" was likewise not independently verified as a directly studied GHK-Cu outcome in this review.',
+      evidenceQuality: 'moderate',
+      interpretationStatus: 'preliminary',
+      sources: [
+        { sourceKey: 'pmid-11045606', relationship: 'directly_supports' },
+        { sourceKey: 'pmid-15655171', relationship: 'directly_supports' },
+      ],
+    },
+    {
+      legacyClaimId: '0800caff-a0dd-41aa-bfcc-88388cbc1cd2',
+      legacyStatementExcerpt: 'Researchers investigate how GHK-Cu interacts with copper-dependent biological pathways that influence gene expression, collagen turnover, antioxidant',
+      disposition: 'supported',
+      rationale: 'Directly confirmed by the verified MMP-2/collagen-pathway mechanistic literature.',
+      evidenceQuality: 'moderate',
+      interpretationStatus: 'preliminary',
+      sources: [{ sourceKey: 'pmid-11045606', relationship: 'directly_supports' }],
+    },
+    {
+      legacyClaimId: '46b4b9b5-7efb-4c7c-b7a1-30f16c58f5e8',
+      legacyStatementExcerpt: 'Q: What is GHK-Cu primarily researched for? A: Published research commonly investigates skin biology, collagen production, tissue remodeling, wound re',
+      disposition: 'supported',
+      rationale: 'Accurately reflects the verified research focus (fibroblast growth-factor production directly relevant to wound repair).',
+      evidenceQuality: 'moderate',
+      interpretationStatus: 'preliminary',
+      sources: [{ sourceKey: 'pmid-15655171', relationship: 'directly_supports' }],
+    },
+    {
+      legacyClaimId: 'afafa448-00d9-4b98-ac08-4c2c14e2df33',
+      legacyStatementExcerpt: 'Q: Is GHK-Cu naturally occurring? A: Yes. GHK is a naturally occurring peptide that binds copper to form GHK-Cu',
+      disposition: 'supported',
+      rationale: 'Accurate, uncontroversial biochemical fact (GHK is a naturally occurring human plasma tripeptide).',
+      evidenceQuality: 'not_assessed',
+      interpretationStatus: 'established',
+      sources: [],
+    },
+    policyReconciliation('001c7da1-5fb3-4d56-828f-931daf3498cb', 'Q: Does Cloud Peptides provide dosage information? A: No.'),
+    policyReconciliation('3d505590-a0bc-4a88-b03d-b0aa88ccb2d8', 'This page summarizes publicly available scientific literature for educational purposes only.'),
+    policyReconciliation('fdcc1579-9a20-4c7b-a83d-766830195157', 'Cloud Peptides does not provide medical advice, treatment recommendations, or dosage information.'),
+    {
+      legacyClaimId: '6d912c41-7838-46ea-9903-f381a4645551',
+      legacyStatementExcerpt: 'All products are intended strictly for laboratory research purposes only and are not for human consumption',
+      disposition: 'supported',
+      rationale: 'GHK-Cu has no FDA drug approval — it is sold as a cosmetic ingredient, a category the FDA does not premarket-approve the way it does a prescription drug. There is no approved GHK-Cu drug product to distinguish from, so this disclaimer is simply and fully accurate.',
+      evidenceQuality: 'not_assessed',
+      interpretationStatus: 'established',
+      sources: [],
+    },
+  ],
 };

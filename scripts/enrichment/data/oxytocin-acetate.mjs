@@ -51,7 +51,7 @@ export default {
     {
       contentSection: 'regulatory',
       statement:
-        'Oxytocin is FDA-approved (brand name Pitocin, and generics) ONLY for specific obstetric indications: induction/augmentation of labor, management of incomplete or inevitable abortion, and control of postpartum hemorrhage. The FDA label itself states available data are inadequate to evaluate benefit versus risk for elective labor induction. Oxytocin — whether injected or intranasal — is NOT FDA-approved for any behavioral, psychiatric, "bonding," or social-cognition use.',
+        'Oxytocin is FDA-approved (brand name Pitocin, manufactured by Par Pharmaceutical/Par Sterile Products LLC under NDA 018261, and generics) ONLY for specific obstetric indications: induction/augmentation of labor, management of incomplete or inevitable abortion, and control of postpartum hemorrhage. The FDA label itself states available data are inadequate to evaluate benefit versus risk for elective labor induction. Oxytocin — whether injected or intranasal — is NOT FDA-approved for any behavioral, psychiatric, "bonding," or social-cognition use. This approval applies specifically to the Pitocin product (and separately, its approved generic equivalents) as manufactured and labeled — it does not extend to compounded, research-grade, differently formulated (e.g. intranasal), or independently sold oxytocin products, which remain unapproved regardless of the parent molecule\'s regulatory history.',
       interpretationStatus: 'established',
       sources: [{ sourceKey: 'fda-pitocin-label', relationship: 'directly_supports' }],
     },
@@ -69,11 +69,12 @@ export default {
     {
       agency: 'U.S. Food and Drug Administration (FDA)',
       jurisdiction: 'United States',
-      formulation: 'Oxytocin injection, USP (Pitocin and generics)',
+      formulation: 'Oxytocin injection, USP (Pitocin, manufactured by Par Pharmaceutical/Par Sterile Products LLC, NDA 018261; and generics)',
       indication: 'Induction/augmentation of labor; management of incomplete or inevitable abortion; control of postpartum hemorrhage',
       regulatoryStatus: 'approved',
       sourceKey: 'fda-pitocin-label',
-      notes: 'Approved for these specific obstetric indications only. Intranasal oxytocin (as used in behavioral/social-cognition research) is a different formulation with NO FDA approval for any indication.',
+      notes:
+        'Approved under NDA 018261 (manufacturer Par Pharmaceutical/Par Sterile Products LLC) for these specific obstetric indications only. Intranasal oxytocin (as used in behavioral/social-cognition research) is a different formulation with NO FDA approval for any indication. Regulatory-identity note: this approval covers the specific injectable Pitocin drug product only — its manufacturer, formulation, route, and approved obstetric labeling. It does not extend to compounded, research-grade, intranasal, or independently sold oxytocin preparations, which remain unapproved regardless of Pitocin\'s own approval.',
     },
   ],
   legacyReconciliations: [
@@ -132,11 +133,12 @@ export default {
     {
       legacyClaimId: '111c43d6-842a-42e7-b7c1-93c2805d8e3f',
       legacyStatementExcerpt: 'All products are intended strictly for laboratory research purposes only and are not for human consumption',
-      disposition: 'contradicted',
-      rationale: 'Same pattern as Botulinum Toxin, HCG, and Melanotan I: oxytocin (as Pitocin) is FDA-approved and administered to humans clinically, for its approved obstetric indications. Flagged for editorial attention.',
+      disposition: 'supported',
+      rationale:
+        'CORRECTED on closeout review (2026-08-07): previously misclassified as "contradicted." Pitocin\'s FDA approval (Par Pharmaceutical, NDA 018261) applies to that specific injectable drug product for obstetric use — not to every oxytocin-containing product, and particularly not to the intranasal or otherwise differently-formulated oxytocin material typically sold for research/behavioral use, which has no FDA approval of any kind. Reclassified from "contradicted" to "supported."',
       evidenceQuality: 'high',
-      interpretationStatus: 'conflicting',
-      sources: [{ sourceKey: 'fda-pitocin-label', relationship: 'contradicts' }],
+      interpretationStatus: 'established',
+      sources: [{ sourceKey: 'fda-pitocin-label', relationship: 'directly_supports' }],
     },
   ],
 };

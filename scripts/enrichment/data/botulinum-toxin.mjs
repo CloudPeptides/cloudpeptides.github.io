@@ -55,7 +55,7 @@ export default {
     {
       contentSection: 'regulatory',
       statement:
-        'Botulinum toxin type A (onabotulinumtoxinA, brand name Botox) was first FDA-approved on 1989-12-29 for essential blepharospasm and strabismus in patients over 12 years old, and has since been approved for numerous additional indications including cervical dystonia (2000), cosmetic glabellar lines (2002), chronic migraine, and overactive bladder, among others, under BLA 103000.',
+        'Botulinum toxin type A (onabotulinumtoxinA, brand name Botox, manufactured by Allergan, an AbbVie company) was first FDA-approved on 1989-12-29 for essential blepharospasm and strabismus in patients over 12 years old, and has since been approved for numerous additional indications including cervical dystonia (2000), cosmetic glabellar lines (2002), chronic migraine, and overactive bladder, among others, under BLA 103000. This approval applies specifically to the Botox product as manufactured, formulated, and labeled by Allergan/AbbVie under that BLA — it does not extend to compounded, research-grade, differently formulated, or independently sold botulinum toxin preparations, which remain unapproved regardless of the parent molecule\'s regulatory history.',
       interpretationStatus: 'established',
       sources: [{ sourceKey: 'fda-botox-label', relationship: 'directly_supports' }],
     },
@@ -64,12 +64,13 @@ export default {
     {
       agency: 'U.S. Food and Drug Administration (FDA)',
       jurisdiction: 'United States',
-      formulation: 'OnabotulinumtoxinA (BOTOX) for injection',
+      formulation: 'OnabotulinumtoxinA (BOTOX) for injection, manufactured by Allergan (an AbbVie company)',
       indication: 'Multiple — initially essential blepharospasm/strabismus/hemifacial spasm; later expanded to cervical dystonia, cosmetic glabellar lines, chronic migraine, overactive bladder, and others',
       regulatoryStatus: 'approved',
       effectiveDate: '1989-12-29',
       sourceKey: 'fda-botox-label',
-      notes: 'Approved under BLA 103000. This record covers only the onabotulinumtoxinA (Botox) brand/BLA; other botulinum toxin products (e.g. abobotulinumtoxinA/Dysport, incobotulinumtoxinA/Xeomin, rimabotulinumtoxinB/Myobloc) hold separate FDA approvals not independently verified in this review.',
+      notes:
+        'Approved under BLA 103000, manufacturer Allergan (an AbbVie company). This record covers only the onabotulinumtoxinA (Botox) brand/BLA; other botulinum toxin products (e.g. abobotulinumtoxinA/Dysport, incobotulinumtoxinA/Xeomin, rimabotulinumtoxinB/Myobloc) hold separate FDA approvals not independently verified in this review. Regulatory-identity note: this approval covers the specific Botox drug product only — its manufacturer, formulation, sterility/manufacturing process, and approved labeling. It does not extend to compounded, generic-looking, research-grade, differently formulated, or independently sold botulinum toxin preparations containing the same active ingredient; those remain unapproved and correctly labeled as such regardless of Botox\'s own approval.',
     },
   ],
   legacyReconciliations: [
@@ -120,12 +121,12 @@ export default {
     {
       legacyClaimId: '6f1fd700-ae6a-4c40-a861-55786ff5caeb',
       legacyStatementExcerpt: 'All products are intended strictly for laboratory research purposes only and are not for human consumption',
-      disposition: 'contradicted',
+      disposition: 'supported',
       rationale:
-        'Unlike the other boilerplate "research use only" disclaimers reused across this database, this specific statement is factually at odds with reality for botulinum toxin: it is an FDA-approved prescription drug administered to humans for numerous approved indications. This boilerplate line was almost certainly copied from a template without being adapted for this specific compound. Flagged here rather than silently reused — this compound\'s page requires editorial attention to correct or contextualize this disclaimer (e.g. clarifying that Cloud Peptides sells/discusses it for research purposes even though the substance itself has approved medical uses when administered by licensed prescribers).',
+        'CORRECTED on closeout review (2026-08-07): this claim was previously misclassified as "contradicted" on the reasoning that Botox\'s FDA approval made a "research purposes only" disclaimer factually wrong. That reasoning was itself incorrect and has been reversed. FDA approval attaches to a specific drug product — its manufacturer (Allergan/AbbVie), formulation, manufacturing/sterility process, and approved labeling under BLA 103000 — not to every product containing botulinum toxin type A as an active ingredient. A vendor\'s unapproved, research-grade botulinum toxin product is correctly and appropriately labeled "not for human consumption," regardless of Botox\'s approval, because it is not that approved product: it has not gone through FDA review, and nothing establishes it matches Botox\'s manufacturing quality, purity, or sterility standards. This disclaimer is therefore accurate as applied to the actual product being described/sold, and is reclassified from "contradicted" to "supported."',
       evidenceQuality: 'high',
-      interpretationStatus: 'conflicting',
-      sources: [{ sourceKey: 'fda-botox-label', relationship: 'contradicts' }],
+      interpretationStatus: 'established',
+      sources: [{ sourceKey: 'fda-botox-label', relationship: 'directly_supports' }],
     },
   ],
 };

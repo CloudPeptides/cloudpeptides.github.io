@@ -44,7 +44,7 @@ export default {
     {
       contentSection: 'regulatory',
       statement:
-        'Elamipretide received FDA accelerated approval in September 2025 for improving muscle strength in adult and pediatric patients (weighing >=30 kg) with Barth syndrome, a rare genetic disorder of mitochondrial cardiolipin metabolism — the first disease-specific treatment approved for Barth syndrome.',
+        'Elamipretide (developed and manufactured by Stealth BioTherapeutics) received FDA accelerated approval in September 2025 for improving muscle strength in adult and pediatric patients (weighing >=30 kg) with Barth syndrome, a rare genetic disorder of mitochondrial cardiolipin metabolism — the first disease-specific treatment approved for Barth syndrome. This approval applies specifically to Stealth BioTherapeutics\' approved elamipretide drug product — it does not extend to compounded, research-grade, differently formulated, or independently sold SS-31/elamipretide products, which remain unapproved regardless of the parent molecule\'s regulatory history.',
       interpretationStatus: 'established',
       sources: [{ sourceKey: 'pmid-41335372', relationship: 'directly_supports' }],
     },
@@ -53,13 +53,13 @@ export default {
     {
       agency: 'U.S. Food and Drug Administration (FDA)',
       jurisdiction: 'United States',
-      formulation: 'Elamipretide, subcutaneous',
+      formulation: 'Elamipretide, subcutaneous, manufactured by Stealth BioTherapeutics',
       indication: 'Improving muscle strength in Barth syndrome patients weighing >=30 kg',
       regulatoryStatus: 'approved',
       effectiveDate: '2025-09-01',
       sourceKey: 'pmid-41335372',
       notes:
-        'Accelerated approval — the first disease-specific treatment for Barth syndrome. Accelerated approvals are typically contingent on confirmatory post-marketing trials. This is a very recent approval (within this review\'s knowledge window); the exact approval date should be independently re-confirmed against the FDA\'s own record before being asserted with day-level precision in published content.',
+        'Accelerated approval — the first disease-specific treatment for Barth syndrome, developer/manufacturer Stealth BioTherapeutics. Accelerated approvals are typically contingent on confirmatory post-marketing trials. This is a very recent approval (within this review\'s knowledge window); the exact approval date and NDA/BLA number should be independently re-confirmed against the FDA\'s own record before being asserted with day-level precision in published content. Regulatory-identity note: this approval covers Stealth BioTherapeutics\' specific elamipretide drug product only — its manufacturer, formulation, and approved Barth-syndrome labeling. It does not extend to compounded, research-grade, or independently sold SS-31/elamipretide preparations, which remain unapproved regardless of this approval.',
     },
   ],
   legacyReconciliations: [
@@ -115,11 +115,12 @@ export default {
     {
       legacyClaimId: 'fd4c5e8b-0955-4751-9c46-660d79ad373a',
       legacyStatementExcerpt: 'All products are intended strictly for laboratory research purposes only and are not for human consumption',
-      disposition: 'contradicted',
-      rationale: 'Same pattern as other approved compounds in this database: elamipretide/SS-31 (as of September 2025) is FDA-approved and administered to Barth syndrome patients. Flagged for editorial attention.',
+      disposition: 'supported',
+      rationale:
+        'CORRECTED on closeout review (2026-08-07): previously misclassified as "contradicted." Stealth BioTherapeutics\' FDA approval applies to its specific elamipretide drug product for Barth syndrome — not to every SS-31-containing research product. An unapproved, research-grade SS-31 product is correctly labeled "not for human consumption" regardless of that approval. Reclassified from "contradicted" to "supported."',
       evidenceQuality: 'high',
-      interpretationStatus: 'conflicting',
-      sources: [{ sourceKey: 'pmid-41335372', relationship: 'contradicts' }],
+      interpretationStatus: 'established',
+      sources: [{ sourceKey: 'pmid-41335372', relationship: 'directly_supports' }],
     },
   ],
 };
