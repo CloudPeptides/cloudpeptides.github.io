@@ -1,0 +1,153 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Badge from '../../../components/ui/Badge.astro';
+import ErrorState from '../../../components/ui/ErrorState.astro';
+import { createServiceClient, hasMinRole } from '../../../lib/auth';
+import { listUsersWithRoles } from '../../../lib/admin/users';
+
+const session = Astro.locals.session!;
+const isAdmin = hasMinRole(session.role, 'admin');
+if (!isAdmin) Astro.response.status = 403;
+
+let loadError: string | null = null;
+let users: Awaited<ReturnType<typeof listUsersWithRoles>> = [];
+if (isAdmin) {
+  try {
+    users = await listUsersWithRoles(createServiceClient());
+  } catch {
+    loadError = 'Could not load the user list right now.';
+  }
+}
+
+const ROLE_TONE: Record<string, 'neutral' | 'sage' | 'info' | 'forest'> = {
+  member: 'neutral',
+  contributor: 'sage',
+  editor: 'info',
+  admin: 'forest',
+};
+---
+
+<AdminLayout title="Users">
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">Admin</p>
+      <h1>Users &amp; roles</h1>
+      <p>Create editorial accounts and manage member / contributor / editor / admin roles.</p>
+    </div>
+  </div>
+
+  {
+    !isAdmin && (
+      <div class="cp-admin-section">
+        <p class="cp-admin-empty-row">Admins only.</p>
+      </div>
+    )
+  }
+
+  {isAdmin && loadError && <ErrorState message={loadError} retryHref="/admin/users" />}
+
+  {
+    isAdmin && !loadError && (
+      <>
+        <section class="cp-admin-section">
+          <h2>Create a user</h2>
+          <p class="cp-admin-field__hint">
+            No confirmation email is sent — share the password with the new user directly.
+          </p>
+          <form id="createUserForm" class="cp-admin-form-grid">
+            <div class="cp-admin-field">
+              <label for="newUserEmail">Email</label>
+              <input id="newUserEmail" type="email" required />
+            </div>
+            <div class="cp-admin-field">
+              <label for="newUserPassword">Temporary password</label>
+              <input id="newUserPassword" type="password" required minlength="8" />
+            </div>
+            <div class="cp-admin-field">
+              <label for="newUserRole">Role</label>
+              <select id="newUserRole">
+                <option value="member">member</option>
+                <option value="contributor" selected>
+                  contributor
+                </option>
+                <option value="editor">editor</option>
+                <option value="admin">admin</option>
+              </select>
+            </div>
+            <div class="cp-admin-field" style="align-self:end;">
+              <button
+                type="submit"
+                id="createUserSubmit"
+                class="cp-admin-btn cp-admin-btn--primary"
+              >
+                Create user
+              </button>
+            </div>
+          </form>
+          <p class="cp-admin-form-message" data-tone="error" id="createUserError" hidden />
+        </section>
+
+        <div class="cp-admin-table-wrap">
+          <table class="cp-admin-table">
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Created</th>
+                <th>Last sign-in</th>
+                <th>Change role</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr>
+                  <td>{u.email ?? u.id}</td>
+                  <td>
+                    <Badge tone={ROLE_TONE[u.role] ?? 'neutral'}>{u.role}</Badge>
+                  </td>
+                  <td>{new Date(u.created_at).toLocaleDateString()}</td>
+                  <td>
+                    {u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString() : 'never'}
+                  </td>
+                  <td>
+                    {u.id === session.userId ? (
+                      <span class="cp-admin-field__hint">(you)</span>
+                    ) : (
+                      <form
+                        data-role-form
+                        data-user-id={u.id}
+                        style="display:flex; gap:0.5rem; align-items:center;"
+                      >
+                        <select name="role">
+                          {(['member', 'contributor', 'editor', 'admin'] as const).map((r) => (
+                            <option value={r} selected={r === u.role}>
+                              {r}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="submit"
+                          class="cp-admin-btn cp-admin-btn--secondary cp-admin-btn--sm"
+                        >
+                          Save
+                        </button>
+                        <span data-role-error class="cp-admin-field__error" hidden />
+                      </form>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </>
+    )
+  }
+</AdminLayout>
+
+<script>
+  import '../../../scripts/admin-user-create.ts';
+  import '../../../scripts/admin-user-role.ts';
+</script>
