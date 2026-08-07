@@ -1,0 +1,56 @@
+---
+/**
+ * Shell for every /admin page: BaseLayout (theme/tokens/meta, chrome
+ * hidden) + AdminNav (topbar + sidenav) + a consistent main content
+ * wrapper. src/middleware.ts guarantees Astro.locals.session is a real,
+ * verified, contributor+ session for every page that reaches here — the
+ * `if (!session)` guard below is defense-in-depth, not the real gate.
+ */
+import BaseLayout from './BaseLayout.astro';
+import AdminNav from '../components/admin/AdminNav.astro';
+import '../styles/admin.css';
+
+interface Props {
+  title: string;
+}
+const { title } = Astro.props;
+
+const session = Astro.locals.session;
+if (!session) {
+  return Astro.redirect('/admin/login');
+}
+---
+
+<BaseLayout title={`${title} — Admin`} noindex hideChrome>
+  <div class="cp-admin-shell">
+    <AdminNav role={session.role} email={session.email} />
+    <main class="cp-admin-main">
+      <slot />
+    </main>
+  </div>
+</BaseLayout>
+
+<style>
+  .cp-admin-shell {
+    display: grid;
+    grid-template-areas: 'topbar topbar' 'sidenav main';
+    grid-template-columns: 14rem 1fr;
+    grid-template-rows: auto 1fr;
+    min-height: calc(100vh - 0px);
+  }
+  .cp-admin-main {
+    grid-area: main;
+    padding: 1.75rem 2rem 4rem;
+    max-width: 72rem;
+    width: 100%;
+  }
+  @media (max-width: 860px) {
+    .cp-admin-shell {
+      grid-template-areas: 'topbar' 'sidenav' 'main';
+      grid-template-columns: 1fr;
+    }
+    .cp-admin-main {
+      padding: 1.25rem 1rem 3rem;
+    }
+  }
+</style>

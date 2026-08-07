@@ -1,0 +1,45 @@
+---
+/**
+ * Query-param-driven pagination — plain <a> links, no client JS
+ * required (matches the project's "avoid unnecessary client-side JS"
+ * default). Preserves every other query param (search/filter/sort) by
+ * cloning the current URL's search params and only overwriting `page`.
+ */
+interface Props {
+  currentUrl: URL;
+  page: number;
+  totalPages: number;
+}
+const { currentUrl, page, totalPages } = Astro.props;
+
+function hrefForPage(p: number): string {
+  const params = new URLSearchParams(currentUrl.search);
+  params.set('page', String(p));
+  return `${currentUrl.pathname}?${params.toString()}`;
+}
+
+const prevDisabled = page <= 1;
+const nextDisabled = page >= totalPages;
+---
+
+{
+  totalPages > 1 && (
+    <nav class="cp-admin-pagination" aria-label="Pagination">
+      <a
+        href={prevDisabled ? undefined : hrefForPage(page - 1)}
+        aria-disabled={prevDisabled ? 'true' : undefined}
+      >
+        &larr; Previous
+      </a>
+      <span>
+        Page {page} of {totalPages}
+      </span>
+      <a
+        href={nextDisabled ? undefined : hrefForPage(page + 1)}
+        aria-disabled={nextDisabled ? 'true' : undefined}
+      >
+        Next &rarr;
+      </a>
+    </nav>
+  )
+}
