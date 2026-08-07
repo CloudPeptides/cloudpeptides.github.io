@@ -70,9 +70,22 @@ const ICONS: Record<InterpretationStatus, string> = {
     color: var(--text-on-primary);
   }
   .cp-interp-badge[data-interp='supported'] {
+    /* Found live via axe on a real published profile page (this state
+       never rendered against real content until this launch-readiness
+       phase — the compound this badge appears on was still draft
+       before): --secondary (sage) is documented in tokens.css and the
+       design handoff §15 as "large text/icons only" — this badge's
+       ~14px label is neither, and measured 3.08:1 against white,
+       failing WCAG AA's 4.5:1 for normal text. --success-text is the
+       same design system's already-defined, already-AA-compliant
+       "-text" variant for a positive/confirmed state (the same
+       relationship --terracotta-text already has to --terracotta,
+       used correctly by the 'conflicting' state below) — reusing it
+       here is a contrast fix within the existing token system, not a
+       new color. */
     background: transparent;
-    color: var(--secondary);
-    border-color: var(--secondary);
+    color: var(--success-text);
+    border-color: var(--success-text);
   }
   .cp-interp-badge[data-interp='preliminary'] {
     background: var(--accent-mint);
