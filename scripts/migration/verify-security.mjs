@@ -88,10 +88,40 @@ async function checkHookEnabled(memberClient) {
 }
 
 async function main() {
+  // Snapshot taken before this run touches anything — used at the very
+  // end to prove this script itself left the real dataset's status mix
+  // untouched, regardless of what that mix actually is (early Phase 2
+  // this was "everything is draft"; since the Phase 3.5 publish step
+  // this is "56 published, 0 draft" — the invariant that actually
+  // matters is "this test run didn't change it," not a specific count).
+  const { count: nonDraftCountBefore } = await admin
+    .from('compounds')
+    .select('id', { count: 'exact', head: true })
+    .neq('status', 'draft');
+
   const users = {};
   for (const u of TEST_USERS) {
     const key = u.tag || u.role;
     users[key] = { ...(await createTestUser(u.email, u.role)), role: u.role };
+  }
+
+  // Disposable draft compound, created up front so it's available both
+  // for the "contributor CAN read drafts" check below (meaningful
+  // regardless of whether any *real* compound happens to be a draft
+  // right now) and the publish-permission checks further down.
+  const testSlug = `sec-test-publish-${Date.now()}`;
+  const { data: testCompound, error: testCompoundErr } = await admin
+    .from('compounds')
+    .insert({
+      slug: testSlug,
+      name: 'Security Test Compound',
+      entity_kind: 'peptide',
+      status: 'draft',
+    })
+    .select('id')
+    .single();
+  if (testCompoundErr) {
+    record('setup: create disposable test compound', false, testCompoundErr.message);
   }
 
   const hookEnabled = await checkHookEnabled(users.member.client);
@@ -184,14 +214,21 @@ async function main() {
   );
 
   // --- contributor CAN read drafts ---------------------------------------
+  // Checked against the disposable draft compound created above, not
+  // "any draft compound happens to exist" — that stopped being a safe
+  // assumption once the Phase 3.5 publish step moved every real
+  // compound to 'published' (0 real drafts remain as of this writing).
   const { data: contributorDrafts } = await users.contributor.client
     .from('compounds')
     .select('id')
     .eq('status', 'draft');
+  const contributorSawTestDraft = testCompound
+    ? (contributorDrafts ?? []).some((r) => r.id === testCompound.id)
+    : false;
   record(
-    'contributor-role SELECT of draft compounds returns rows',
-    (contributorDrafts?.length ?? 0) > 0,
-    `${contributorDrafts?.length ?? 0} rows returned`,
+    'contributor-role SELECT of draft compounds returns the disposable test draft',
+    contributorSawTestDraft,
+    `${contributorDrafts?.length ?? 0} draft rows visible to contributor`,
   );
 
   // An RLS-filtered UPDATE with no matching visible rows returns SUCCESS
@@ -261,21 +298,8 @@ async function main() {
     memberInsertError ? 'rejected as expected' : 'INSERT SUCCEEDED — SECURITY FAILURE',
   );
 
-  // --- contributor cannot publish; editor can (using a disposable test row) ---
-  const testSlug = `sec-test-publish-${Date.now()}`;
-  const { data: testCompound, error: createErr } = await admin
-    .from('compounds')
-    .insert({
-      slug: testSlug,
-      name: 'Security Test Compound',
-      entity_kind: 'peptide',
-      status: 'draft',
-    })
-    .select('id')
-    .single();
-  if (createErr) {
-    record('setup: create disposable test compound', false, createErr.message);
-  } else {
+  // --- contributor cannot publish; editor can (reusing the disposable test row created above) ---
+  if (testCompound) {
     const { error: contributorPublishError } = await users.contributor.client
       .from('compounds')
       .update({ status: 'published' })
@@ -312,16 +336,19 @@ async function main() {
     `${crossUserRow?.length ?? 0} rows returned`,
   );
 
-  // --- verify all migrated compounds are drafts ---------------------------
-  const { count: nonDraftCount } = await admin
+  // --- this run left the real dataset's status mix untouched --------------
+  // Not "every compound is draft" (stale since the Phase 3.5 publish step
+  // — see the snapshot comment near the top of main()) — this compares
+  // before/after counts so the check stays meaningful and dataset-agnostic
+  // regardless of how many real compounds are published/draft/archived.
+  const { count: nonDraftCountAfter } = await admin
     .from('compounds')
     .select('id', { count: 'exact', head: true })
-    .neq('status', 'draft')
-    .not('slug', 'eq', testSlug);
+    .neq('status', 'draft');
   record(
-    "every compound in the database is status=draft (excluding this run's deleted test row)",
-    (nonDraftCount ?? 0) === 0,
-    `${nonDraftCount ?? 0} non-draft rows found`,
+    'this test run did not change the count of non-draft compounds in the real dataset',
+    nonDraftCountAfter === nonDraftCountBefore,
+    `before: ${nonDraftCountBefore ?? 0}, after: ${nonDraftCountAfter ?? 0}`,
   );
 
   // --- cleanup --------------------------------------------------------------

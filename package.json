@@ -22,7 +22,8 @@
     "check:secrets": "node scripts/check-secrets.mjs",
     "db:extract-legacy": "node scripts/migration/extract-legacy-compounds.mjs",
     "db:import-legacy": "node scripts/migration/import-to-supabase.mjs",
-    "db:verify-security": "node scripts/migration/verify-security.mjs"
+    "db:verify-security": "node scripts/migration/verify-security.mjs",
+    "db:verify-admin-security": "node scripts/migration/verify-admin-security.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.2.0",
