@@ -94,10 +94,20 @@ export interface Compound {
   updated_at: string;
 }
 
+export type AliasType =
+  | 'scientific_name'
+  | 'generic_name'
+  | 'abbreviation'
+  | 'development_code'
+  | 'spelling_variant'
+  | 'brand_name';
+
 export interface CompoundAlias {
   id: string;
   compound_id: string;
   alias: string;
+  alias_type?: AliasType | null;
+  note?: string | null;
 }
 
 export interface Claim {

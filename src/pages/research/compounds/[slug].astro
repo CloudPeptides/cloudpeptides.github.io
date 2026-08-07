@@ -309,7 +309,12 @@ const breadcrumbJsonLd = compound
               <p class="cp-identity-card__aliases">
                 Also known as{' '}
                 {compound.compound_aliases.map((a) => (
-                  <span class="cp-mono">{a.alias}</span>
+                  <span class="cp-mono" title={a.note ?? undefined}>
+                    {a.alias}
+                    {a.alias_type === 'brand_name' && (
+                      <span class="cp-identity-card__brand-tag"> (brand name)</span>
+                    )}
+                  </span>
                 ))}
               </p>
             )}
@@ -657,6 +662,12 @@ const breadcrumbJsonLd = compound
     gap: 0.5rem;
     flex-wrap: wrap;
     margin: 0;
+  }
+  .cp-identity-card__brand-tag {
+    font-family: var(--font-body, inherit);
+    font-style: normal;
+    color: var(--text-muted);
+    font-size: 0.75rem;
   }
   .cp-identity-card__strip {
     display: flex;
