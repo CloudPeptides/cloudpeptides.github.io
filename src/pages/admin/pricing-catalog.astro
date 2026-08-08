@@ -1,29 +1,28 @@
 ---
 /**
- * Private admin pricing catalog — staging-only internal reference.
- * Read-only, admin-role-gated, no checkout/payment/public-ordering
- * wiring, no public API. Two independent guards keep this off
- * production: (1) procedural — this feature is never merged past
- * rebuild/astro-platform until explicitly approved; (2) this page's
- * own explicit indexable-host check below, which 404s on the real
- * production hostname regardless of what's deployed there — defense
- * in depth, matching this codebase's existing STAGING_READ_ONLY/
- * isIndexableHost patterns.
+ * Private admin pricing catalog — staging-only, admin-editable.
+ * Backed by public.admin_pricing_catalog (supabase/migrations/
+ * 20260808170000_admin_pricing_catalog.sql), RLS admin-only for every
+ * operation. Two independent guards keep this off production: (1)
+ * procedural — this feature is never merged past rebuild/astro-platform
+ * until explicitly approved; (2) this page's own explicit
+ * indexable-host check below, which 404s on the real production
+ * hostname regardless of what's deployed there.
  *
  * AdminLayout's middleware-enforced session already guarantees
  * contributor+; this page additionally requires admin specifically,
- * matching the same bar as /admin/coas and /admin/users (internal
- * pricing data, even without cost, is not contributor-level content).
+ * matching the same bar as /admin/coas and /admin/users.
  */
 export const prerender = false;
 
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import { hasMinRole } from '../../lib/auth';
+import { createUserScopedClient, hasMinRole } from '../../lib/auth';
 import {
-  PRICING_CATALOG,
+  listPricingCatalog,
   PRICING_CATALOG_CATEGORIES,
   isTenVialKit,
 } from '../../lib/admin/pricing-catalog';
+import ErrorState from '../../components/ui/ErrorState.astro';
 
 if (Astro.locals.indexable) {
   return new Response('Not found', { status: 404 });
@@ -33,6 +32,15 @@ const session = Astro.locals.session!;
 if (!hasMinRole(session.role, 'admin')) {
   return new Response('Admin access required.', { status: 403 });
 }
+
+const client = createUserScopedClient(session.accessToken);
+let loadError: string | null = null;
+let entries: Awaited<ReturnType<typeof listPricingCatalog>> = [];
+try {
+  entries = await listPricingCatalog(client);
+} catch {
+  loadError = 'Could not load the pricing catalog right now.';
+}
 ---
 
 <AdminLayout title="Pricing Catalog">
@@ -41,62 +49,136 @@ if (!hasMinRole(session.role, 'admin')) {
       <p class="cp-admin-eyebrow">Private — Staging only</p>
       <h1>Pricing Catalog</h1>
       <p>
-        Internal reference only. Not connected to checkout, payment processing, or public ordering —
-        and never deployed to production. Cost data is never stored here; prices only.
+        Internal reference and price editor. Not connected to checkout, payment processing, or
+        public ordering — and never deployed to production. Supplier cost is never stored, shown, or
+        editable here.
       </p>
     </div>
   </div>
 
   <p class="cp-pricing-notice" role="note">
-    This catalog is staging-only and admin-only. It does not affect the live public shop, and
-    nothing here is reachable through any public page or API.
+    This catalog is staging-only and admin-only. Editing a price here never affects the live public
+    shop, and nothing here is reachable through any public page or API.
   </p>
 
+  {loadError && <ErrorState message={loadError} retryHref="/admin/pricing-catalog" />}
+
   {
-    PRICING_CATALOG_CATEGORIES.map((category) => {
-      const rows = PRICING_CATALOG.filter((entry) => entry.category === category);
-      return (
-        <section class="cp-admin-section">
-          <h2>{category}</h2>
-          <div class="cp-admin-table-wrap">
-            <table class="cp-admin-table">
-              <thead>
-                <tr>
-                  <th>Code</th>
-                  <th>Product</th>
-                  <th>Spec</th>
-                  <th>Kit</th>
-                  <th>Price</th>
+    !loadError && (
+      <>
+        <form class="cp-admin-toolbar" onsubmit="return false">
+          <input
+            type="search"
+            data-pricing-search
+            placeholder="Search by code or product name…"
+            aria-label="Search pricing catalog"
+          />
+          <select data-pricing-category-filter aria-label="Filter by category">
+            <option value="">All categories</option>
+            {PRICING_CATALOG_CATEGORIES.map((c) => (
+              <option value={c}>{c}</option>
+            ))}
+          </select>
+          <span class="cp-admin-toolbar__spacer" />
+          <span class="cp-admin-toolbar__count" data-pricing-count>
+            {entries.length} products
+          </span>
+        </form>
+
+        <p class="cp-pricing-empty" data-pricing-empty-state hidden>
+          No products match those filters.
+        </p>
+
+        <div class="cp-admin-table-wrap">
+          <table class="cp-admin-table">
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Product</th>
+                <th>Spec</th>
+                <th>Category</th>
+                <th>Kit</th>
+                <th>Price (USD)</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((entry) => (
+                <tr
+                  data-pricing-row
+                  data-id={entry.id}
+                  data-code={entry.code.toLowerCase()}
+                  data-name={entry.name.toLowerCase()}
+                  data-category={entry.category}
+                >
+                  <td>
+                    <code>{entry.code}</code>
+                  </td>
+                  <td>{entry.name}</td>
+                  <td>{entry.spec}</td>
+                  <td>{entry.category}</td>
+                  <td>
+                    {isTenVialKit(entry.count) ? (
+                      <span class="cp-pricing-kit-label">10-vial kit</span>
+                    ) : (
+                      <span class="cp-pricing-kit-label cp-pricing-kit-label--single">
+                        {entry.count} vial
+                      </span>
+                    )}
+                  </td>
+                  <td>
+                    <div class="cp-pricing-edit">
+                      <span class="cp-pricing-dollar">$</span>
+                      <input
+                        type="text"
+                        inputmode="decimal"
+                        class="cp-pricing-price-input"
+                        data-pricing-price-input
+                        value={entry.price.toFixed(2)}
+                        data-original-value={entry.price.toFixed(2)}
+                        aria-label={`Price for ${entry.name} (${entry.code})`}
+                      />
+                    </div>
+                  </td>
+                  <td>
+                    <div class="cp-pricing-actions">
+                      <button
+                        type="button"
+                        class="cp-admin-btn cp-admin-btn--primary cp-pricing-save"
+                        data-pricing-save
+                        hidden
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        class="cp-admin-btn cp-admin-btn--secondary cp-pricing-cancel"
+                        data-pricing-cancel
+                        hidden
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <p
+                      class="cp-admin-form-message cp-pricing-row-message"
+                      data-pricing-message
+                      role="status"
+                      hidden
+                    />
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {rows.map((entry) => (
-                  <tr>
-                    <td>
-                      <code>{entry.code}</code>
-                    </td>
-                    <td>{entry.name}</td>
-                    <td>{entry.spec}</td>
-                    <td>
-                      {isTenVialKit(entry.count) ? (
-                        <span class="cp-pricing-kit-label">10-vial kit</span>
-                      ) : (
-                        <span class="cp-pricing-kit-label cp-pricing-kit-label--single">
-                          {entry.count} vial
-                        </span>
-                      )}
-                    </td>
-                    <td>${entry.price.toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      );
-    })
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </>
+    )
   }
 </AdminLayout>
+
+<script>
+  import '../../scripts/admin-pricing-catalog.ts';
+</script>
 
 <style>
   .cp-pricing-notice {
@@ -107,6 +189,11 @@ if (!hasMinRole(session.role, 'admin')) {
     padding: 0.75rem 1rem;
     margin: 0 0 1.5rem;
     font-size: var(--text-caption);
+  }
+  .cp-pricing-empty {
+    padding: 1.5rem 0;
+    text-align: center;
+    color: var(--text-secondary);
   }
   .cp-pricing-kit-label {
     display: inline-block;
@@ -121,5 +208,35 @@ if (!hasMinRole(session.role, 'admin')) {
   .cp-pricing-kit-label--single {
     background: var(--bg-sunken);
     color: var(--text-secondary);
+  }
+  .cp-pricing-edit {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .cp-pricing-dollar {
+    color: var(--text-secondary);
+  }
+  .cp-pricing-price-input {
+    width: 6rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: var(--radius-control);
+    border: 1.5px solid var(--border-interactive);
+    background: var(--bg-sunken);
+    color: var(--text-primary);
+    font-size: var(--text-body);
+    font-family: var(--font-body);
+  }
+  .cp-pricing-price-input[data-dirty='true'] {
+    border-color: var(--primary);
+  }
+  .cp-pricing-actions {
+    display: flex;
+    gap: 0.375rem;
+    white-space: nowrap;
+  }
+  .cp-pricing-row-message {
+    margin: 0.375rem 0 0;
+    max-width: 14rem;
   }
 </style>

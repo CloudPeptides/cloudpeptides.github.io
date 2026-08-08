@@ -89,6 +89,17 @@ declare module 'cloudflare:workers' {
     FORM_RATE_LIMITER: {
       limit(options: { key: string }): Promise<{ success: boolean }>;
     };
+    /** A separate, more generous binding for the pricing catalog's
+     * per-row inline editing (src/pages/api/admin/pricing-catalog/
+     * [id].ts) — FORM_RATE_LIMITER's 5/60s is tuned for public-form
+     * abuse prevention and would make legitimate batch price editing
+     * (this feature's whole reason to exist) impractically slow; this
+     * binding is 60/60s instead. Not reused by any other route —
+     * every other admin action's existing FORM_RATE_LIMITER usage is
+     * intentionally untouched. */
+    ADMIN_RATE_LIMITER: {
+      limit(options: { key: string }): Promise<{ success: boolean }>;
+    };
     /** Server-only, bypasses RLS entirely — read only by
      * src/lib/auth.ts's createServiceClient(), used only inside
      * src/pages/api/admin/users/* (user_roles/audit_log have no client

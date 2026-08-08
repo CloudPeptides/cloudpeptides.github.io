@@ -122,10 +122,27 @@ export const onRequest = defineMiddleware(async (context, next) => {
     // per-route: any current or future /api/admin/* mutation route
     // inherits this automatically. GET/HEAD/OPTIONS are exempt so the
     // dashboard stays browsable.
+    //
+    // One narrow, explicit exemption: /api/admin/pricing-catalog. That
+    // table (supabase/migrations/20260808170000_admin_pricing_catalog.sql)
+    // has no public/production-facing read path at all — it's never
+    // displayed on any public page or API, and the page itself
+    // separately 404s on the real production hostname
+    // (src/pages/admin/pricing-catalog.astro's own indexable-host
+    // check) — so unlike compounds/claims/every other admin-writable
+    // table, a write here through the staging Worker cannot pollute
+    // anything production actually serves; "staging" and "production"
+    // aren't meaningfully different environments for this one private,
+    // internal-only table. This exemption exists specifically so the
+    // pricing-editing feature can be tested live on the deployed
+    // staging Worker, per explicit instruction (2026-08-08) — it does
+    // not weaken the boundary for any research/commerce content table.
+    const STAGING_READ_ONLY_EXEMPT_PREFIX = '/api/admin/pricing-catalog';
     if (
       isProtectedAdminApi(pathname) &&
       !SAFE_METHODS.has(context.request.method) &&
-      isStagingReadOnly(env.STAGING_READ_ONLY)
+      isStagingReadOnly(env.STAGING_READ_ONLY) &&
+      !pathname.startsWith(STAGING_READ_ONLY_EXEMPT_PREFIX)
     ) {
       const headers = new Headers({ 'Content-Type': 'application/json' });
       for (const cookie of sessionSetCookies) headers.append('Set-Cookie', cookie);
