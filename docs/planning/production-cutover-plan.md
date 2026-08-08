@@ -152,9 +152,21 @@ the production Worker, never in a committed file:
   - `vars.PROD_SUPABASE_URL`, `vars.PROD_SUPABASE_ANON_KEY` — the
     production Supabase project's own anon key, distinct from
     `vars.SUPABASE_URL`/`vars.SUPABASE_ANON_KEY` (staging's).
-- No `SUPABASE_SERVICE_ROLE_KEY` in any Worker config, staging or
-  production — it's used only by local one-off scripts, per
-  CLAUDE.md §8, and that stays true at cutover.
+- `SUPABASE_SERVICE_ROLE_KEY` — **corrected 2026-08-08.** This
+  document originally said this key must never appear in any Worker
+  config, staging or production. That was wrong — it contradicted
+  Blueprint v2 §16's own explicit design ("service-role key is used
+  only inside trusted Worker routes for... user role changes... and
+  other narrowly-scoped admin operations") and the deployed reality:
+  admin user creation and role management
+  (`src/pages/api/admin/users/*`) call the Supabase Auth admin API and
+  write `user_roles`, neither of which has any non-service-role path
+  at all. It **is** set as a Worker secret on staging today, and needs
+  to be set the same way on production at cutover — see
+  docs/planning/production-cutover-checklist.md's Phase C for the
+  full reasoning and the specific safeguards (auth, admin-role
+  re-check, rate limiting, audit logging, narrow scope, negative
+  tests) that make this the approved exception rather than a leak.
 
 ## 5. Branch and pull-request strategy
 
@@ -193,15 +205,21 @@ its own; every step below still needs your explicit action/approval
 1. Confirm nameserver propagation is complete (Cloudflare's dashboard
    shows the zone as "Active") — not polled or checked repeatedly by
    me per your instruction; check it yourself when convenient.
-2. Decide the `www` behavior: either `www.cloudpeptides.org` also
-   routes to the Worker directly (both routes are already prepared in
-   `wrangler.production.jsonc`), or `www` redirects to the bare
-   domain (or vice versa) via a Cloudflare redirect rule — pick one
-   canonical form; don't serve full content at both.
-3. Attach the `routes` entries in `wrangler.production.jsonc` (they're
-   present but require your explicit go-ahead to become live) —
-   binding the domain to the production Worker. This is the actual
-   "custom domain attachment" step, still not done.
+2. **Decided 2026-08-08:** `www.cloudpeptides.org` permanently
+   redirects to `https://cloudpeptides.org` (301) — it does not serve
+   content directly. Implemented as a Cloudflare zone-level Redirect
+   Rule, not a Worker route (see `wrangler.production.jsonc`'s own
+   comment on why: no reason to spend Worker request time or risk
+   duplicate-content drift on a path that only ever needs to redirect).
+   Still not created — this is the record of the decision, not the
+   execution of it; creating the actual Redirect Rule is a cutover-day
+   action requiring your explicit approval same as everything else
+   here.
+3. Attach the `routes` entry in `wrangler.production.jsonc` (present
+   but requires your explicit go-ahead to become live) — binding the
+   apex domain to the production Worker. This is the actual "custom
+   domain attachment" step, still not done. (`www` is handled entirely
+   by the Redirect Rule in step 2, not this file.)
 4. Cloudflare provisions the TLS certificate automatically once the
    route/zone is active — no manual cert step.
 5. **No DNS record is created and no route is attached until this
@@ -232,29 +250,39 @@ its own; every step below still needs your explicit action/approval
 
 ## 8. Redirect activation
 
-Every legacy URL must 301 to its new equivalent (CLAUDE.md §10: "Preserve every legacy URL via documented permanent (301) redirects at cutover"). Concretely, from the current `main` branch's flat file list:
+**Done, not just planned — corrected 2026-08-08.** Every legacy URL
+with a rebuilt equivalent already 301s to it, live on staging today,
+no cutover-day step required:
 
-- `/<slug>.html` (peptide/compound pages, e.g. `/bpc-157.html`) →
-  `/research/compounds/<slug>` where a research profile exists for
-  that slug, or `/shop/<slug>` where it was a shop-only page, per the
-  existing slug mapping already encoded in `src/lib/shop-products.ts`
-  and the 56 published compound slugs.
-- `/cart.html` → `/shop/cart`.
-- `/about.html`, category-listing pages (e.g.
-  `/aging-cellular-senescence.html`) → their nearest new-site
-  equivalent, or `/research/compounds` with a filter if no direct
-  1:1 page exists — needs a page-by-page mapping table built from the
-  actual `main`-branch file list (180 commits, dozens of files) before
-  cutover, not guessed here.
-- Implementation: Cloudflare Workers can serve redirects directly (a
-  small route table in the Worker, checked before the normal Astro
-  routing, or a Cloudflare Bulk Redirect List at the zone level once
-  the custom domain is on Cloudflare) — bulk redirect lists are
-  preferable here since they don't consume Worker request time and
-  are easy to audit as a flat list.
-- Verify with `scripts/check-links.mjs` (already exists, already run
-  in CI) plus a dedicated pass hitting every legacy URL and asserting
-  a 301 with the correct `Location`, before cutover is called done.
+- `src/lib/legacy-redirects.ts` holds the full mapping (56 compound/
+  stack pages, shop/cart/contact/home/about, the
+  `/product.html?id=X` → `/shop/X` pattern) — see
+  `docs/planning/legacy-redirect-map.md` for the human-readable table
+  it's transcribed from.
+- Implementation is two real, matched Astro routes
+  (`src/pages/product.html.astro`, `src/pages/[legacy].html.astro`),
+  **not** Worker middleware and **not** a Cloudflare Bulk Redirect
+  List as originally planned here — found live that Cloudflare's
+  Workers Static Assets binding intercepts any path with no matching
+  static file before the Worker itself runs, which would have made
+  both of those approaches silently no-op. A matched Astro route
+  sidesteps that entirely.
+- `/about.html` → `/about` was the one legacy URL genuinely still
+  unresolved as of the last correction pass — `src/pages/about.astro`
+  now exists (content carried forward from the legacy page's own
+  established mission language) and the redirect is live.
+- Still deliberately unmapped: `/faq.html`, `/research.html`,
+  `/compound-directory.html`, `/stacks.html`, and the ~20 category-
+  listing pages (`/aging-cellular-senescence.html` etc.) — no rebuilt
+  equivalent exists for any of them yet (see
+  `docs/planning/legacy-redirect-map.md`'s "Not yet migrated" list).
+  Redirecting them now would send a visitor to a 404 instead of
+  GitHub Pages' still-live original; add each one only once its real
+  replacement page ships.
+- Verified via `npm run check:links` (crawls a live preview server)
+  plus dedicated Playwright e2e tests (`tests/e2e/policy-pages.spec.ts`)
+  asserting real 301 status codes and `Location` headers for every
+  mapped legacy path — not just asserted, actually run.
 
 ## 9. Cache behavior
 

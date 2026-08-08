@@ -15,9 +15,11 @@ done, not just started.
       base — production-cutover-plan.md §12/Blueprint §25).
 - [ ] Confirm `cloudpeptides.org`'s Cloudflare zone shows "Active" in
       the Cloudflare dashboard (nameserver propagation complete).
-- [ ] Decide `www.cloudpeptides.org` behavior: direct-serve or redirect
-      to the apex (production-readiness-audit.md §3). Both routes are
-      already prepared in `wrangler.production.jsonc` either way.
+- [ ] `www.cloudpeptides.org` behavior — **decided 2026-08-08:**
+      permanently redirects (301) to the apex via a Cloudflare
+      zone-level Redirect Rule, not a Worker route (see
+      `wrangler.production.jsonc`'s own comment). Nothing to decide
+      here anymore; Phase D creates the actual rule.
 
 ## Phase B — Production database
 
@@ -60,9 +62,23 @@ from staging's values:
 - [ ] Add `cloudpeptides.org` and `www.cloudpeptides.org` to the
       existing Turnstile widget's allowed-hostnames list (Cloudflare
       dashboard → Turnstile) — same sitekey, no rotation needed.
-- [ ] `SUPABASE_SERVICE_ROLE_KEY` is **not** set on any Worker,
-      staging or production — confirm this stays true (it's used only
-      by local one-off scripts, per CLAUDE.md §8).
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` — **corrected 2026-08-08: this DOES
+      need to be set**, on production same as staging. It's required
+      for admin user/role management (`src/pages/api/admin/users/*` —
+      `auth.admin.createUser`/`listUsers` and writes to `user_roles`
+      have no non-service-role path at all, by Blueprint v2 §16's own
+      explicit design). This is the one approved exception, not a
+      leak: strictly server-side, used only inside those two routes
+      (each independently re-verifies the caller is `admin` via their
+      own JWT before ever constructing a service client — never a
+      general-purpose passthrough), rate-limited, audit-logged, and
+      covered by negative tests (`npm run db:verify-admin-security`)
+      proving `member`/`contributor`/`editor`/unauthenticated callers
+      are all rejected. Set it as a **Worker secret** on the
+      production Worker the same way it was set on staging
+      (`wrangler secret put SUPABASE_SERVICE_ROLE_KEY`) — never in a
+      committed file, never as a `PUBLIC_` var, never referenced from
+      client code.
 
 ### GitHub Actions — repo-level secrets/variables
 
@@ -87,16 +103,22 @@ names the already-prepared `deploy-production` job in
 
 ## Phase D — Attach the domain (the literal act of cutover)
 
-- [ ] Uncomment the `routes` block in `wrangler.production.jsonc`
-      (currently commented out on purpose).
+- [ ] Uncomment the `routes` entry in `wrangler.production.jsonc`
+      (currently commented out on purpose) — apex domain only, `www`
+      is never a Worker route (see next step).
+- [ ] Create the `www.cloudpeptides.org` → `https://cloudpeptides.org`
+      Redirect Rule at the Cloudflare zone level (Rules → Redirect
+      Rules, or a Bulk Redirect — either works; a single-rule Redirect
+      Rule is simplest for exactly one pattern). 301, preserve path.
 - [ ] Merge `rebuild/astro-platform` into `main` via a reviewed,
       explicitly-approved pull request (CLAUDE.md §9 — every time, not
       a one-time exception).
 - [ ] Push to `main` (or merge triggers it) → `ci` job runs → 
       `deploy-production` job waits at the `production` Environment
       approval gate → you approve the run in the Actions UI.
-- [ ] Confirm the domain resolves to the production Worker and serves
-      the expected content **before** moving to Phase E.
+- [ ] Confirm the apex domain resolves to the production Worker and
+      serves the expected content, and that `www.cloudpeptides.org`
+      redirects to it, **before** moving to Phase E.
 
 ## Phase E — Redirects and legacy site
 

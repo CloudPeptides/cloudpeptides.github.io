@@ -38,19 +38,24 @@ Legend: ✅ Ready — 🟡 Deferred/needs a decision or production-only step —
   happens automatically the moment the production Worker's real
   request hostname equals `site` — no code change needed at cutover.
 
-## 3. Domain and www handling — 🟡 deferred decision
+## 3. Domain and www handling — 🟡 nameserver check pending, ✅ www behavior decided
 
 - `cloudpeptides.org` purchased 2026-08-07; nameserver propagation to
   Cloudflare was in progress as of this Blueprint's writing — **not
   independently re-checked this session** (production-cutover-plan.md
   §6 explicitly says not to poll this repeatedly; check the Cloudflare
   dashboard directly when convenient).
-- `wrangler.production.jsonc` has both `cloudpeptides.org/*` and
-  `www.cloudpeptides.org/*` routes prepared but commented out.
-- **Open decision, not yet made:** does `www` serve the same content
-  directly, or redirect to the apex (or vice versa)? Both routes exist
-  in the prepared config either way; picking one and not serving full
-  content at both is a cutover-day decision, not a code change.
+- `wrangler.production.jsonc` has the apex `cloudpeptides.org/*` route
+  prepared but commented out.
+- **Decided 2026-08-08:** `www.cloudpeptides.org` permanently
+  redirects (301) to the apex, implemented as a Cloudflare zone-level
+  Redirect Rule rather than a Worker route (no reason to spend Worker
+  request time, or risk duplicate-content drift, on a path that only
+  ever needs to redirect) — see `wrangler.production.jsonc`'s own
+  comment and `production-cutover-checklist.md` Phase D for the
+  concrete step. Not yet created (no Cloudflare zone changes have been
+  made this session) — this is the recorded decision, not the
+  execution.
 
 ## 4. Redirects from every legacy GitHub Pages URL — ✅ (upgraded this phase)
 
@@ -178,21 +183,61 @@ Legend: ✅ Ready — 🟡 Deferred/needs a decision or production-only step —
   codes (401/403/404/429/503 as appropriate) — never a raw stack
   trace or an HTML error page for an API caller.
 
-## 11. Citation links and broken links — 🟡 3 pre-existing, unrelated findings
+## 11. Citation links and broken links — ✅ investigated exactly, one repaired, one confirmed non-actionable (2026-08-08 correction pass)
 
 - `npm run check:links` crawls a real running preview server (not just
   static output — on-demand routes have no filesystem HTML file).
-- **3 broken external citation URLs found** (carried over from before
-  this phase, re-confirmed still present, not introduced by this
-  phase's changes): an FDA consumer-update page now 404s
-  (`lemon-bottle`'s claim), and one JAMA DOI now 403s for two
-  different compounds' claims (`growth-hormone-fat-loss-stack`,
-  `tesamorelin`). This is exactly the category Blueprint v2 §18
-  describes as a low-priority editorial warning (a source going
-  stale/bot-blocked says nothing about whether the underlying claim is
-  wrong) — not a site defect, and not something this phase's scope
-  covers fixing (that's editorial-content work, not platform work). No
-  new broken links were introduced by any page/link added this phase.
+- **Exactly 2 distinct broken external citation URLs** (3 flagged
+  instances, since one URL is cited by two compounds) — both
+  individually investigated by following their real redirect chains
+  with a browser User-Agent and cross-corroborating against
+  independent web sources, not just re-flagged and left as a vague
+  "known issue":
+  1. `https://doi.org/10.1001/jama.2014.8334` (`tesamorelin` +
+     `growth-hormone-fat-loss-stack`, one shared `sources` row) — the
+     DOI resolves correctly (302) to a real `jamanetwork.com` article
+     page; JAMA Network's own bot-detection returns 403 to every
+     automated checker regardless of User-Agent. The DOI itself is
+     correct and was not changed. **Repaired:** the source's primary
+     URL (what the citation card's title actually links to) was
+     upgraded from PubMed's abstract-only page to the PMC open-access
+     full-text mirror of the identical peer-reviewed article (PMCID
+     `PMC4363137`, confirmed via web search — same authors/trial/
+     journal/PMID), which is fully reachable and not behind any
+     bot-wall. `scripts/enrichment/fix-broken-citations-2026-08-08.mjs`
+     made the change (idempotent, re-runnable); the source-of-truth
+     enrichment data files (`tesamorelin.mjs`,
+     `growth-hormone-fat-loss-stack.mjs`) were updated to match. The
+     DOI identifier chip will still show a bot-walled `doi.org` link
+     when clicked — that's the DOI resolver's own third-party behavior
+     on a genuinely correct DOI, not something fixable from this side.
+  2. `https://www.fda.gov/consumers/consumer-updates/fda-warns-against-unapproved-fat-dissolving-injections-spas-and-medspas`
+     (`lemon-bottle`'s sole citation) — curl confirms fda.gov redirects
+     automated requests to its own
+     `/apology_objects/abuse-detection-apology.html` page (a real,
+     named bot-wall response, not a generic 404-not-found) — the same
+     systemic fda.gov direct-fetch pattern already documented
+     elsewhere in this project's enrichment reports. Independently
+     corroborated via web search: multiple named 2025 news outlets
+     (NBC News, CBS News, Fox29, AOL, PhysiciansWeekly) report this
+     exact FDA warning, specifically naming Lemon Bottle, dated March
+     2025 — matching this citation's own recorded facts exactly. **Not
+     changed:** no alternate FDA URL could be confidently confirmed to
+     be the identical announcement (candidates found via search could
+     not be verified as the same document, and CLAUDE.md forbids
+     substituting an unrelated source on uncertain grounds) — left as
+     the correct, real, bot-walled citation it already was. This is
+     the "genuinely cannot be recovered [via automated verification] —
+     label it honestly" case, not a dead link.
+  - Both are exactly Blueprint v2 §18's `auth_or_bot_protected`
+    category (a source going bot-blocked says nothing about whether
+    the underlying claim is wrong) — `npm run check:links` will keep
+    flagging both indefinitely, since it can't distinguish bot-
+    protection from real breakage; that's expected and documented
+    here rather than silently suppressed from the checker (which would
+    also hide a genuinely new break on either domain in the future).
+  - No new broken links were introduced by any page/link added this
+    phase (confirmed via a fresh full crawl after all changes).
 
 ## 12. Mobile and desktop layouts — ✅
 
@@ -270,35 +315,66 @@ Legend: ✅ Ready — 🟡 Deferred/needs a decision or production-only step —
   config, and no code path can point a production build at it (the
   build step reads `vars.PROD_SUPABASE_URL`/`PROD_SUPABASE_ANON_KEY`,
   distinct GitHub Actions variables from staging's).
-- No `SUPABASE_SERVICE_ROLE_KEY` exists in any Worker config, staging
-  or production, in either environment — confirmed by inspection of
-  both `wrangler*.jsonc` files and both GitHub Actions jobs; it's read
-  only by local one-off scripts and, for staging specifically, by the
-  two narrowly-scoped `/api/admin/users/*` routes via a Worker secret
-  set directly (never in a committed file).
+- `SUPABASE_SERVICE_ROLE_KEY` is **not** in any committed file or
+  `wrangler*.jsonc` (confirmed by inspection — it's never a build-time
+  var, only ever a runtime Worker secret) and is **not** referenced by
+  any GitHub Actions workflow (confirmed — neither `deploy-staging`
+  nor `deploy-production` passes it). It **is** genuinely set as a
+  Worker secret on the staging Worker (`wrangler secret put`, done
+  with explicit approval in the prior session), read only by
+  `src/lib/auth.ts`'s `createServiceClient()`, which is called only
+  from the two narrowly-scoped `/api/admin/users/*` routes — each
+  independently re-verifies the caller's own JWT carries the `admin`
+  role before ever constructing a service client. This is the one
+  approved exception in Blueprint v2 §16's own design (service-role
+  for user role changes specifically), not an inconsistency —
+  `docs/planning/production-cutover-checklist.md`/`production-cutover-plan.md`
+  previously claimed the opposite ("must not exist on any Worker") and
+  were corrected 2026-08-08 to match this reality. Production will
+  need the same secret set the same way at cutover.
 
 ---
 
-## Deferred decisions requiring your input (not blockers for continued staging work)
+## Decisions recorded 2026-08-08 (no longer open)
 
-1. **`www` behavior** — direct-serve or redirect to apex? (§3)
-2. **Registered business entity / physical mailing address / governing
+- **`www` behavior** — permanently redirects to the apex via a
+  Cloudflare Redirect Rule, not a Worker route (§3).
+- **Analytics/advertising/tracking** — none exist, none planned; the
+  Privacy Policy states this as a forward-looking commitment, not just
+  a description of today.
+- **Cookie-consent banner** — deliberately not shown, because every
+  cookie this site sets today is strictly necessary (spam-prevention
+  cooldown, staff-only admin session, theme/cart preference) rather
+  than for tracking or analytics. Documented in the Privacy Policy
+  itself as a decision with an explicit revisit trigger: **must be
+  reconsidered before analytics, advertising, or any other
+  nonessential/tracking cookie is ever added** — not a permanent
+  exemption.
+- **Checkout/ordering** — remains disabled (`COMMERCE_ENABLED = false`
+  in `src/lib/launch-config.ts`); every commerce-adjacent policy page
+  (Shipping, Returns, Shop Terms) reads that flag live rather than
+  hardcoding the current state, so they can't drift stale if it
+  changes.
+- **Policy pages are honest operational drafts, not lawyer-reviewed
+  legal advice** — every one of the 7 policy pages now states this
+  explicitly (via `PolicyLayout.astro`'s shared footer note), not just
+  Privacy/Terms as before.
+
+## Deferred decisions still requiring your input (not blockers for continued staging work)
+
+1. **Registered business entity / physical mailing address / governing
    law / jurisdiction** — none of these exist anywhere in this
-   project's records. The 7 new policy pages state this honestly
-   rather than inventing an answer; a lawyer should review all seven
-   pages before they're treated as final legal language (this was
-   already flagged as a requirement in Blueprint v2 §23, before this
-   phase existed).
-3. **Cookie-consent banner** — not implemented. The site currently
-   sets only strictly-necessary functional cookies (form cooldown,
-   staff-only admin session) — arguably exempt from consent
-   requirements under many regimes, but that's a legal judgment call,
-   not an engineering one; flagged for legal review rather than
-   decided here.
-4. **Production Supabase tier/cost approval** — Pro tier, ~$25/month,
+   project's records. The 7 policy pages state this honestly rather
+   than inventing an answer; a lawyer should review all seven pages
+   before they're treated as final legal language (this was already
+   flagged as a requirement in Blueprint v2 §23, before this phase
+   existed — the "honest operational draft" framing above is exactly
+   how that requirement is being honored in the meantime, not a way
+   around it).
+2. **Production Supabase tier/cost approval** — Pro tier, ~$25/month,
    requires your explicit approval to activate a paid service
    (CLAUDE.md §9).
-5. Every item in production-cutover-plan.md §6 (DNS/domain attachment)
-   and §4 (production secrets) — all require your explicit
+3. Every remaining item in production-cutover-plan.md §6 (DNS/domain
+   attachment) and §4 (production secrets) — all require your explicit
    per-CLAUDE.md-§9 approval and are not, and should not be, done
    automatically by any future session either.

@@ -73,10 +73,12 @@ same way, not re-inventing new checks.
       `/research/compounds/bpc-157`
 - [ ] `curl -I "https://cloudpeptides.org/product.html?id=ghk-cu"` →
       301 → `/shop/ghk-cu`
-- [ ] Confirm a "not yet migrated" legacy path (e.g. `/about.html`)
+- [ ] `curl -I https://cloudpeptides.org/about.html` → 301 → `/about`
+      (rebuilt 2026-08-08 — no longer "not yet migrated").
+- [ ] Confirm a still-"not yet migrated" legacy path (e.g. `/faq.html`)
       does **not** redirect (by design — no replacement page exists
       yet) and instead 404s honestly on the new domain, while the
-      original still works at `cloudpeptides.github.io/about.html`.
+      original still works at `cloudpeptides.github.io/faq.html`.
 
 ## Links and content
 

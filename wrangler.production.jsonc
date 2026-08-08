@@ -25,15 +25,24 @@
   // production" unambiguous.
   "workers_dev": false,
   // Intentionally commented out until DNS is live and you explicitly
-  // approve attaching them — uncommenting this block and deploying is
-  // the literal act of cutover (production-cutover-plan.md §6), not
-  // preparation. Both the apex and `www` are listed; §6 also flags an
-  // open decision on whether `www` serves content directly or redirects
-  // to the apex — resolve that before uncommenting the `www` line.
+  // approve attaching it — uncommenting this and deploying is the
+  // literal act of cutover (production-cutover-plan.md §6), not
+  // preparation.
+  //
+  // Decided 2026-08-08: `www.cloudpeptides.org` permanently redirects
+  // to the apex — it is deliberately NOT a route here. A Worker route
+  // would mean www traffic gets fully rendered by this app just to
+  // redirect (or, worse, silently serve duplicate content if a future
+  // edit forgets the redirect), and it would burn Worker request time
+  // for something that never needs any app logic. The redirect belongs
+  // at the Cloudflare zone level instead — a Redirect Rule (Rules →
+  // Redirect Rules → "www.cloudpeptides.org/*" → 301 →
+  // "https://cloudpeptides.org/${1}") or an equivalent Bulk Redirect —
+  // created at cutover time, same explicit-approval gate as everything
+  // else in this file. See production-cutover-checklist.md Phase D.
   //
   // "routes": [
-  //   { "pattern": "cloudpeptides.org/*", "custom_domain": true },
-  //   { "pattern": "www.cloudpeptides.org/*", "custom_domain": true }
+  //   { "pattern": "cloudpeptides.org/*", "custom_domain": true }
   // ],
   "assets": {
     "directory": "./dist/client",

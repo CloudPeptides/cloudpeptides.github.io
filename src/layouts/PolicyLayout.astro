@@ -27,6 +27,12 @@ const { title, description, eyebrow = 'Legal', lastUpdated } = Astro.props;
     <div class="cp-policy__body">
       <slot />
     </div>
+    <footer class="cp-policy__footer">
+      <p>
+        This page is an honest operational draft describing Cloud Peptides' actual current practices
+        — it has not been reviewed by a lawyer and is not represented as legal advice.
+      </p>
+    </footer>
   </article>
 </BaseLayout>
 
@@ -99,5 +105,16 @@ const { title, description, eyebrow = 'Legal', lastUpdated } = Astro.props;
     margin: 0 0 1.25rem;
     font-size: var(--text-caption);
     color: var(--text-secondary);
+  }
+  .cp-policy__footer {
+    margin-top: 2rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .cp-policy__footer p {
+    color: var(--text-muted);
+    font-size: var(--text-caption);
+    font-style: italic;
+    margin: 0;
   }
 </style>
