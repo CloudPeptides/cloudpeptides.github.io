@@ -14,28 +14,30 @@ generic template.
 ## 0. Honest readiness check first
 
 Blueprint §26 makes Phase 12 (Cutover) depend on Phases 1–9. Against
-that:
+that (updated 2026-08-08 — Phase 5/6 and Resend/Turnstile activation
+completed since this table was first written; see
+docs/implementation-log.md's "Combined Phase" entries for the full
+detail):
 
 | Phase | Status |
 |---|---|
 | 1 Repo scaffold, staging deploy, CI | Done |
 | 2 Schema + RLS + legacy import | Done |
 | 3 Public directory + profiles | Done — 56/56 published on staging |
-| 4 Shop/cart parity | Done (existing static-catalog rebuild) |
-| 5 Auth + favorites/reading list/comparisons | **Not started** |
-| 6 Admin dashboard (draft→review→published UI) | **Not started** — publishing is currently done via one-off scripts under service-role, not an editor UI |
-| 7 Resend integration | Code done, **not activated** — see docs/planning/resend-turnstile-setup.md |
-| 8 SEO: sitemap/OG/structured data | Done |
+| 4 Shop/cart parity | Done (existing static-catalog rebuild); checkout stays deliberately disabled (`COMMERCE_ENABLED = false`) — a launch decision, not a readiness gap |
+| 5 Auth (staff/editorial) | Done — Supabase Auth email/password, cookie session, server-verified on every request. Public favorites/reading-list/comparisons were never requested and remain out of scope |
+| 6 Admin dashboard (draft→review→published UI) | Done — full editorial dashboard (compounds/claims/sources/studies, publish workflow with pre-flight checks, revision history, audit log, admin-only user/role management), live-verified against the deployed staging Worker (18/18 + 7/7 checks) |
+| 7 Resend integration | Done, **activated on staging** — contact form live-tested end to end |
+| 8 SEO: sitemap/OG/structured data | Done; policy/trust pages added to the sitemap this phase |
 | 9 Accessibility & testing hardening | Done, ongoing |
 
-**This plan documents how to execute cutover once you decide to — it
-does not claim Phases 5–6 are done, and cutover per the Blueprint's
-own dependency chain should wait for them (or for an explicit decision
-to cut over without an admin UI, publishing continuing to be a manual
-service-role-script process in production too, which carries more
-operational risk than the Blueprint intended). Flagging this
-explicitly rather than writing a plan that implies today is launch-
-ready.**
+**Every phase 1–9 dependency for cutover is now satisfied on staging.**
+What remains before cutover is genuinely production-specific
+work — a separate Supabase project, DNS/domain attachment, and the
+explicit approvals CLAUDE.md §9 requires for each — not another
+feature phase. See docs/planning/production-cutover-checklist.md for
+the exact ordered steps and docs/planning/production-readiness-audit.md
+for the full pre-launch audit this phase performed.
 
 ## 1. Does production need its own Supabase project?
 
