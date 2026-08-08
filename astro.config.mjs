@@ -28,6 +28,27 @@ export default defineConfig({
     // in use, keeping the Worker's footprint (and any billing surface)
     // minimal per CLAUDE.md's "no paid resources without approval" rule.
     imageService: 'passthrough',
+    // Found live (not assumed) 2026-08-08 — the adapter always targets
+    // wrangler.jsonc (the hardcoded default filename in
+    // @astrojs/cloudflare's own resolveWranglerConfigPath, unless told
+    // otherwise) to learn the Worker's shape (name/main/assets/etc.)
+    // and writes the REAL resolved entry point into
+    // dist/server/wrangler.json accordingly (main: "entry.mjs", not
+    // wrangler.production.jsonc's literal placeholder value
+    // "@astrojs/cloudflare/entrypoints/server" — that string only ever
+    // gets resolved via this adapter step, never as a literal file
+    // path). Building with SITE_ENV=production but never telling the
+    // adapter about wrangler.production.jsonc meant the production
+    // build's generated entry point was silently staging-shaped,
+    // and `wrangler deploy --config wrangler.production.jsonc`
+    // (which never runs through this adapter step at all) tried to
+    // resolve that placeholder value literally and failed with
+    // "entry-point file ... was not found" — confirmed via a real
+    // failed deploy-production run in GitHub Actions, not a Windows-
+    // only quirk as first assumed. configPath tells the adapter which
+    // file to target, matching scripts/postbuild-headers.mjs's own
+    // existing SITE_ENV convention.
+    configPath: process.env.SITE_ENV === 'production' ? 'wrangler.production.jsonc' : undefined,
   }),
   // Same reasoning — nothing uses Astro's Sessions API, so don't have the
   // adapter auto-provision a KV namespace for it.

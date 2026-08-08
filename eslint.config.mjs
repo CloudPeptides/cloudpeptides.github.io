@@ -18,10 +18,15 @@ export default defineConfig(
   // have had nothing to lint here regardless. eslint-plugin-astro's own
   // "recommended" ruleset (applied above) still lints .astro templates.
   {
-    // Node-environment scripts (migration/build tooling) — not browser
-    // code, so they get Node globals (process, console, URL, Buffer, …)
-    // instead of the browser globals the rest of the app assumes.
-    files: ['scripts/**/*.mjs'],
+    // Node-environment scripts (migration/build tooling) plus the
+    // root-level *.config.mjs files themselves (astro.config.mjs,
+    // this file) — none of these are browser code, so they get Node
+    // globals (process, console, URL, Buffer, …) instead of the
+    // browser globals the rest of the app assumes. astro.config.mjs
+    // specifically needs `process.env` — added 2026-08-08 alongside
+    // its own SITE_ENV-conditional configPath (see that file's own
+    // comment).
+    files: ['scripts/**/*.mjs', '*.config.mjs'],
     languageOptions: {
       globals: globals.node,
     },
