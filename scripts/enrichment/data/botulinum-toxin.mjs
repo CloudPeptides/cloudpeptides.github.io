@@ -36,7 +36,7 @@ export default {
       key: 'fda-botox-label',
       sourceType: 'fda_document',
       title: 'BOTOX (onabotulinumtoxinA) for injection — approved labeling (BLA 103000)',
-      url: 'https://www.fda.gov/media/172965/download',
+      url: 'https://www.accessdata.fda.gov/drugsatfda_docs/label/2023/103000s5327lbl.pdf',
       publisherOrAgency: 'U.S. Food and Drug Administration',
       publicationDate: '1989-12-29',
       identifiers: {},

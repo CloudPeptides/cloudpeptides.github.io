@@ -3,14 +3,18 @@
  * individually verified live and correct, but sit behind bot-detection
  * on doi.org/fda.gov that intermittently returns 403/404 to automated
  * crawlers regardless of which User-Agent is used (confirmed
- * non-deterministic: three separate scripts/check-links.mjs runs
- * against the identical build flagged three different subsets of
- * these exact URLs, and the same URL has been observed returning both
- * 403 and 404 across different runs) — see docs/planning/
- * production-readiness-audit.md §11 for the original JAMA DOI
- * investigation and the 2026-08-08 cutover-prep session for the two
- * FDA additions.
+ * non-deterministic: separate scripts/check-links.mjs runs against the
+ * identical build have each flagged a different subset of these exact
+ * URLs, and the same URL has been observed returning both 403 and 404
+ * across different runs) — see docs/planning/production-readiness-
+ * audit.md §11 for the original JAMA DOI investigation and the
+ * 2026-08-08 cutover-prep session for every entry added since.
+ * scripts/enrichment/fix-broken-citations-2026-08-08-b.mjs's own
+ * header documents the one entry from that same pass that turned out
+ * to be genuinely dead (not bot-walled) and was repaired instead of
+ * allowlisted — the BOTOX/onabotulinumtoxinA labeling citation.
  *
+
  * Deliberately NOT a whole-domain skip (CLAUDE.md §6: citation health
  * still matters, and a domain-wide allowance would hide a genuinely
  * new dead link on either domain forever) and deliberately NOT a
@@ -36,6 +40,15 @@ export const FLAKY_CITATION_ALLOWLIST = new Set([
   // by both bpc-157 and semax (one shared source row) — verified live
   // in a browser 2026-08-08, title/content match the citation record.
   'https://www.fda.gov/advisory-committees/advisory-committee-calendar/july-23-24-2026-meeting-pharmacy-compounding-advisory-committee-07232026',
+  // Four DOI resolver links, independently verified 2026-08-08 as
+  // valid DOIs matching their PubMed records — same doi.org bot-wall
+  // pattern as the JAMA entry above, not a content problem. Each
+  // citation's own primary link is its PubMed page, not doi.org; the
+  // DOI only appears as a secondary identifier chip.
+  'https://doi.org/10.3390/molecules26010159', // pinealon
+  'https://doi.org/10.3390/ijms22126179', // semax
+  'https://doi.org/10.3390/ijms26062691', // epithalon-compound
+  'https://doi.org/10.3390/molecules191119066', // bpc-157
 ]);
 
 /**
