@@ -19,7 +19,8 @@ export default {
     {
       key: 'pmid-29184669',
       sourceType: 'pubmed_article',
-      title: 'Repeat dose NRPT (nicotinamide riboside and pterostilbene) increases NAD+ levels in humans safely and sustainably: a randomized, double-blind, placebo-controlled study.',
+      title:
+        'Repeat dose NRPT (nicotinamide riboside and pterostilbene) increases NAD+ levels in humans safely and sustainably: a randomized, double-blind, placebo-controlled study.',
       url: 'https://pubmed.ncbi.nlm.nih.gov/29184669/',
       publisherOrAgency: 'npj Aging and Mechanisms of Disease',
       publicationDate: '2017-11-24',
@@ -27,11 +28,14 @@ export default {
       study: {
         studyDesign: 'rct_human',
         population: 'Healthy adults',
-        intervention: 'Oral nicotinamide riboside + pterostilbene (NAD+ precursor compounds), repeat dosing',
+        intervention:
+          'Oral nicotinamide riboside + pterostilbene (NAD+ precursor compounds), repeat dosing',
         comparator: 'Placebo',
         route: 'Oral',
-        resultsSummary: 'Repeat oral dosing of NAD+ precursor compounds safely and sustainably increased NAD+ levels in humans.',
-        limitations: 'Studies oral NAD+ PRECURSORS, not direct NAD+ administration (e.g. IV infusion) — a materially different intervention and product category.',
+        resultsSummary:
+          'Repeat oral dosing of NAD+ precursor compounds safely and sustainably increased NAD+ levels in humans.',
+        limitations:
+          'Studies oral NAD+ PRECURSORS, not direct NAD+ administration (e.g. IV infusion) — a materially different intervention and product category.',
         peerReviewStatus: 'peer_reviewed',
       },
     },
@@ -52,7 +56,8 @@ export default {
   legacyReconciliations: [
     {
       legacyClaimId: 'd1eccdb0-51f8-4805-97f8-d5b5724939f9',
-      legacyStatementExcerpt: 'NAD+ is a naturally occurring coenzyme found in every living cell and is essential for energy metabolism',
+      legacyStatementExcerpt:
+        'NAD+ is a naturally occurring coenzyme found in every living cell and is essential for energy metabolism',
       disposition: 'supported',
       rationale: 'Uncontroversial, well-established biochemistry.',
       evidenceQuality: 'not_assessed',
@@ -61,7 +66,8 @@ export default {
     },
     {
       legacyClaimId: '574eab23-cce3-43c8-8d80-bfc338f8f0c7',
-      legacyStatementExcerpt: 'Laboratory investigations explore NAD+ in models involving healthy aging, DNA repair, oxidative stress, neurobiology, and cellular resilience',
+      legacyStatementExcerpt:
+        'Laboratory investigations explore NAD+ in models involving healthy aging, DNA repair, oxidative stress, neurobiology, and cellular resilience',
       disposition: 'revised',
       rationale:
         'Accurate for the underlying biochemistry/laboratory research field broadly, but this framing does not distinguish between the well-evidenced oral-precursor human trials and the much less-evidenced direct-NAD+-administration products actually marketed to consumers — a distinction this review found to matter significantly (see new summary claim).',
@@ -71,7 +77,8 @@ export default {
     },
     {
       legacyClaimId: '497046a3-c820-4bb6-8360-7e94ac0b6fe6',
-      legacyStatementExcerpt: 'Researchers investigate NAD+ as a critical cofactor in oxidation-reduction reactions that support ATP production, mitochondrial function',
+      legacyStatementExcerpt:
+        'Researchers investigate NAD+ as a critical cofactor in oxidation-reduction reactions that support ATP production, mitochondrial function',
       disposition: 'supported',
       rationale: 'Uncontroversial, well-established biochemistry, not in dispute.',
       evidenceQuality: 'not_assessed',
@@ -80,7 +87,8 @@ export default {
     },
     {
       legacyClaimId: 'd14b0ace-df97-463d-a2e5-a862223afa1e',
-      legacyStatementExcerpt: 'Q: What is NAD+ researched for? A: Research commonly focuses on cellular energy metabolism, mitochondrial biology, DNA repair pathways',
+      legacyStatementExcerpt:
+        'Q: What is NAD+ researched for? A: Research commonly focuses on cellular energy metabolism, mitochondrial biology, DNA repair pathways',
       disposition: 'supported',
       rationale: 'Accurate description of the research focus.',
       evidenceQuality: 'not_assessed',
@@ -89,16 +97,29 @@ export default {
     },
     {
       legacyClaimId: 'e396a342-298c-4387-a88c-430cf9d41f6b',
-      legacyStatementExcerpt: 'Q: Is NAD+ naturally present in the body? A: Yes. NAD+ is a naturally occurring coenzyme found in virtually every cell',
+      legacyStatementExcerpt:
+        'Q: Is NAD+ naturally present in the body? A: Yes. NAD+ is a naturally occurring coenzyme found in virtually every cell',
       disposition: 'supported',
       rationale: 'Accurate, uncontroversial biochemical fact.',
       evidenceQuality: 'not_assessed',
       interpretationStatus: 'established',
       sources: [],
     },
-    policyReconciliation('0603646f-aef3-4e88-9934-ed09b328f11b', 'Q: Does Cloud Peptides provide dosage information? A: No.'),
-    policyReconciliation('d244319c-d21c-4c98-b6ee-b2acfb443559', 'This page summarizes publicly available scientific literature for educational purposes only.'),
-    policyReconciliation('23912ff5-d147-4ec7-8cea-64ab1184c113', 'Cloud Peptides does not provide medical advice, treatment recommendations, or dosage information.'),
-    policyReconciliation('8f03b9c3-2e38-4c42-8cef-37c37d77b2af', 'All products are intended strictly for laboratory research purposes only'),
+    policyReconciliation(
+      '0603646f-aef3-4e88-9934-ed09b328f11b',
+      'Q: Does Cloud Peptides provide dosage information? A: No.',
+    ),
+    policyReconciliation(
+      'd244319c-d21c-4c98-b6ee-b2acfb443559',
+      'This page summarizes publicly available scientific literature for educational purposes only.',
+    ),
+    policyReconciliation(
+      '23912ff5-d147-4ec7-8cea-64ab1184c113',
+      'Cloud Peptides does not provide medical advice, treatment recommendations, or dosage information.',
+    ),
+    policyReconciliation(
+      '8f03b9c3-2e38-4c42-8cef-37c37d77b2af',
+      'All products are intended strictly for laboratory research purposes only',
+    ),
   ],
 };

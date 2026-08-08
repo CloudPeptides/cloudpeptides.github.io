@@ -37,14 +37,16 @@ export default {
         primaryOutcomes: 'Percent change in body weight at 24 weeks; safety through 48 weeks',
         resultsSummary:
           'At 48 weeks, >=15% weight loss occurred in 60% (4 mg), 75% (8 mg), and 83% (12 mg) of retatrutide-treated participants, versus 2% with placebo — a dose-dependent effect substantially larger than reported for single/dual-agonist GLP-1 drugs in comparable trial populations.',
-        limitations: 'Phase 2 (not yet Phase 3-confirmed at time of publication); industry-funded (Eli Lilly).',
+        limitations:
+          'Phase 2 (not yet Phase 3-confirmed at time of publication); industry-funded (Eli Lilly).',
         peerReviewStatus: 'peer_reviewed',
       },
     },
     {
       key: 'pmid-37385280',
       sourceType: 'pubmed_article',
-      title: 'Retatrutide, a GIP, GLP-1 and glucagon receptor agonist, for people with type 2 diabetes: a randomised, double-blind, placebo and active-controlled, parallel-group, phase 2 trial conducted in the USA.',
+      title:
+        'Retatrutide, a GIP, GLP-1 and glucagon receptor agonist, for people with type 2 diabetes: a randomised, double-blind, placebo and active-controlled, parallel-group, phase 2 trial conducted in the USA.',
       url: 'https://pubmed.ncbi.nlm.nih.gov/37385280/',
       publisherOrAgency: 'The Lancet',
       publicationDate: '2023-08-12',
@@ -55,7 +57,8 @@ export default {
         intervention: 'Retatrutide, once weekly, subcutaneous, multiple doses',
         comparator: 'Placebo and active comparator (dulaglutide)',
         route: 'Subcutaneous injection',
-        resultsSummary: 'Retatrutide improved glycemic control and produced weight loss in adults with type 2 diabetes across the doses tested.',
+        resultsSummary:
+          'Retatrutide improved glycemic control and produced weight loss in adults with type 2 diabetes across the doses tested.',
         limitations: 'Phase 2; industry-funded (Eli Lilly).',
         peerReviewStatus: 'peer_reviewed',
       },
@@ -76,7 +79,8 @@ export default {
       statement:
         'In a Phase 2 randomized, placebo-controlled trial in adults with obesity/overweight, once-weekly retatrutide produced dose-dependent weight loss substantially larger than placebo, with >=15% weight loss achieved by 60-83% of participants across the 4/8/12 mg doses at 48 weeks, versus 2% on placebo.',
       evidenceQuality: 'moderate',
-      qualityRationale: 'Randomized, double-blind, placebo-controlled Phase 2 trial in a top-tier journal — strong signal, but Phase 2 scale/duration, not yet Phase 3-confirmed at time of this review.',
+      qualityRationale:
+        'Randomized, double-blind, placebo-controlled Phase 2 trial in a top-tier journal — strong signal, but Phase 2 scale/duration, not yet Phase 3-confirmed at time of this review.',
       interpretationStatus: 'preliminary',
       sources: [{ sourceKey: 'pmid-37366315', relationship: 'directly_supports' }],
     },
@@ -117,16 +121,19 @@ export default {
   legacyReconciliations: [
     {
       legacyClaimId: '7903941f-707c-44ca-9b5e-c19b6b4b87a9',
-      legacyStatementExcerpt: 'Retatrutide is an investigational peptide designed to activate three biological receptors associated with metabolic regulation: GLP-1, GIP, and glucag',
+      legacyStatementExcerpt:
+        'Retatrutide is an investigational peptide designed to activate three biological receptors associated with metabolic regulation: GLP-1, GIP, and glucag',
       disposition: 'supported',
-      rationale: '"Investigational" is accurate here (unlike the corresponding claim for Tirzepatide, corrected elsewhere in this closeout) — retatrutide genuinely has no FDA-approved product of any kind, confirmed by the verified regulatory record.',
+      rationale:
+        '"Investigational" is accurate here (unlike the corresponding claim for Tirzepatide, corrected elsewhere in this closeout) — retatrutide genuinely has no FDA-approved product of any kind, confirmed by the verified regulatory record.',
       evidenceQuality: 'high',
       interpretationStatus: 'established',
       sources: [{ sourceKey: 'fda-glp1-solution-warning-2025', relationship: 'directly_supports' }],
     },
     {
       legacyClaimId: '8bfdb732-67a9-4fbd-885d-3d285fed3c15',
-      legacyStatementExcerpt: 'Researchers are studying how simultaneous activation of these pathways may influence appetite, energy balance, glucose regulation, body composition, a',
+      legacyStatementExcerpt:
+        'Researchers are studying how simultaneous activation of these pathways may influence appetite, energy balance, glucose regulation, body composition, a',
       disposition: 'supported',
       rationale: 'Directly confirmed by the verified Phase 2 obesity and type 2 diabetes trials.',
       evidenceQuality: 'moderate',
@@ -138,7 +145,8 @@ export default {
     },
     {
       legacyClaimId: 'a2693c28-a7c6-4102-b5a0-a9048b01dd83',
-      legacyStatementExcerpt: 'Unlike single-receptor compounds, Retatrutide is designed to activate three complementary signaling pathways. Researchers investigate how these pathwa',
+      legacyStatementExcerpt:
+        'Unlike single-receptor compounds, Retatrutide is designed to activate three complementary signaling pathways. Researchers investigate how these pathwa',
       disposition: 'supported',
       rationale: 'Directly confirmed mechanism (triple GIP/GLP-1/glucagon receptor agonism).',
       evidenceQuality: 'moderate',
@@ -147,22 +155,38 @@ export default {
     },
     {
       legacyClaimId: '1df45f63-cff4-4d87-b90f-9b3fea64ff73',
-      legacyStatementExcerpt: 'Q: Is Retatrutide approved for clinical use? A: Retatrutide remains an investigational compound and continues to be studied in clinical research',
+      legacyStatementExcerpt:
+        'Q: Is Retatrutide approved for clinical use? A: Retatrutide remains an investigational compound and continues to be studied in clinical research',
       disposition: 'supported',
-      rationale: 'Precisely accurate and directly confirmed by the verified FDA regulatory finding — retatrutide has no approved product of any kind.',
+      rationale:
+        'Precisely accurate and directly confirmed by the verified FDA regulatory finding — retatrutide has no approved product of any kind.',
       evidenceQuality: 'high',
       interpretationStatus: 'established',
       sources: [{ sourceKey: 'fda-glp1-solution-warning-2025', relationship: 'directly_supports' }],
     },
-    policyReconciliation('16d7c6ce-2752-4014-9a59-0ed26f967a4b', 'Q: Does Cloud Peptides provide dosage recommendations? A: No.'),
-    policyReconciliation('6a8ffa03-574d-488f-86fd-05539a507eac', 'Q: Is this page educational? A: Yes.'),
-    policyReconciliation('e121956b-b3c0-484a-b91d-139a2c9fbcb2', 'This page is provided for educational purposes only.'),
-    policyReconciliation('75cdd221-ca53-42e2-8a1e-dd658b8f9b71', 'Cloud Peptides does not provide medical advice, treatment recommendations, or dosage information.'),
+    policyReconciliation(
+      '16d7c6ce-2752-4014-9a59-0ed26f967a4b',
+      'Q: Does Cloud Peptides provide dosage recommendations? A: No.',
+    ),
+    policyReconciliation(
+      '6a8ffa03-574d-488f-86fd-05539a507eac',
+      'Q: Is this page educational? A: Yes.',
+    ),
+    policyReconciliation(
+      'e121956b-b3c0-484a-b91d-139a2c9fbcb2',
+      'This page is provided for educational purposes only.',
+    ),
+    policyReconciliation(
+      '75cdd221-ca53-42e2-8a1e-dd658b8f9b71',
+      'Cloud Peptides does not provide medical advice, treatment recommendations, or dosage information.',
+    ),
     {
       legacyClaimId: '165b449b-88f8-40fe-90ef-164fd5d4cc81',
-      legacyStatementExcerpt: 'All products are intended strictly for laboratory research purposes only and are not for human consumption',
+      legacyStatementExcerpt:
+        'All products are intended strictly for laboratory research purposes only and are not for human consumption',
       disposition: 'supported',
-      rationale: 'Retatrutide has no FDA-approved drug product of any kind (confirmed above) — no molecule-vs-product nuance applies; the disclaimer is simply and fully accurate.',
+      rationale:
+        'Retatrutide has no FDA-approved drug product of any kind (confirmed above) — no molecule-vs-product nuance applies; the disclaimer is simply and fully accurate.',
       evidenceQuality: 'high',
       interpretationStatus: 'established',
       sources: [{ sourceKey: 'fda-glp1-solution-warning-2025', relationship: 'directly_supports' }],

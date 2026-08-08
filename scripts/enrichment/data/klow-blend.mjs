@@ -27,7 +27,7 @@ export default {
       identifiers: { pmid: '18061177' },
       study: {
         studyDesign: 'animal_study',
-        intervention: 'KPV (one of KLOW\'s four named components, per commercial vendor listings)',
+        intervention: "KPV (one of KLOW's four named components, per commercial vendor listings)",
         resultsSummary: 'See kpv.mjs for the fuller KPV evidence base.',
         peerReviewStatus: 'peer_reviewed',
       },
@@ -37,7 +37,7 @@ export default {
     {
       contentSection: 'summary',
       statement:
-        'The legacy page does not name KLOW Blend\'s actual components. Cross-checking multiple independent commercial vendor listings (used only to identify stated composition, not as scientific evidence) consistently identifies it as GHK-Cu + BPC-157 + TB-500 + KPV. No published study of this specific four-peptide combination was identified during this review — each component has separately-verified evidence (documented in their own compound pages), but combining them has not itself been studied for safety or efficacy.',
+        "The legacy page does not name KLOW Blend's actual components. Cross-checking multiple independent commercial vendor listings (used only to identify stated composition, not as scientific evidence) consistently identifies it as GHK-Cu + BPC-157 + TB-500 + KPV. No published study of this specific four-peptide combination was identified during this review — each component has separately-verified evidence (documented in their own compound pages), but combining them has not itself been studied for safety or efficacy.",
       interpretationStatus: 'insufficient',
       sources: [{ sourceKey: 'pmid-18061177-klow', relationship: 'provides_context' }],
     },
@@ -46,7 +46,8 @@ export default {
   legacyReconciliations: [
     {
       legacyClaimId: '73838226-ecdd-4d24-97d0-3899ca240045',
-      legacyStatementExcerpt: 'KLOW Blend is a proprietary research blend designed to combine multiple pathways of scientific interest into a single formulation',
+      legacyStatementExcerpt:
+        'KLOW Blend is a proprietary research blend designed to combine multiple pathways of scientific interest into a single formulation',
       disposition: 'revised',
       rationale:
         'Accurate that it is a multi-compound blend, but the legacy page does not disclose WHICH compounds — a material omission for a page claiming to summarize "scientific literature." This review identified the likely composition (GHK-Cu, BPC-157, TB-500, KPV) via commercial vendor cross-referencing (not scientific literature) and flags that no study of the actual combination exists.',
@@ -56,15 +57,26 @@ export default {
     },
     {
       legacyClaimId: 'c5d1f80d-144d-4493-b69e-7326e75f3f6e',
-      legacyStatementExcerpt: 'Because formulations may vary, research findings should always be interpreted within the context of the specific blend being studied',
+      legacyStatementExcerpt:
+        'Because formulations may vary, research findings should always be interpreted within the context of the specific blend being studied',
       disposition: 'supported',
-      rationale: 'Appropriately cautious, and directly relevant given this review found no study of "the specific blend" at all.',
+      rationale:
+        'Appropriately cautious, and directly relevant given this review found no study of "the specific blend" at all.',
       evidenceQuality: 'not_assessed',
       interpretationStatus: 'established',
       sources: [],
     },
-    policyReconciliation('ae07420a-7fa4-43d9-9f3a-2a5095959570', 'This page summarizes publicly available scientific literature for educational purposes only.'),
-    policyReconciliation('b66e3a5a-e330-4ae4-a47d-9a3c403dde19', 'Cloud Peptides does not provide medical advice, treatment recommendations, or dosage information.'),
-    policyReconciliation('7de2fe05-a19f-4f5f-bd38-3588efe82074', 'All products are intended strictly for laboratory research purposes only'),
+    policyReconciliation(
+      'ae07420a-7fa4-43d9-9f3a-2a5095959570',
+      'This page summarizes publicly available scientific literature for educational purposes only.',
+    ),
+    policyReconciliation(
+      'b66e3a5a-e330-4ae4-a47d-9a3c403dde19',
+      'Cloud Peptides does not provide medical advice, treatment recommendations, or dosage information.',
+    ),
+    policyReconciliation(
+      '7de2fe05-a19f-4f5f-bd38-3588efe82074',
+      'All products are intended strictly for laboratory research purposes only',
+    ),
   ],
 };

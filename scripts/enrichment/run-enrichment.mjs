@@ -64,7 +64,9 @@ const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables.');
-  console.error("This script must be run manually, locally, with the staging project's service-role key.");
+  console.error(
+    "This script must be run manually, locally, with the staging project's service-role key.",
+  );
   process.exit(1);
 }
 
@@ -84,7 +86,9 @@ async function loadDataFile(slug) {
   const mod = await import(`./data/${slug}.mjs`);
   const data = mod.default;
   if (!data || data.slug !== slug) {
-    throw new Error(`scripts/enrichment/data/${slug}.mjs missing or slug mismatch (expected "${slug}")`);
+    throw new Error(
+      `scripts/enrichment/data/${slug}.mjs missing or slug mismatch (expected "${slug}")`,
+    );
   }
   return data;
 }
@@ -105,12 +109,19 @@ async function findExistingSourceId(entry) {
       .eq('identifier_type', identifierType)
       .eq('identifier_value', identifierValue)
       .maybeSingle();
-    if (error) throw new Error(`source_identifiers lookup failed for ${identifierType}=${identifierValue}: ${error.message}`);
+    if (error)
+      throw new Error(
+        `source_identifiers lookup failed for ${identifierType}=${identifierValue}: ${error.message}`,
+      );
     if (data) return data.source_id;
   }
 
   if (identifierChecks.length === 0 && entry.url) {
-    const { data, error } = await supabase.from('sources').select('id').eq('url', entry.url).maybeSingle();
+    const { data, error } = await supabase
+      .from('sources')
+      .select('id')
+      .eq('url', entry.url)
+      .maybeSingle();
     if (error) throw new Error(`sources URL lookup failed for ${entry.url}: ${error.message}`);
     if (data) return data.id;
   }
@@ -147,7 +158,8 @@ async function upsertSource(entry, log) {
       })
       .select('id')
       .single();
-    if (studyError) throw new Error(`studies insert failed for "${entry.title}": ${studyError.message}`);
+    if (studyError)
+      throw new Error(`studies insert failed for "${entry.title}": ${studyError.message}`);
     studyId = studyRow.id;
     log.studiesInserted++;
   }
@@ -164,17 +176,23 @@ async function upsertSource(entry, log) {
     })
     .select('id')
     .single();
-  if (sourceError) throw new Error(`sources insert failed for "${entry.title}": ${sourceError.message}`);
+  if (sourceError)
+    throw new Error(`sources insert failed for "${entry.title}": ${sourceError.message}`);
 
   const ids = entry.identifiers || {};
   const identifierRows = [
     ids.doi && { source_id: sourceRow.id, identifier_type: 'doi', identifier_value: ids.doi },
     ids.pmid && { source_id: sourceRow.id, identifier_type: 'pmid', identifier_value: ids.pmid },
-    ids.nctNumber && { source_id: sourceRow.id, identifier_type: 'nct_number', identifier_value: ids.nctNumber },
+    ids.nctNumber && {
+      source_id: sourceRow.id,
+      identifier_type: 'nct_number',
+      identifier_value: ids.nctNumber,
+    },
   ].filter(Boolean);
   if (identifierRows.length > 0) {
     const { error: idError } = await supabase.from('source_identifiers').insert(identifierRows);
-    if (idError) throw new Error(`source_identifiers insert failed for "${entry.title}": ${idError.message}`);
+    if (idError)
+      throw new Error(`source_identifiers insert failed for "${entry.title}": ${idError.message}`);
   }
 
   log.sourcesInserted++;
@@ -195,8 +213,12 @@ async function reconcileLegacyClaim(entry, sourceKeyToId, log) {
     .select('id, statement')
     .eq('id', entry.legacyClaimId)
     .maybeSingle();
-  if (fetchError) throw new Error(`legacy claim lookup failed for ${entry.legacyClaimId}: ${fetchError.message}`);
-  if (!existing) throw new Error(`legacy claim id ${entry.legacyClaimId} not found — refusing to reconcile a nonexistent row`);
+  if (fetchError)
+    throw new Error(`legacy claim lookup failed for ${entry.legacyClaimId}: ${fetchError.message}`);
+  if (!existing)
+    throw new Error(
+      `legacy claim id ${entry.legacyClaimId} not found — refusing to reconcile a nonexistent row`,
+    );
   if (!existing.statement.startsWith(entry.legacyStatementExcerpt.slice(0, 40))) {
     throw new Error(
       `legacy claim ${entry.legacyClaimId} statement does not match the recorded excerpt — refusing to reconcile a possibly-wrong row (expected prefix "${entry.legacyStatementExcerpt.slice(0, 40)}...", found "${existing.statement.slice(0, 40)}...")`,
@@ -212,13 +234,17 @@ async function reconcileLegacyClaim(entry, sourceKeyToId, log) {
       interpretation_status: entry.interpretationStatus,
     })
     .eq('id', entry.legacyClaimId);
-  if (updateError) throw new Error(`legacy claim update failed for ${entry.legacyClaimId}: ${updateError.message}`);
+  if (updateError)
+    throw new Error(
+      `legacy claim update failed for ${entry.legacyClaimId}: ${updateError.message}`,
+    );
   log.legacyClaimsReconciled++;
   log.legacyDispositions[entry.disposition] = (log.legacyDispositions[entry.disposition] || 0) + 1;
 
   for (const link of entry.sources) {
     const sourceId = sourceKeyToId.get(link.sourceKey);
-    if (!sourceId) throw new Error(`legacy reconciliation references unknown sourceKey "${link.sourceKey}"`);
+    if (!sourceId)
+      throw new Error(`legacy reconciliation references unknown sourceKey "${link.sourceKey}"`);
     const { data: existingLink } = await supabase
       .from('claim_sources')
       .select('claim_id')
@@ -232,7 +258,10 @@ async function reconcileLegacyClaim(entry, sourceKeyToId, log) {
       relationship: link.relationship,
       locator: link.locator ?? null,
     });
-    if (linkError) throw new Error(`claim_sources insert failed for legacy claim ${entry.legacyClaimId}: ${linkError.message}`);
+    if (linkError)
+      throw new Error(
+        `claim_sources insert failed for legacy claim ${entry.legacyClaimId}: ${linkError.message}`,
+      );
     log.claimSourcesInserted++;
   }
 }
@@ -274,12 +303,16 @@ async function enrichCompound(slug) {
   }
   if (!compound) {
     log.status = 'error';
-    log.errors.push(`no compound row found for slug "${slug}" — expected an existing draft compound, not created by this pipeline`);
+    log.errors.push(
+      `no compound row found for slug "${slug}" — expected an existing draft compound, not created by this pipeline`,
+    );
     return log;
   }
   if (compound.status !== 'draft') {
     log.status = 'error';
-    log.errors.push(`compound status is "${compound.status}", not "draft" — refusing to touch a non-draft compound`);
+    log.errors.push(
+      `compound status is "${compound.status}", not "draft" — refusing to touch a non-draft compound`,
+    );
     return log;
   }
   // A compound already fully enriched (sources/claims/regulatory records
@@ -289,7 +322,8 @@ async function enrichCompound(slug) {
   // reconciliation's disposition) without re-inserting anything that's
   // already there. A compound with nothing new to reconcile is still
   // skipped entirely, exactly as before.
-  const alreadyEnriched = compound.raw_import_metadata?.enrichment_pilot?.run_tag === ENRICHMENT_RUN_TAG;
+  const alreadyEnriched =
+    compound.raw_import_metadata?.enrichment_pilot?.run_tag === ENRICHMENT_RUN_TAG;
   if (alreadyEnriched && !(data.legacyReconciliations && data.legacyReconciliations.length > 0)) {
     log.status = 'already_enriched';
     return log;
@@ -325,7 +359,10 @@ async function enrichCompound(slug) {
           })
           .select('id')
           .single();
-        if (claimError) throw new Error(`claim insert failed ("${claim.statement.slice(0, 60)}..."): ${claimError.message}`);
+        if (claimError)
+          throw new Error(
+            `claim insert failed ("${claim.statement.slice(0, 60)}..."): ${claimError.message}`,
+          );
         log.claimsInserted++;
 
         for (const link of claim.sources) {
@@ -344,7 +381,8 @@ async function enrichCompound(slug) {
 
       for (const record of data.regulatoryRecords) {
         const sourceId = sourceKeyToId.get(record.sourceKey);
-        if (!sourceId) throw new Error(`regulatory record references unknown sourceKey "${record.sourceKey}"`);
+        if (!sourceId)
+          throw new Error(`regulatory record references unknown sourceKey "${record.sourceKey}"`);
         const { error: regError } = await supabase.from('regulatory_records').insert({
           compound_id: compoundId,
           agency: record.agency,
@@ -432,9 +470,13 @@ async function main() {
     console.error(`Post-run status verification query failed: ${statusCheckError.message}`);
   } else {
     const nonDraft = statusCheck.filter((c) => c.status !== 'draft');
-    console.log(`\nPost-run status check: ${statusCheck.length} compounds queried, ${nonDraft.length} non-draft.`);
+    console.log(
+      `\nPost-run status check: ${statusCheck.length} compounds queried, ${nonDraft.length} non-draft.`,
+    );
     if (nonDraft.length > 0) {
-      console.error(`FATAL: compounds became non-draft: ${nonDraft.map((c) => `${c.slug}=${c.status}`).join(', ')}`);
+      console.error(
+        `FATAL: compounds became non-draft: ${nonDraft.map((c) => `${c.slug}=${c.status}`).join(', ')}`,
+      );
       process.exitCode = 1;
     }
   }
@@ -442,7 +484,9 @@ async function main() {
   const errored = results.filter((r) => r.status === 'error');
   console.log(`\nSummary: ${results.length} compounds processed, ${errored.length} errored.`);
   if (errored.length > 0) {
-    console.error('One or more compounds errored — review output above before considering the pilot complete.');
+    console.error(
+      'One or more compounds errored — review output above before considering the pilot complete.',
+    );
     process.exitCode = 1;
   }
 
