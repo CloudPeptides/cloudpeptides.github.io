@@ -6,16 +6,16 @@ name: CI
 # pull_request, and never main). Requires secrets.CLOUDFLARE_API_TOKEN
 # and vars.CLOUDFLARE_ACCOUNT_ID to be configured in the repo; the job
 # is skipped entirely if the token secret isn't set.
-# deploy-production: PREPARED, NOT ACTIVE. Only reachable at all on a
-# push to `main`, which nothing currently does (rebuild/astro-platform
-# is still the only branch being worked on — CLAUDE.md §2). Even then,
-# it requires the `production` GitHub Environment's manual-approval gate
-# (Settings → Environments → production → required reviewers) — a push
-# to main alone can never deploy production unopposed. Deploys
-# wrangler.production.jsonc, whose `routes` are themselves still
-# commented out (see that file) — so even an approved run of this job
-# cannot attach cloudpeptides.org to anything until that separate,
-# explicit step happens too. See docs/planning/production-cutover-plan.md.
+# deploy-production: gated behind the `production` GitHub Environment
+# (Settings → Environments → production — required reviewer
+# CloudPeptides, self-review off, admin bypass off, main-branch-only —
+# configured 2026-08-08), reachable only on a push to `main`. A push
+# to main queues the run; nothing in it executes until the required
+# reviewer explicitly approves in the Actions UI. Deploys
+# wrangler.production.jsonc, whose `routes` block now attaches
+# cloudpeptides.org on approval (see that file's own comments). See
+# docs/planning/production-cutover-plan.md and
+# production-cutover-checklist.md Phase D.
 on:
   push:
     branches: [rebuild/astro-platform, main]
@@ -162,13 +162,12 @@ jobs:
       vars.CLOUDFLARE_ACCOUNT_ID != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # This is the manual-approval gate: a GitHub Environment named
-    # "production" with required reviewers configured (Settings →
-    # Environments) makes the job pause here and wait for an explicit
-    # human approval in the Actions UI before any step below runs, even
-    # once the `if:` condition above is satisfied. Does not exist until
-    # you create it — the job will simply fail to find the environment
-    # (and therefore not run) until then, which is the correct default.
+    # Manual-approval gate: the "production" GitHub Environment
+    # (Settings → Environments → production; required reviewer
+    # CloudPeptides, self-review off, admin bypass off, main-branch-only
+    # — configured 2026-08-08) makes the job pause here and wait for
+    # explicit human approval in the Actions UI before any step below
+    # runs, even once the `if:` condition above is satisfied.
     environment: production
     steps:
       - name: Checkout
@@ -207,10 +206,10 @@ jobs:
           PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
 
       # Deploys wrangler.production.jsonc — name "cloudpeptides",
-      # workers_dev: false, and (as of this commit) its `routes` block
-      # still commented out, so this cannot attach cloudpeptides.org to
-      # anything by itself; uncommenting that block and approving a run
-      # here is the literal, separate act of cutover.
+      # workers_dev: false, `routes` attaching cloudpeptides.org
+      # (custom_domain: true). This step only runs once the required
+      # reviewer approves at the environment gate above — that
+      # approval is the literal act of cutover.
       - name: Deploy to Cloudflare Workers (production)
         id: deploy
         uses: cloudflare/wrangler-action@v4

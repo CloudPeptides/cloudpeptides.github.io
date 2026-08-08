@@ -59,14 +59,19 @@
     // decision), so this flag is what stops staging from writing to
     // what is, after cutover, the real production database (src/
     // middleware.ts enforces it, src/lib/site-env.ts's
-    // isStagingReadOnly() is the actual check). Deliberately "false"
-    // right now — staging is still the only consumer of this database
-    // today, and flipping this on prematurely would lock out ongoing
-    // editorial/admin work for no benefit. Flip to "true" (and
-    // redeploy staging) as one of the cutover-day steps in
-    // docs/planning/production-cutover-checklist.md, once the
-    // production Worker is actually live — never before.
-    "STAGING_READ_ONLY": "false",
+    // isStagingReadOnly() is the actual check).
+    //
+    // Flipped to "true" 2026-08-08 as part of production-cutover-
+    // checklist.md Phase E, ahead of the production deploy itself —
+    // staging now refuses every /api/admin/* write regardless of the
+    // caller's role, while GET/HEAD/OPTIONS (public reads, dashboard
+    // browsing) are unaffected. Verified live after redeploy via
+    // `npm run db:verify-staging-read-only` plus direct requests
+    // against the deployed staging URL. Do not flip this back to
+    // "false" without a specific reason — it's the only thing standing
+    // between the staging Worker and writing to the live production
+    // database once cutover completes.
+    "STAGING_READ_ONLY": "true",
   },
   // Cloudflare-native, per-Worker-isolate-independent rate limiting for
   // the two public form routes (src/pages/api/contact.ts, checkout.ts).

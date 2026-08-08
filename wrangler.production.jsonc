@@ -2,21 +2,23 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "compatibility_date": "2026-08-06",
   "compatibility_flags": ["global_fetch_strictly_public"],
-  // PREPARED, NOT DEPLOYED. Nothing in this repo currently invokes
-  // `wrangler deploy --config wrangler.production.jsonc` — no npm
-  // script, no CI job (the deploy-production job in
-  // .github/workflows/ci.yml is itself gated behind a GitHub
-  // Environment manual-approval step, and only triggers on a push to
-  // `main`, which nothing currently does). This file existing does not
-  // attach any route or touch DNS by itself; Cloudflare only does that
-  // at actual deploy time, which hasn't happened.
+  // PREPARED, NOT YET DEPLOYED — updated 2026-08-08. The `production`
+  // GitHub Environment now exists (Settings → Environments →
+  // production: required reviewer CloudPeptides, self-review off,
+  // admin bypass off, main-branch-only deploys) and the
+  // deploy-production job in .github/workflows/ci.yml is gated behind
+  // it. This file existing, and even this file being deployed, still
+  // requires that gate: a push to `main` queues the run, but no step
+  // in it executes until the required reviewer explicitly approves in
+  // the GitHub Actions UI. The `routes` block below is no longer
+  // commented out (see its own comment) — approving the waiting run
+  // is what actually attaches cloudpeptides.org, not this commit.
   //
   // cloudpeptides.org was purchased 2026-08-07; its nameservers are
-  // propagating to Cloudflare. No route/custom-domain has been
-  // attached yet — see the commented-out `routes` block below, and
-  // docs/planning/production-cutover-plan.md §3/§6 for the exact
-  // remaining steps and why each requires your explicit approval
-  // (CLAUDE.md §9).
+  // propagating to Cloudflare. See docs/planning/
+  // production-cutover-plan.md §3/§6 and
+  // production-cutover-checklist.md Phase D for the full remaining
+  // steps and why each requires explicit approval (CLAUDE.md §9).
   //
   // Zero-cost database architecture, decided 2026-08-08: this Worker
   // uses the SAME Supabase project as staging (`riuxojncmnhogclrhoys`)
@@ -40,10 +42,12 @@
   // indexable duplicate surface, and it keeps "which URL is real
   // production" unambiguous.
   "workers_dev": false,
-  // Intentionally commented out until DNS is live and you explicitly
-  // approve attaching it — uncommenting this and deploying is the
-  // literal act of cutover (production-cutover-plan.md §6), not
-  // preparation.
+  // Uncommented 2026-08-08 as part of production-cutover-checklist.md
+  // Phase D — the actual attachment only happens when this config is
+  // deployed, which only happens if the protected `production`
+  // GitHub Environment's required reviewer (CloudPeptides) approves
+  // the waiting deploy-production run. Nothing before that approval
+  // click touches DNS.
   //
   // Decided 2026-08-08: `www.cloudpeptides.org` permanently redirects
   // to the apex — it is deliberately NOT a route here. A Worker route
@@ -53,13 +57,14 @@
   // for something that never needs any app logic. The redirect belongs
   // at the Cloudflare zone level instead — a Redirect Rule (Rules →
   // Redirect Rules → "www.cloudpeptides.org/*" → 301 →
-  // "https://cloudpeptides.org/${1}") or an equivalent Bulk Redirect —
-  // created at cutover time, same explicit-approval gate as everything
-  // else in this file. See production-cutover-checklist.md Phase D.
+  // "https://cloudpeptides.org/${1}") or an equivalent Bulk Redirect.
+  // **Still not created as of this commit** — it's a Cloudflare
+  // dashboard/zone-level action, independent of this file and of the
+  // GitHub-gated Worker deploy, so it isn't done by pushing this
+  // config or by approving the pending deployment. See
+  // production-cutover-checklist.md Phase D for the exact steps.
   //
-  // "routes": [
-  //   { "pattern": "cloudpeptides.org/*", "custom_domain": true }
-  // ],
+  "routes": [{ "pattern": "cloudpeptides.org/*", "custom_domain": true }],
   "assets": {
     "directory": "./dist/client",
     "binding": "ASSETS",

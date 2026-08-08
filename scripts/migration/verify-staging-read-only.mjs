@@ -117,14 +117,22 @@ async function login(baseUrl, email, password) {
   return { status: response.status, body, cookie };
 }
 
+// Optional: point every check at a real deployed URL (e.g. the live
+// staging Worker, after a real `wrangler deploy` with
+// STAGING_READ_ONLY=true) instead of spinning up a local preview
+// server against a temporarily-patched .dev.vars. Same checks, same
+// assertions — this is what actually proves the flag works in the
+// real deployed environment, not just in a local simulation of it.
+const LIVE_URL = process.env.LIVE_STAGING_URL;
+
 async function main() {
-  setDevVars();
+  if (!LIVE_URL) setDevVars();
   const userIds = {};
   let testCompoundId = null;
   let testSourceId = null;
 
   try {
-    const baseUrl = await startPreviewServer({ build: true });
+    const baseUrl = LIVE_URL ?? (await startPreviewServer({ build: true }));
 
     for (const u of TEST_USERS) {
       userIds[u.role] = await createTestUser(u.email, u.role);
@@ -288,8 +296,10 @@ async function main() {
     for (const userId of Object.values(userIds)) {
       await cleanupTestUser(userId);
     }
-    stopPreviewServer();
-    restoreDevVars();
+    if (!LIVE_URL) {
+      stopPreviewServer();
+      restoreDevVars();
+    }
   }
 
   const failed = results.filter((r) => !r.pass);
