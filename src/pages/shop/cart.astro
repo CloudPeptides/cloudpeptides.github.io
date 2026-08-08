@@ -1,12 +1,19 @@
 ---
 /**
- * Cart page — rebuild of legacy-site/cart.html + js/cart.js. Same copy,
- * same business rules (2-kit minimum, $15/free shipping, $5 non-crypto
- * processing-fee disclosure that was never actually computed into the
- * total in the legacy site either — see src/lib/shop.ts). The checkout
- * form posts to src/pages/api/checkout.ts (a server-side Worker route
- * calling Resend) instead of the legacy client-side Web3Forms call,
- * which embedded a public access key in browser JS.
+ * Cart page — rebuild of legacy-site/cart.html + js/cart.js. Same
+ * 2-kit minimum / $15 / free-at-3+ shipping rules (src/lib/shop.ts).
+ * The checkout form posts to src/pages/api/checkout.ts (a server-side
+ * Worker route calling Resend) instead of the legacy client-side
+ * Web3Forms call, which embedded a public access key in browser JS.
+ *
+ * Commerce Activation phase (2026-08-08) — approved product decision:
+ * this is an order *request* workflow, not payment processing. There
+ * is no payment-method field anywhere on this page (removed along
+ * with the legacy "$5 non-crypto processing fee" disclosure, which
+ * implied payment collection that never actually happens here) —
+ * submitting this form does not charge the customer, accept an order,
+ * or reserve inventory; Cloud Peptides reviews the request and
+ * contacts the customer manually afterward.
  *
  * Research-platform-first launch: while COMMERCE_ENABLED is false
  * (src/lib/launch-config.ts), this page never renders the interactive
@@ -19,6 +26,15 @@
  * src/pages/api/checkout.ts's own hard gate is the real backstop
  * either way.
  *
+ * `Astro.locals.indexable` (set by src/middleware.ts on every request
+ * from the live hostname, same mechanism src/pages/api/checkout.ts
+ * itself reuses for its email-subject labeling) drives the visible
+ * "this is a test environment" banner below — true only on the real
+ * production host, so staging/local always show it. This is the UI
+ * half of the approved "the staging order form must be visibly
+ * labeled as a test environment" requirement; the email-subject
+ * prefix in checkout.ts is the other half.
+ *
  * On-demand: matches the other interactive-state pages in this project
  * (directory, profile) for consistency.
  */
@@ -26,6 +42,8 @@ export const prerender = false;
 
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { COMMERCE_ENABLED } from '../../lib/launch-config';
+
+const isTestEnvironment = !Astro.locals.indexable;
 ---
 
 <BaseLayout
@@ -57,6 +75,16 @@ import { COMMERCE_ENABLED } from '../../lib/launch-config';
     }
 
     {
+      COMMERCE_ENABLED && isTestEnvironment && (
+        <p class="cp-test-env-banner" role="status">
+          <strong>Test environment.</strong> This is a staging deployment for visual/functional
+          review — order requests submitted here are clearly marked as test submissions and are not
+          real customer orders.
+        </p>
+      )
+    }
+
+    {
       COMMERCE_ENABLED && (
         <Fragment>
           <div id="cartItems" class="cp-cart-items" />
@@ -76,12 +104,6 @@ import { COMMERCE_ENABLED } from '../../lib/launch-config';
               $15 shipping on 2 kits.
               <br />
               FREE shipping on 3+ kits.
-              <br />
-              $5 processing fee for orders not paid with crypto.
-              <br />
-              <span class="cp-cart-rules__note">
-                This fee is applied during payment processing, not shown in the total below.
-              </span>
             </p>
             <div class="cp-cart-total__row">
               <span>Subtotal:</span> <span id="subtotal">$0.00</span>
@@ -95,12 +117,14 @@ import { COMMERCE_ENABLED } from '../../lib/launch-config';
           </div>
 
           <form id="checkoutForm" class="cp-checkout-form">
-            <h2>Checkout</h2>
+            <h2>Submit an order request</h2>
 
             <p class="cp-disclaimer">
-              Payment is not collected at checkout. After your order request is reviewed, we will
-              contact you with payment instructions. This is a research-supply order request, not a
-              medical purchase or a scientific/commerce endorsement of any kind.
+              This submits an order <strong>request</strong> — it is not an accepted order or a
+              completed purchase, and no payment is collected here or anywhere on this site. After
+              we review your request, we will contact you directly to proceed. This is a
+              research-supply order request, not a medical purchase or a scientific/commerce
+              endorsement of any kind.
             </p>
 
             <div class="cp-honeypot" aria-hidden="true">
@@ -124,31 +148,91 @@ import { COMMERCE_ENABLED } from '../../lib/launch-config';
             </label>
             <input id="customerEmail" name="email" type="email" required placeholder="Email" />
 
-            <label for="customerContact" class="cp-visually-hidden">
-              Contact
+            <label for="customerPhone" class="cp-visually-hidden">
+              Phone (optional)
             </label>
-            <input
-              id="customerContact"
-              name="contact"
-              required
-              placeholder="Phone / Discord / WhatsApp"
-            />
+            <input id="customerPhone" name="phone" placeholder="Phone (optional)" />
 
-            <label for="paymentMethod" class="cp-visually-hidden">
-              Preferred payment method
-            </label>
-            <select id="paymentMethod" name="payment" required>
-              <option value="">Preferred Payment Method</option>
-              <option value="Bitcoin (BTC)">Bitcoin (BTC)</option>
-              <option value="Ethereum (ETH)">Ethereum (ETH)</option>
-              <option value="Zelle">Zelle</option>
-              <option value="PayPal">PayPal</option>
-            </select>
+            <fieldset class="cp-address-fieldset">
+              <legend>Shipping address</legend>
+
+              <label for="addressLine1" class="cp-visually-hidden">
+                Street address
+              </label>
+              <input id="addressLine1" name="addressLine1" required placeholder="Street address" />
+
+              <label for="addressLine2" class="cp-visually-hidden">
+                Apartment, suite, etc. (optional)
+              </label>
+              <input
+                id="addressLine2"
+                name="addressLine2"
+                placeholder="Apartment, suite, etc. (optional)"
+              />
+
+              <div class="cp-address-row">
+                <div>
+                  <label for="addressCity" class="cp-visually-hidden">
+                    City
+                  </label>
+                  <input id="addressCity" name="addressCity" required placeholder="City" />
+                </div>
+                <div>
+                  <label for="addressRegion" class="cp-visually-hidden">
+                    State / Province / Region
+                  </label>
+                  <input
+                    id="addressRegion"
+                    name="addressRegion"
+                    required
+                    placeholder="State/Region"
+                  />
+                </div>
+              </div>
+              <div class="cp-address-row">
+                <div>
+                  <label for="addressPostalCode" class="cp-visually-hidden">
+                    Postal code
+                  </label>
+                  <input
+                    id="addressPostalCode"
+                    name="addressPostalCode"
+                    required
+                    placeholder="Postal Code"
+                  />
+                </div>
+                <div>
+                  <label for="addressCountry" class="cp-visually-hidden">
+                    Country
+                  </label>
+                  <input id="addressCountry" name="addressCountry" required placeholder="Country" />
+                </div>
+              </div>
+            </fieldset>
 
             <label for="customerNotes" class="cp-visually-hidden">
               Additional notes
             </label>
             <textarea id="customerNotes" name="notes" placeholder="Additional notes (optional)" />
+
+            <label class="cp-checkbox-field">
+              <input id="ageAttestation" name="ageAttestation" type="checkbox" required />
+              <span>
+                I confirm I am at least 18 years old and this order request is for laboratory
+                research use only, not for human consumption.
+              </span>
+            </label>
+
+            <label class="cp-checkbox-field">
+              <input id="termsAccepted" name="termsAccepted" type="checkbox" required />
+              <span>
+                I have read and accept the{' '}
+                <a href="/shop-terms" target="_blank">
+                  Shop Terms
+                </a>
+                .
+              </span>
+            </label>
 
             <div class="cf-turnstile" data-turnstile />
 
@@ -161,15 +245,15 @@ import { COMMERCE_ENABLED } from '../../lib/launch-config';
             />
 
             <button id="submitOrder" class="cp-btn-full" type="submit">
-              Place Order Request
+              Submit order request
             </button>
           </form>
 
           <div id="successMessage" class="cp-cart-success" hidden>
-            <h2>♡ Thank you for your order!</h2>
-            <p>
-              Your order request has been received successfully. We will contact you shortly with
-              payment instructions.
+            <h2>Order request received</h2>
+            <p id="successMessageBody">
+              Your order request has been received — it has not yet been accepted, and no payment
+              has been taken. We will review it and contact you directly to proceed.
             </p>
             <a href="/" class="cp-btn-outline">
               Return Home
@@ -232,6 +316,16 @@ import { COMMERCE_ENABLED } from '../../lib/launch-config';
   .cp-cart-header__intro {
     color: var(--text-secondary);
     margin: 0;
+  }
+
+  .cp-test-env-banner {
+    font-size: var(--text-caption);
+    font-weight: 500;
+    color: var(--warning-text);
+    background: var(--bg-sunken);
+    border-left: 3px solid var(--warning-text);
+    padding: 0.75rem 1rem;
+    margin: 0 0 1.5rem;
   }
 
   .cp-cart-coming-soon {
@@ -343,10 +437,6 @@ import { COMMERCE_ENABLED } from '../../lib/launch-config';
     line-height: 1.7;
     margin: 0 0 1rem;
   }
-  .cp-cart-rules__note {
-    font-weight: 500;
-    color: var(--text-secondary);
-  }
   .cp-cart-total__row {
     display: flex;
     justify-content: space-between;
@@ -397,6 +487,45 @@ import { COMMERCE_ENABLED } from '../../lib/launch-config';
   .cp-checkout-form textarea {
     min-height: 6rem;
     resize: vertical;
+  }
+  .cp-address-fieldset {
+    border: 1.5px solid var(--border-subtle);
+    border-radius: var(--radius-control);
+    padding: 0.875rem 0.875rem 0.25rem;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+  }
+  .cp-address-fieldset legend {
+    font-size: var(--text-caption);
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding: 0 0.375rem;
+  }
+  .cp-address-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.625rem;
+  }
+  .cp-checkbox-field {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    font-size: var(--text-caption);
+    color: var(--text-secondary);
+    line-height: 1.5;
+    cursor: pointer;
+  }
+  .cp-checkbox-field input {
+    width: auto;
+    min-height: auto;
+    margin-top: 0.15rem;
+    flex-shrink: 0;
+  }
+  .cp-checkbox-field a {
+    color: var(--terracotta-text);
+    text-decoration: underline;
   }
   .cp-disclaimer {
     font-size: var(--text-caption);
@@ -455,5 +584,11 @@ import { COMMERCE_ENABLED } from '../../lib/launch-config';
   .cp-cart-success h2 {
     font-family: var(--font-display);
     color: var(--text-primary);
+  }
+
+  @media (max-width: 480px) {
+    .cp-address-row {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

@@ -3,6 +3,7 @@ import {
   calculateCartTotals,
   filterProducts,
   formatMoney,
+  generateRequestNumber,
   lowestPriceOption,
   meetsMinimumOrder,
   MINIMUM_ORDER_KITS,
@@ -120,5 +121,26 @@ describe('meetsMinimumOrder', () => {
 describe('SHIPPING_COST constant matches legacy', () => {
   it('is $15', () => {
     expect(SHIPPING_COST).toBe(15);
+  });
+});
+
+describe('generateRequestNumber', () => {
+  it('matches the CP-YYYYMMDD-XXXXXX shape', () => {
+    const requestNumber = generateRequestNumber(new Date('2026-08-08T12:00:00Z'));
+    expect(requestNumber).toMatch(/^CP-20260808-[A-Z0-9]{6}$/);
+  });
+
+  it('never includes visually-ambiguous characters (0/O, 1/I)', () => {
+    // Generate a large enough sample that a single run reaching every
+    // alphabet character is overwhelmingly likely if any were allowed.
+    const suffixes = Array.from({ length: 200 }, () => generateRequestNumber().split('-')[2]);
+    const combined = suffixes.join('');
+    expect(combined).not.toMatch(/[01OI]/);
+  });
+
+  it('is different across calls (real randomness, not a fixed suffix)', () => {
+    const a = generateRequestNumber();
+    const b = generateRequestNumber();
+    expect(a).not.toBe(b);
   });
 });
