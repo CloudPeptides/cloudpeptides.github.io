@@ -1,0 +1,31 @@
+---
+/**
+ * Catch-all for every other legacy `/{something}.html` URL (the 56
+ * compound/stack pages plus shop.html/cart.html/contact.html/
+ * index.html) — see src/pages/product.html.astro's header comment for
+ * exactly why this needs to be a real Astro route rather than relying
+ * on src/middleware.ts's redirect check alone. Astro matches this
+ * dynamic-segment-plus-literal-extension route (`[legacy].html.astro`)
+ * before falling back to any wildcard, and prefers the more specific
+ * static `product.html.astro` route over this one for that exact path.
+ *
+ * A `.html` path with no entry in the redirect table (including every
+ * "not yet migrated" legacy page — see legacy-redirects.ts) renders
+ * the same branded 404 as everywhere else, not a bare text response.
+ */
+export const prerender = false;
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import NotFoundContent from '../components/NotFoundContent.astro';
+import { LEGACY_PATH_REDIRECTS } from '../lib/legacy-redirects';
+
+const target = LEGACY_PATH_REDIRECTS[`/${Astro.params.legacy}.html`];
+if (target) {
+  return Astro.redirect(target, 301);
+}
+Astro.response.status = 404;
+---
+
+<BaseLayout title="Page Not Found" noindex>
+  <NotFoundContent />
+</BaseLayout>

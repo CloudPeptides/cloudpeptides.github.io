@@ -22,6 +22,18 @@ import { isIndexableHost } from './lib/site-env';
 import { SECURITY_HEADERS_BASE, buildDynamicCsp } from './lib/security-headers';
 import { hasMinRole, resolveSession } from './lib/auth';
 
+// Legacy GitHub Pages URL redirects (CLAUDE.md §10) are deliberately
+// NOT handled here. Found live, not assumed: a `.html` path with no
+// matching static asset (every legacy URL — this app never had a real
+// file at those paths) is intercepted by Cloudflare's Workers Static
+// Assets binding and served the static 404.html directly, before the
+// Worker — and therefore this file — ever runs, confirmed via both
+// `astro preview` and `wrangler dev` and unaffected by
+// wrangler.jsonc's `not_found_handling` setting. Making each legacy
+// path a real, matched Astro route sidesteps the ambiguity entirely —
+// see src/pages/product.html.astro and src/pages/[legacy].html.astro,
+// which both import src/lib/legacy-redirects.ts directly.
+
 function generateNonce(): string {
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);

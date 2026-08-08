@@ -29,6 +29,21 @@
     // there's no behavior change for the pages themselves — only every
     // response now actually passes through middleware.ts once.
     "run_worker_first": true,
+    // Found live (not assumed) once dist/client/404.html started
+    // existing (added this phase): Wrangler auto-detects a 404.html in
+    // the assets directory and defaults `not_found_handling` to
+    // "404-page", which serves that file directly for ANY unmatched
+    // path — including src/lib/legacy-redirects.ts's ~60 legacy `.html`
+    // URLs, which have no matching static asset (they're handled in
+    // src/middleware.ts) and were silently getting the static 404
+    // instead of ever reaching the Worker, confirmed via a direct
+    // `astro preview` + curl check (the response carried a
+    // `cf-cache-status` header and the *static*-route CSP variant with
+    // no nonce, proving it never reached middleware.ts). Explicit
+    // "none" restores "every unmatched path reaches the Worker," which
+    // both the redirect table and Astro's own on-demand 404.astro
+    // fallback depend on.
+    "not_found_handling": "none",
   },
   "observability": {
     "enabled": true,
