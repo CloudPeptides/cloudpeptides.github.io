@@ -1,6 +1,5 @@
 ---
 import PolicyLayout from '../layouts/PolicyLayout.astro';
-import { COMMERCE_ENABLED } from '../lib/launch-config';
 ---
 
 <PolicyLayout
@@ -8,15 +7,12 @@ import { COMMERCE_ENABLED } from '../lib/launch-config';
   description="The terms that apply to orders placed through the Cloud Peptides shop."
   lastUpdated="August 8, 2026"
 >
-  {
-    !COMMERCE_ENABLED && (
-      <p class="cp-policy-note">
-        <strong>Ordering is not currently enabled on this site.</strong> The shop catalog is visible
-        as a preview only — nothing can be added to a cart or purchased right now. The terms below
-        describe what will apply once ordering opens.
-      </p>
-    )
-  }
+  <h2>An order request is not an accepted order</h2>
+  <p>
+    Submitting the cart form creates an order <strong>request</strong>. It does not create
+    acceptance of an order, charge you, reserve inventory, or guarantee fulfillment. We review every
+    request and contact you directly afterward to proceed. Nothing is purchased or sold until we do.
+  </p>
 
   <h2>Research use only</h2>
   <p>
@@ -26,43 +22,48 @@ import { COMMERCE_ENABLED } from '../lib/launch-config';
   </p>
 
   <h2>Eligibility</h2>
-  <p>You must be at least 18 years old to place an order.</p>
+  <p>You must be at least 18 years old to submit an order request.</p>
 
   <h2>Legal status is your responsibility</h2>
   <p>
     Laws governing research chemicals and peptides vary by location. It is your responsibility to
-    know and follow the laws that apply to you before ordering.
+    know and follow the laws that apply to you before submitting an order request.
   </p>
 
-  <h2>Payment</h2>
+  <h2>No payment is collected through this website</h2>
   <p>
-    This site does not collect or process payment card data directly. When ordering is enabled, an
-    order request records the payment method you select (for example, cryptocurrency, Zelle, or
-    PayPal), and payment itself is arranged directly between you and us through that method, outside
-    this website's systems.
+    This site does not collect or process payment of any kind — no card, bank, or cryptocurrency
+    information is requested or accepted anywhere on this website. Submitting an order request never
+    charges you. If a request is accepted, payment is arranged directly between you and us, outside
+    this website's systems, after that acceptance.
   </p>
 
-  <h2>Batch testing</h2>
+  <h2>Batch testing (COAs)</h2>
   <p>
-    We intend to make batch testing documentation available for applicable products once ordering is
-    enabled. Batch testing/COA documentation is a commerce record, not scientific evidence — it's
-    kept separate from, and is never cited within, our published research claims.
+    We publish batch testing documentation (Certificates of Analysis) for applicable products in our <a
+      href="/coas">COA gallery</a
+    >. COA documentation is a commerce record of batch testing — it is not scientific evidence, and
+    it is never cited within our published research claims. See our full <a href="/disclaimer"
+      >Research and Medical Disclaimer</a
+    > for how research claims and commerce information are kept separate.
   </p>
 
   <h2>Pricing and availability</h2>
   <p>
     Prices and product availability shown in the shop are subject to change and are not a binding
-    offer until an order is actually placed once ordering is enabled.
+    offer — an order request is only reviewed against current pricing and availability at the time
+    we act on it.
   </p>
 
   <h2>Shipping and returns</h2>
   <p>
-    See our <a href="/shipping">Shipping Policy</a> and
-    <a href="/returns">Return and Refund Policy</a> — both will be finalized before ordering opens.
+    See our <a href="/shipping">Shipping Policy</a> (order minimums, shipping cost, and the customs replacement
+    guarantee) and <a href="/returns">Return and Refund Policy</a> (all sales final, except where required
+    by law).
   </p>
 
   <h2>Questions</h2>
   <p>
-    <a href="/contact">Contact us</a> with any question about an order or these terms.
+    <a href="/contact">Contact us</a> with any question about an order request or these terms.
   </p>
 </PolicyLayout>

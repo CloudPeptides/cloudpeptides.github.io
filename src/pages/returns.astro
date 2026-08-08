@@ -1,34 +1,44 @@
 ---
 import PolicyLayout from '../layouts/PolicyLayout.astro';
-import { COMMERCE_ENABLED } from '../lib/launch-config';
 ---
 
 <PolicyLayout
   title="Return and Refund Policy"
-  description="Cloud Peptides return and refund information."
+  description="Cloud Peptides return and refund policy."
   lastUpdated="August 8, 2026"
 >
-  {
-    !COMMERCE_ENABLED && (
-      <p class="cp-policy-note">
-        <strong>Ordering is not currently enabled on this site.</strong> Nothing can be purchased
-        right now, so there is nothing to return yet. We'll publish our real return and refund terms
-        — eligibility, timeframes, and process — here before ordering opens.
-      </p>
-    )
-  }
-
-  <h2>What this page will cover</h2>
+  <h2>Order requests, not accepted orders</h2>
   <p>
-    Once ordering is enabled, this page will describe under what circumstances a return or refund is
-    available, how long you have to request one, and how the process works. We haven't finalized
-    those terms yet, so we're not going to state them here until they're real and accurate.
+    Submitting an order through our cart is a <strong>request</strong>, not an accepted order or a
+    completed purchase — see our <a href="/shop-terms">Shop Terms</a>. This policy describes what
+    happens to an order <strong>after</strong> it has been reviewed and accepted; it does not apply to
+    a request that was never accepted.
+  </p>
+
+  <h2>All sales are final</h2>
+  <p>
+    All sales are final. We do not offer voluntary returns, exchanges, or refunds, except where
+    required by applicable law.
+  </p>
+
+  <h2>The one voluntary exception: customs replacement</h2>
+  <p>
+    The only voluntary replacement guarantee we offer is the customs replacement guarantee described
+    in our <a href="/shipping">Shipping Policy</a>: if verifiable tracking or official documentation
+    shows customs refused or returned your original package, we provide one replacement shipment per
+    order, at no additional product or shipping charge. It is a replacement, not a cash refund, and
+    it applies only when reshipping is lawful.
+  </p>
+
+  <h2>This policy does not override your legal rights</h2>
+  <p>
+    Nothing in this policy overrides any mandatory consumer protection or refund right you have
+    under the law that applies to you.
   </p>
 
   <h2>Questions</h2>
   <p>
-    If you have a question about an existing order in the meantime, <a href="/contact">contact us</a
-    >
-    and we'll help directly.
+    If you have a question about an order in the meantime, <a href="/contact">contact us</a> and we'll
+    help directly.
   </p>
 </PolicyLayout>

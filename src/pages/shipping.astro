@@ -1,35 +1,63 @@
 ---
 import PolicyLayout from '../layouts/PolicyLayout.astro';
-import { COMMERCE_ENABLED } from '../lib/launch-config';
 ---
 
 <PolicyLayout
   title="Shipping Policy"
-  description="Cloud Peptides shipping information."
+  description="Cloud Peptides shipping policy — order minimums, shipping costs, and the customs replacement guarantee."
   lastUpdated="August 8, 2026"
 >
-  {
-    !COMMERCE_ENABLED && (
-      <p class="cp-policy-note">
-        <strong>Ordering is not currently enabled on this site.</strong> Nothing can be purchased
-        right now, so nothing has shipped yet. We'll publish real shipping details — carriers,
-        processing times, regions, and costs — here before ordering opens, rather than guessing at
-        them now.
-      </p>
-    )
-  }
-
-  <h2>What this page will cover</h2>
+  <h2>Order requests, not accepted orders</h2>
   <p>
-    Once ordering is enabled, this page will describe how orders are packaged and shipped, which
-    regions we ship to, expected processing time before an order ships, and any shipping costs. We
-    haven't finalized carriers or timelines yet, so we're not going to state them here until they're
-    real and accurate.
+    Submitting an order through our cart is a <strong>request</strong>, not an accepted order or a
+    completed purchase — see our <a href="/shop-terms">Shop Terms</a>. Nothing below describes a
+    guaranteed shipment; it describes what happens once a request has been reviewed and accepted.
   </p>
+
+  <h2>Order minimum and shipping cost</h2>
+  <ul>
+    <li>Two-kit minimum per order.</li>
+    <li>Shipping costs $15 for a two-kit order.</li>
+    <li>Shipping is free for orders of three or more kits.</li>
+  </ul>
+
+  <h2>Carrier, destinations, and timing</h2>
+  <p>
+    We confirm the carrier, delivery-region availability, and an estimated dispatch time directly
+    with you when your order request is reviewed and accepted — not before, and not on this page. We
+    are not going to state a carrier or a guaranteed delivery time here until it is real and
+    accurate for your specific order.
+  </p>
+
+  <h2>Your responsibilities</h2>
+  <p>
+    You are responsible for providing an accurate, complete shipping address and for complying with
+    the import laws, taxes, and duties that apply in your destination. Laws governing research
+    peptides vary by location — it is your responsibility to know and follow the laws that apply to
+    you before ordering. See our <a href="/shop-terms">Shop Terms</a>.
+  </p>
+
+  <h2>Customs replacement guarantee</h2>
+  <p>
+    If verifiable tracking information or official documentation shows that customs refused or
+    returned your original package, we will provide <strong>one replacement shipment</strong> at no additional
+    product or shipping charge, subject to the following:
+  </p>
+  <ul>
+    <li>Limited to one replacement shipment per order.</li>
+    <li>
+      This is a <strong>replacement</strong>, not a cash refund — see our
+      <a href="/returns">Return and Refund Policy</a>.
+    </li>
+    <li>
+      It applies only when reshipping is lawful. This guarantee is never a way to evade an import
+      prohibition or customs enforcement, and we will not use it that way.
+    </li>
+  </ul>
 
   <h2>Questions</h2>
   <p>
-    If you have a shipping question in the meantime, <a href="/contact">contact us</a> and we'll answer
-    directly.
+    If you have a shipping question about an order request, <a href="/contact">contact us</a> and we'll
+    answer directly.
   </p>
 </PolicyLayout>
