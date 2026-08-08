@@ -29,73 +29,118 @@ test.describe('shop directory', () => {
   });
 });
 
-// Rewritten for the research-platform-first launch: COMMERCE_ENABLED is
-// false (src/lib/launch-config.ts) — Add to Cart is a genuinely disabled
-// button (native `disabled`, not just visually styled), the cart page
-// never renders the interactive cart/checkout markup at all, and
-// src/pages/api/checkout.ts hard-rejects every request before any
-// parsing/Resend/Turnstile work. The previous version of this file
-// exercised the live add-to-cart/checkout flow, which no longer exists
-// while commerce is disabled — this version tests the same underlying
-// guarantee the task asked for instead: no order can be placed, no
-// checkout email can be triggered, no misleading purchase CTA remains.
-test.describe('product detail + cart (commerce disabled)', () => {
+// Commerce Activation phase (2026-08-08): COMMERCE_ENABLED is now true
+// (src/lib/launch-config.ts) — this is an order-*request* workflow,
+// not payment processing (no payment-method field exists anywhere in
+// the form). src/pages/api/checkout.ts's own Resend+Turnstile
+// activation gate still falls through to an honest "not configured"
+// response in local/CI, since .dev.vars has no real secrets — same
+// established pattern as the contact-form tests below, which is why a
+// full successful submission (through Turnstile) isn't exercised here
+// either; src/lib/form-validation.ts's own unit tests already cover
+// the server-side price-recomputation/validation logic exhaustively.
+test.describe('product detail + cart (commerce enabled)', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/shop/ghk-cu');
     await page.evaluate(() => localStorage.removeItem('cp-shop-cart'));
   });
 
-  test('the option selector still updates displayed price (informational only)', async ({
-    page,
-  }) => {
+  test('the option selector updates the displayed price', async ({ page }) => {
     await page.selectOption('[data-option-select]', '1'); // 100mg option
     await expect(page.locator('[data-price]')).toHaveText('$170.00');
-    await expect(page.getByText('Coming soon — ordering is not yet available')).toBeVisible();
   });
 
-  test('Add to Cart is a genuinely disabled control, not just styled to look inert', async ({
+  test('Add to Cart is enabled and adds a real item to the cart', async ({ page }) => {
+    const button = page.locator('[data-add-to-cart]');
+    await expect(button).toBeEnabled();
+    await expect(button).toHaveText('Add To Cart');
+    await button.click();
+    await expect(page.locator('[data-add-feedback]')).toBeVisible();
+    const cart = await page.evaluate(() => localStorage.getItem('cp-shop-cart'));
+    expect(cart).not.toBeNull();
+    expect(JSON.parse(cart as string)).toHaveLength(1);
+  });
+
+  test('cart page renders the real order-request form with no payment-method field anywhere', async ({
     page,
   }) => {
-    const button = page.locator('[data-add-to-cart]');
-    await expect(button).toBeDisabled();
-    await expect(button).toHaveText('Coming Soon');
-
-    // A disabled native <button> cannot dispatch a click event at all —
-    // force:true bypasses Playwright's actionability check to prove
-    // that even a forced click reaches nothing (no cart mutation).
-    await button.click({ force: true }).catch(() => undefined);
-    const cart = await page.evaluate(() => localStorage.getItem('cp-shop-cart'));
-    expect(cart).toBeNull();
+    await page.locator('[data-add-to-cart]').click();
+    await page.goto('/shop/cart');
+    await expect(page.locator('#checkoutForm')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Submit order request' })).toBeVisible();
+    // The approved product decision: no payment-method field exists.
+    await expect(page.locator('#paymentMethod')).toHaveCount(0);
+    await expect(page.getByText('Preferred Payment')).toHaveCount(0);
+    // Required order-request fields are present.
+    await expect(page.locator('#customerName')).toBeVisible();
+    await expect(page.locator('#customerEmail')).toBeVisible();
+    await expect(page.locator('#customerPhone')).toBeVisible(); // optional
+    await expect(page.locator('#addressLine1')).toBeVisible();
+    await expect(page.locator('#ageAttestation')).toBeVisible();
+    await expect(page.locator('#termsAccepted')).toBeVisible();
+    await expect(
+      page.getByText('it is not an accepted order or a completed purchase'),
+    ).toBeVisible();
   });
 
-  test('cart page shows a coming-soon notice, never a live cart or checkout form', async ({
+  test('this staging deployment visibly labels the order form as a test environment', async ({
     page,
   }) => {
     await page.goto('/shop/cart');
-    await expect(page.getByText("Ordering isn't available yet")).toBeVisible();
-    await expect(page.locator('#checkoutForm')).toHaveCount(0);
-    await expect(page.locator('#cartItems')).toHaveCount(0);
+    await expect(page.getByText('Test environment.')).toBeVisible();
   });
 
-  test('the checkout API rejects every request while commerce is disabled, regardless of payload', async ({
+  test('a submission with no Resend key configured shows an honest error, never a fake success', async ({
+    page,
+  }) => {
+    // Two kits — meets the client-side minimum-order check (src/lib/
+    // shop.ts's meetsMinimumOrder) so the submit handler actually
+    // reaches the server instead of stopping at that check first.
+    await page.locator('[data-add-to-cart]').click();
+    await page.locator('[data-add-to-cart]').click();
+    await page.goto('/shop/cart');
+    await page.fill('#customerName', 'Jane Doe');
+    await page.fill('#customerEmail', 'jane@example.com');
+    await page.fill('#addressLine1', '123 Main St');
+    await page.fill('#addressCity', 'Springfield');
+    await page.fill('#addressRegion', 'IL');
+    await page.fill('#addressPostalCode', '62704');
+    await page.fill('#addressCountry', 'US');
+    await page.check('#ageAttestation');
+    await page.check('#termsAccepted');
+    await page.locator('#checkoutForm button[type="submit"]').click();
+    await expect(page.locator('#checkoutFormMessage')).toContainText('not configured');
+  });
+
+  test('the checkout API requires the 18+/research-use attestation and Shop Terms acceptance', async ({
     request,
   }) => {
+    // Still reaches the honest "not configured" 503 (same reasoning as
+    // above) since .dev.vars has no real secrets in this environment —
+    // this only confirms the route is live and gated, not a payment
+    // flow. Field-level validation (missing attestation, etc.) is
+    // covered exhaustively by tests/unit/form-validation.test.ts.
     const response = await request.post('/api/checkout', {
       data: {
         name: 'Jane Doe',
         email: 'jane@example.com',
-        contact: 'discord#1234',
-        payment: 'Zelle',
-        items: [{ name: 'GHK-Cu', spec: '50mg', price: 120, quantity: 2 }],
-        subtotal: 240,
-        shipping: 0,
-        total: 240,
+        address: {
+          line1: '123 Main St',
+          line2: '',
+          city: 'Springfield',
+          region: 'IL',
+          postalCode: '62704',
+          country: 'US',
+        },
+        ageAttestation: true,
+        termsAccepted: true,
+        items: [{ productId: 'ghk-cu', optionCode: 'CU50', quantity: 2 }],
       },
     });
     expect(response.status()).toBe(503);
     const body = (await response.json()) as { success: boolean; error?: string };
     expect(body.success).toBe(false);
-    expect(body.error).toContain('not yet available');
+    expect(body.error).toContain('not configured');
   });
 
   test('product page has no detectable automated accessibility violations', async ({ page }) => {
@@ -103,12 +148,40 @@ test.describe('product detail + cart (commerce disabled)', () => {
     expect(results.violations).toEqual([]);
   });
 
-  test('cart (coming-soon) page has no detectable automated accessibility violations', async ({
-    page,
-  }) => {
+  test('cart page has no detectable automated accessibility violations', async ({ page }) => {
+    await page.locator('[data-add-to-cart]').click();
     await page.goto('/shop/cart');
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations).toEqual([]);
+  });
+});
+
+test.describe('COA gallery', () => {
+  test('the public gallery page loads and links from nav/footer', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('a[href="/coas"]').first()).toBeVisible();
+    await page.goto('/coas');
+    await expect(page.getByRole('heading', { name: 'Certificates of Analysis' })).toBeVisible();
+    await expect(page.getByText('not scientific evidence')).toBeVisible();
+  });
+
+  test('has no detectable automated accessibility violations', async ({ page }) => {
+    await page.goto('/coas');
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations).toEqual([]);
+  });
+
+  test('/admin/coas requires authentication, same as every other admin route', async ({ page }) => {
+    await page.goto('/admin/coas');
+    await expect(page).toHaveURL(/\/admin\/login/);
+  });
+
+  test('unauthenticated writes to the COA admin API are rejected', async ({ request }) => {
+    // Middleware's baseline contributor+ gate runs before this route
+    // ever parses a body — an empty/malformed body is fine here, the
+    // point is proving the request never gets that far unauthenticated.
+    const response = await request.post('/api/admin/coas', { data: {} });
+    expect(response.status()).toBe(401);
   });
 });
 

@@ -1,0 +1,75 @@
+---
+export const prerender = false;
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Upload COA">
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">Commerce</p>
+      <h1>Upload a COA</h1>
+      <p>Saved as a draft — publish it separately once you've reviewed how it looks.</p>
+    </div>
+  </div>
+
+  <section class="cp-admin-section">
+    <form id="coaUploadForm" class="cp-admin-form-grid" enctype="multipart/form-data">
+      <div class="cp-admin-field">
+        <label for="peptideName"
+          >Peptide / product name <span class="cp-admin-required">*</span></label
+        >
+        <input id="peptideName" name="peptide_name" required maxlength="200" />
+      </div>
+      <div class="cp-admin-field">
+        <label for="batchIdentifier">Batch / lot number</label>
+        <input id="batchIdentifier" name="batch_identifier" maxlength="200" />
+        <p class="cp-admin-field__hint">Optional.</p>
+      </div>
+      <div class="cp-admin-field">
+        <label for="testingLab">Testing lab <span class="cp-admin-required">*</span></label>
+        <input id="testingLab" name="testing_lab" required maxlength="200" />
+      </div>
+      <div class="cp-admin-field">
+        <label for="testDate">Test date <span class="cp-admin-required">*</span></label>
+        <input id="testDate" name="test_date" type="date" required />
+      </div>
+      <div class="cp-admin-field">
+        <label for="verificationUrl">Verification URL</label>
+        <input id="verificationUrl" name="verification_url" type="url" maxlength="500" />
+        <p class="cp-admin-field__hint">Optional — a link to independently verify this result.</p>
+      </div>
+      <div class="cp-admin-field">
+        <label for="purityResult">Purity result</label>
+        <input id="purityResult" name="purity_result" maxlength="200" />
+        <p class="cp-admin-field__hint">Optional.</p>
+      </div>
+      <div class="cp-admin-field" style="grid-column: 1 / -1;">
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes" maxlength="4000"></textarea>
+        <p class="cp-admin-field__hint">Optional.</p>
+      </div>
+      <div class="cp-admin-field" style="grid-column: 1 / -1;">
+        <label for="coaFile">Report file <span class="cp-admin-required">*</span></label>
+        <input id="coaFile" name="file" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" required />
+        <p class="cp-admin-field__hint">PDF, PNG, JPEG, or WebP. 10 MB maximum.</p>
+      </div>
+      <div class="cp-admin-form-actions" style="grid-column: 1 / -1;">
+        <button type="submit" id="coaUploadSubmit" class="cp-admin-btn cp-admin-btn--primary">
+          Upload as draft
+        </button>
+      </div>
+      <p
+        class="cp-admin-form-message"
+        data-tone="error"
+        id="coaUploadError"
+        style="grid-column: 1 / -1;"
+        hidden
+      >
+      </p>
+    </form>
+  </section>
+</AdminLayout>
+
+<script>
+  import '../../../scripts/admin-coa-form.ts';
+</script>
