@@ -49,6 +49,19 @@ export const FLAKY_CITATION_ALLOWLIST = new Set([
   'https://doi.org/10.3390/ijms22126179', // semax
   'https://doi.org/10.3390/ijms26062691', // epithalon-compound
   'https://doi.org/10.3390/molecules191119066', // bpc-157
+  // WADA statement on AOD-9604, cited by aod-9604 — verified live via
+  // real browser rendering 2026-08-08 (curl alone gets an empty 202
+  // challenge response with no wait; Playwright with a longer settle
+  // time gets the real page, title/content confirmed matching). Same
+  // bot-wall pattern as the entries above, not a content problem.
+  'https://www.wada-ama.org/en/news/wada-statement-substance-aod-9604',
+  // Federal Register determination notice for GEREF (sermorelin
+  // acetate), cited by sermorelin — verified live 2026-08-08;
+  // federalregister.gov returns an explicit anti-scraping notice
+  // ("Due to aggressive automated scraping... programmatic access is
+  // limited") to automated crawlers, confirmed distinct from a dead
+  // link.
+  'https://www.federalregister.gov/documents/2013/03/04/2013-04827/determination-that-geref-sermorelin-acetate-injection-05-milligrams-basevial-and-10-milligrams',
 ]);
 
 /**
