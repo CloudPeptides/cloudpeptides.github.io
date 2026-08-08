@@ -73,3 +73,30 @@ export function calculateCartTotals(cart: CartItem[]): CartTotals {
 export function meetsMinimumOrder(totals: CartTotals): boolean {
   return totals.kitCount >= MINIMUM_ORDER_KITS;
 }
+
+// Excludes visually-ambiguous characters (0/O, 1/I) so a request
+// number read aloud or handwritten during manual review doesn't get
+// transcribed wrong.
+const REQUEST_NUMBER_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+/** A human-readable order-request identifier — CP-YYYYMMDD-XXXXXX.
+ * Not a database primary key (no orders table exists; the email sent
+ * via Resend to info.order.thecloud@proton.me *is* the order record,
+ * matching this project's existing shop/checkout architecture) — this
+ * is purely what staff and the customer both see and can reference
+ * out of band (e.g. "regarding request CP-20260808-7K4QRM"). Uses
+ * crypto.getRandomValues (available globally in the Workers runtime,
+ * already used the same way by src/middleware.ts's generateNonce())
+ * rather than Math.random for real entropy. */
+export function generateRequestNumber(now: Date = new Date()): string {
+  const y = now.getUTCFullYear();
+  const m = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(now.getUTCDate()).padStart(2, '0');
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
+  const suffix = Array.from(
+    bytes,
+    (b) => REQUEST_NUMBER_ALPHABET[b % REQUEST_NUMBER_ALPHABET.length],
+  ).join('');
+  return `CP-${y}${m}${d}-${suffix}`;
+}

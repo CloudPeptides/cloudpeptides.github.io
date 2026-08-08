@@ -1,0 +1,139 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Pagination from '../../../components/admin/Pagination.astro';
+import Badge from '../../../components/ui/Badge.astro';
+import ErrorState from '../../../components/ui/ErrorState.astro';
+import { createUserScopedClient } from '../../../lib/auth';
+
+const session = Astro.locals.session!;
+const client = createUserScopedClient(session.accessToken);
+
+const params = Astro.url.searchParams;
+const q = params.get('q') ?? '';
+const statusParam = params.get('status') ?? '';
+const STATUSES = ['draft', 'published', 'archived'] as const;
+const status = (STATUSES as readonly string[]).includes(statusParam) ? statusParam : '';
+const page = Math.max(1, Number(params.get('page') ?? '1') || 1);
+const PAGE_SIZE = 25;
+
+let loadError: string | null = null;
+let rows: {
+  id: string;
+  peptide_name: string;
+  batch_identifier: string | null;
+  testing_lab: string;
+  test_date: string | null;
+  status: string;
+  updated_at: string;
+}[] = [];
+let total = 0;
+
+try {
+  let query = client
+    .from('batch_coas')
+    .select('id, peptide_name, batch_identifier, testing_lab, test_date, status, updated_at', {
+      count: 'exact',
+    })
+    .order('updated_at', { ascending: false })
+    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+  if (status) query = query.eq('status', status);
+  if (q) query = query.ilike('peptide_name', `%${q}%`);
+  const { data, error, count } = await query;
+  if (error) throw error;
+  rows = data ?? [];
+  total = count ?? 0;
+} catch {
+  loadError = 'Could not load the COA list right now.';
+}
+
+const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+const STATUS_TONE: Record<string, 'neutral' | 'warning' | 'success'> = {
+  draft: 'neutral',
+  published: 'success',
+  archived: 'warning',
+};
+---
+
+<AdminLayout title="COAs">
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">Commerce</p>
+      <h1>Certificates of Analysis</h1>
+      <p>Upload, edit, publish, and archive batch testing documentation.</p>
+    </div>
+    <a href="/admin/coas/new" class="cp-admin-btn cp-admin-btn--primary">+ Upload COA</a>
+  </div>
+
+  <form method="get" class="cp-admin-toolbar">
+    <input
+      type="search"
+      name="q"
+      placeholder="Search by peptide name…"
+      value={q}
+      aria-label="Search COAs"
+    />
+    <select name="status" aria-label="Filter by status">
+      <option value="">All statuses</option>
+      {
+        STATUSES.map((s) => (
+          <option value={s} selected={status === s}>
+            {s}
+          </option>
+        ))
+      }
+    </select>
+    <button type="submit" class="cp-admin-btn cp-admin-btn--secondary">Apply</button>
+    <span class="cp-admin-toolbar__spacer"></span>
+    <span class="cp-admin-toolbar__count">{total} COA{total === 1 ? '' : 's'}</span>
+  </form>
+
+  {loadError && <ErrorState message={loadError} retryHref="/admin/coas" />}
+
+  {
+    !loadError && rows.length === 0 && (
+      <div class="cp-admin-section">
+        <p class="cp-admin-empty-row">No COAs match those filters.</p>
+      </div>
+    )
+  }
+
+  {
+    !loadError && rows.length > 0 && (
+      <div class="cp-admin-table-wrap">
+        <table class="cp-admin-table">
+          <thead>
+            <tr>
+              <th>Peptide</th>
+              <th>Batch</th>
+              <th>Lab</th>
+              <th>Test date</th>
+              <th>Status</th>
+              <th>Updated</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((c) => (
+              <tr>
+                <td>
+                  <a href={`/admin/coas/${c.id}`}>{c.peptide_name}</a>
+                </td>
+                <td>{c.batch_identifier ?? '—'}</td>
+                <td>{c.testing_lab}</td>
+                <td>{c.test_date ? new Date(c.test_date).toLocaleDateString() : '—'}</td>
+                <td>
+                  <Badge tone={STATUS_TONE[c.status] ?? 'neutral'}>{c.status}</Badge>
+                </td>
+                <td>{new Date(c.updated_at).toLocaleDateString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  <Pagination currentUrl={Astro.url} page={page} totalPages={totalPages} />
+</AdminLayout>

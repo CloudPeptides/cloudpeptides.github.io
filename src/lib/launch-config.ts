@@ -26,8 +26,18 @@
  * route (src/pages/api/checkout.ts) are all disabled while this is
  * false. The shop catalog itself (browsing products, prices) stays
  * visible as a "Coming soon" preview — this flag governs the
- * transactional path only. */
-export const COMMERCE_ENABLED = false;
+ * transactional path only.
+ *
+ * Activated 2026-08-08 (Commerce Activation phase) — approved product
+ * decision: this enables an order-*request* workflow only (see
+ * src/pages/api/checkout.ts's own header comment). No payment
+ * provider is integrated anywhere in this codebase; submitting the
+ * cart form never charges the customer, accepts an order, or reserves
+ * inventory. src/pages/shop/cart.astro's own visible test-environment
+ * banner (driven by Astro.locals.indexable) and checkout.ts's
+ * matching email-subject prefix keep staging submissions unmistakably
+ * labeled as test orders, not real customer orders. */
+export const COMMERCE_ENABLED = true;
 
 /** The public contact form (src/pages/contact.astro) and its email
  * route (src/pages/api/contact.ts) are disabled while this is false.

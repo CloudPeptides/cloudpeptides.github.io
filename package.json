@@ -24,6 +24,7 @@
     "db:import-legacy": "node scripts/migration/import-to-supabase.mjs",
     "db:verify-security": "node scripts/migration/verify-security.mjs",
     "db:verify-admin-security": "node scripts/migration/verify-admin-security.mjs",
+    "db:verify-coa-security": "node scripts/migration/verify-coa-security.mjs",
     "db:verify-staging-read-only": "node scripts/migration/verify-staging-read-only.mjs",
     "db:export-for-production": "node scripts/migration/export-published-for-production.mjs",
     "db:backup-production": "node scripts/migration/backup-production.mjs",

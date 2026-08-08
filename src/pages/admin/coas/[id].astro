@@ -1,0 +1,239 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Badge from '../../../components/ui/Badge.astro';
+import { createUserScopedClient } from '../../../lib/auth';
+import { COA_BUCKET } from '../../../lib/coas';
+
+const session = Astro.locals.session!;
+const client = createUserScopedClient(session.accessToken);
+const id = Astro.params.id!;
+
+const { data: coa, error: fetchError } = await client
+  .from('batch_coas')
+  .select('*')
+  .eq('id', id)
+  .maybeSingle();
+
+if (fetchError || !coa) {
+  return new Response(null, { status: 404 });
+}
+
+// A signed URL, not the public one — this is the ADMIN preview, which
+// must work regardless of the COA's publish status (a plain public
+// Storage URL is always evaluated as an anonymous request, so it would
+// 403 on anything not yet published even though the admin themselves
+// is fully authorized; a signed URL generated with the admin's own
+// JWT goes through coa_documents_admin_read's RLS check instead,
+// which covers every status). Short-lived — regenerated on every page
+// load, never stored.
+const { data: signedUrlData } = await client.storage
+  .from(COA_BUCKET)
+  .createSignedUrl(coa.file_path, 3600);
+const previewUrl = signedUrlData?.signedUrl ?? null;
+
+const isImage = coa.file_mime_type !== 'application/pdf';
+
+const STATUS_TONE: Record<string, 'neutral' | 'warning' | 'success'> = {
+  draft: 'neutral',
+  published: 'success',
+  archived: 'warning',
+};
+
+type Transition = { label: string; value: string; variant: 'primary' | 'secondary' | 'danger' };
+const transitions: Transition[] = [];
+if (coa.status === 'draft') {
+  transitions.push({ label: 'Publish', value: 'published', variant: 'primary' });
+  transitions.push({ label: 'Archive', value: 'archived', variant: 'danger' });
+}
+if (coa.status === 'published') {
+  transitions.push({ label: 'Unpublish', value: 'draft', variant: 'secondary' });
+  transitions.push({ label: 'Archive', value: 'archived', variant: 'danger' });
+}
+if (coa.status === 'archived') {
+  transitions.push({ label: 'Restore to draft', value: 'draft', variant: 'primary' });
+}
+---
+
+<AdminLayout title={coa.peptide_name}>
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">Commerce</p>
+      <h1>{coa.peptide_name}</h1>
+      <p>
+        <Badge tone={STATUS_TONE[coa.status] ?? 'neutral'}>{coa.status}</Badge>
+      </p>
+    </div>
+  </div>
+
+  <section class="cp-admin-section">
+    <h2>Status</h2>
+    <form id="coaStatusForm" data-coa-id={coa.id} class="cp-admin-form-actions">
+      {
+        transitions.map((t) => (
+          <button
+            type="submit"
+            name="status"
+            value={t.value}
+            class={`cp-admin-btn cp-admin-btn--${t.variant}`}
+          >
+            {t.label}
+          </button>
+        ))
+      }
+    </form>
+    <p class="cp-admin-form-message" data-tone="error" id="coaStatusError" hidden></p>
+  </section>
+
+  <section class="cp-admin-section">
+    <h2>Preview</h2>
+    {
+      previewUrl ? (
+        <div class="cp-coa-preview">
+          {isImage ? (
+            <img src={previewUrl} alt={`Preview of ${coa.peptide_name} COA`} />
+          ) : (
+            <embed src={previewUrl} type="application/pdf" width="100%" height="480" />
+          )}
+          <p>
+            <a href={previewUrl} target="_blank" rel="noopener noreferrer">
+              Open in a new tab
+            </a>{' '}
+            (link expires in 1 hour) · {coa.original_filename}
+          </p>
+        </div>
+      ) : (
+        <p class="cp-admin-empty-row">Could not generate a preview link.</p>
+      )
+    }
+    <form id="coaFileReplaceForm" data-coa-id={coa.id} enctype="multipart/form-data">
+      <div class="cp-admin-field">
+        <label for="replaceFile">Replace file</label>
+        <input
+          id="replaceFile"
+          name="file"
+          type="file"
+          accept=".pdf,.png,.jpg,.jpeg,.webp"
+          required
+        />
+      </div>
+      <button type="submit" id="coaFileReplaceSubmit" class="cp-admin-btn cp-admin-btn--secondary">
+        Replace file
+      </button>
+      <p class="cp-admin-form-message" data-tone="error" id="coaFileReplaceError" hidden></p>
+    </form>
+  </section>
+
+  <section class="cp-admin-section">
+    <h2>Metadata</h2>
+    <form id="coaMetadataForm" data-coa-id={coa.id} class="cp-admin-form-grid">
+      <div class="cp-admin-field">
+        <label for="peptideName">Peptide / product name</label>
+        <input
+          id="peptideName"
+          name="peptide_name"
+          value={coa.peptide_name}
+          required
+          maxlength="200"
+        />
+      </div>
+      <div class="cp-admin-field">
+        <label for="batchIdentifier">Batch / lot number</label>
+        <input
+          id="batchIdentifier"
+          name="batch_identifier"
+          value={coa.batch_identifier ?? ''}
+          maxlength="200"
+        />
+      </div>
+      <div class="cp-admin-field">
+        <label for="testingLab">Testing lab</label>
+        <input
+          id="testingLab"
+          name="testing_lab"
+          value={coa.testing_lab}
+          required
+          maxlength="200"
+        />
+      </div>
+      <div class="cp-admin-field">
+        <label for="testDate">Test date</label>
+        <input id="testDate" name="test_date" type="date" value={coa.test_date ?? ''} required />
+      </div>
+      <div class="cp-admin-field">
+        <label for="verificationUrl">Verification URL</label>
+        <input
+          id="verificationUrl"
+          name="verification_url"
+          type="url"
+          value={coa.verification_url ?? ''}
+          maxlength="500"
+        />
+      </div>
+      <div class="cp-admin-field">
+        <label for="purityResult">Purity result</label>
+        <input
+          id="purityResult"
+          name="purity_result"
+          value={coa.purity_result ?? ''}
+          maxlength="200"
+        />
+      </div>
+      <div class="cp-admin-field" style="grid-column: 1 / -1;">
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes" maxlength="4000">{coa.notes ?? ''}</textarea>
+      </div>
+      <div class="cp-admin-form-actions" style="grid-column: 1 / -1;">
+        <button type="submit" id="coaMetadataSubmit" class="cp-admin-btn cp-admin-btn--primary">
+          Save metadata
+        </button>
+      </div>
+      <p
+        class="cp-admin-form-message"
+        data-tone="error"
+        id="coaMetadataError"
+        style="grid-column: 1 / -1;"
+        hidden
+      >
+      </p>
+    </form>
+  </section>
+
+  {
+    coa.status === 'published' && (
+      <section class="cp-admin-section">
+        <h2>Public page</h2>
+        <p>
+          <a href="/coas">View in the public COA gallery &rarr;</a>
+        </p>
+      </section>
+    )
+  }
+</AdminLayout>
+
+<script>
+  import '../../../scripts/admin-coa-detail.ts';
+</script>
+
+<style>
+  .cp-coa-preview {
+    margin-bottom: 1.5rem;
+  }
+  .cp-coa-preview img {
+    max-width: 100%;
+    max-height: 480px;
+    border-radius: var(--radius-control);
+    border: 1px solid var(--border-subtle);
+    display: block;
+  }
+  .cp-coa-preview embed {
+    border-radius: var(--radius-control);
+    border: 1px solid var(--border-subtle);
+  }
+  .cp-coa-preview p {
+    font-size: var(--text-caption);
+    color: var(--text-muted);
+    margin: 0.5rem 0 0;
+  }
+</style>

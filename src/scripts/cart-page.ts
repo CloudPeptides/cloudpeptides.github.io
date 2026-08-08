@@ -116,9 +116,20 @@ async function submitOrder(event: SubmitEvent): Promise<void> {
 
   const name = (document.getElementById('customerName') as HTMLInputElement).value.trim();
   const email = (document.getElementById('customerEmail') as HTMLInputElement).value.trim();
-  const contact = (document.getElementById('customerContact') as HTMLInputElement).value.trim();
-  const payment = (document.getElementById('paymentMethod') as HTMLSelectElement).value;
+  const phone = (document.getElementById('customerPhone') as HTMLInputElement).value.trim();
+  const addressLine1 = (document.getElementById('addressLine1') as HTMLInputElement).value.trim();
+  const addressLine2 = (document.getElementById('addressLine2') as HTMLInputElement).value.trim();
+  const addressCity = (document.getElementById('addressCity') as HTMLInputElement).value.trim();
+  const addressRegion = (document.getElementById('addressRegion') as HTMLInputElement).value.trim();
+  const addressPostalCode = (
+    document.getElementById('addressPostalCode') as HTMLInputElement
+  ).value.trim();
+  const addressCountry = (
+    document.getElementById('addressCountry') as HTMLInputElement
+  ).value.trim();
   const notes = (document.getElementById('customerNotes') as HTMLTextAreaElement).value.trim();
+  const ageAttestation = (document.getElementById('ageAttestation') as HTMLInputElement).checked;
+  const termsAccepted = (document.getElementById('termsAccepted') as HTMLInputElement).checked;
   const honeypot =
     (document.getElementById('checkoutHoneypot') as HTMLInputElement | null)?.value ?? '';
   // Cloudflare Turnstile auto-injects this hidden field once solved —
@@ -126,8 +137,24 @@ async function submitOrder(event: SubmitEvent): Promise<void> {
   const turnstileToken =
     (form.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement | null)?.value ?? '';
 
-  if (!name || !email || !contact || !payment) {
+  if (
+    !name ||
+    !email ||
+    !addressLine1 ||
+    !addressCity ||
+    !addressRegion ||
+    !addressPostalCode ||
+    !addressCountry
+  ) {
     setFormMessage('Please complete all required checkout fields.', 'error');
+    return;
+  }
+  if (!ageAttestation) {
+    setFormMessage('You must confirm you are 18+ and ordering for research use only.', 'error');
+    return;
+  }
+  if (!termsAccepted) {
+    setFormMessage('You must accept the Shop Terms to submit an order request.', 'error');
     return;
   }
 
@@ -136,28 +163,45 @@ async function submitOrder(event: SubmitEvent): Promise<void> {
   button.textContent = 'Submitting…';
   setFormMessage('', 'info');
 
-  const items: CartItem[] = cart;
+  // Only productId/optionCode/quantity are sent — never name/spec/
+  // price, which the server looks up itself from the real catalog
+  // (src/lib/form-validation.ts's resolveProduct()) rather than
+  // trusting anything the browser reports.
+  const items = (cart as CartItem[]).map((item) => ({
+    productId: item.productId,
+    optionCode: item.optionCode,
+    quantity: item.quantity,
+  }));
 
   try {
     const response = await fetch('/api/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        type: 'checkout',
         name,
         email,
-        contact,
-        payment,
+        phone,
+        address: {
+          line1: addressLine1,
+          line2: addressLine2,
+          city: addressCity,
+          region: addressRegion,
+          postalCode: addressPostalCode,
+          country: addressCountry,
+        },
         notes,
+        ageAttestation,
+        termsAccepted,
         items,
-        subtotal: totals.subtotal,
-        shipping: totals.shipping,
-        total: totals.total,
         website: honeypot, // honeypot field — real users never fill this
         turnstileToken,
       }),
     });
-    const result = (await response.json()) as { success: boolean; error?: string };
+    const result = (await response.json()) as {
+      success: boolean;
+      error?: string;
+      requestNumber?: string;
+    };
 
     if (result.success) {
       clearCart();
@@ -168,6 +212,10 @@ async function submitOrder(event: SubmitEvent): Promise<void> {
       if (cartItemsEl) cartItemsEl.hidden = true;
       if (cartTotal) (cartTotal as HTMLElement).hidden = true;
       const success = document.getElementById('successMessage');
+      const successBody = document.getElementById('successMessageBody');
+      if (successBody && result.requestNumber) {
+        successBody.textContent = `Your order request (${result.requestNumber}) has been received — it has not yet been accepted, and no payment has been taken. We will review it and contact you directly to proceed.`;
+      }
       if (success) success.hidden = false;
     } else {
       setFormMessage(
@@ -180,7 +228,7 @@ async function submitOrder(event: SubmitEvent): Promise<void> {
   }
 
   button.disabled = false;
-  button.textContent = 'Place Order Request';
+  button.textContent = 'Submit order request';
 }
 
 function init(): void {
