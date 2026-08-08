@@ -47,10 +47,16 @@ function generateNonce(): string {
 }
 
 // /admin/login must stay reachable without a session (it's how you get
-// one); every other /admin/* page requires a signed-in, contributor+
-// account. /api/auth/* (login/logout themselves) are deliberately NOT
+// one); same for the password-recovery pages — a locked-out admin has
+// no session by definition. Every other /admin/* page requires a
+// signed-in, contributor+ account. /api/auth/* (login/logout/
+// forgot-password/reset-password themselves) are deliberately NOT
 // under /api/admin, so they're never gated here either.
-const PUBLIC_ADMIN_PATHS = new Set(['/admin/login']);
+const PUBLIC_ADMIN_PATHS = new Set([
+  '/admin/login',
+  '/admin/forgot-password',
+  '/admin/reset-password',
+]);
 
 function isProtectedAdminPage(pathname: string): boolean {
   return pathname.startsWith('/admin') && !PUBLIC_ADMIN_PATHS.has(pathname);
