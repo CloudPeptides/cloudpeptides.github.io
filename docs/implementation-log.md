@@ -2,6 +2,73 @@
 
 Append-only. One entry per meaningful step, per [CLAUDE.md](../CLAUDE.md) §3/§11/§12.
 
+## Focused Pre-Launch Correction Pass (2026-08-08)
+
+Four items, each independently resolved, before production cutover:
+
+1. **`SUPABASE_SERVICE_ROLE_KEY` architecture** — inspected the real
+   implementation (`src/lib/auth.ts`, the two `/api/admin/users/*`
+   routes, `src/lib/admin/users.ts`) against CLAUDE.md, Blueprint v2
+   §16, and the RLS grants before changing anything. Conclusion: the
+   architecture was already correct — auth, admin-role re-check before
+   every privileged operation, input validation, rate limiting, audit
+   logging, narrow scope (never a general table passthrough), and
+   negative tests (`db:verify-admin-security`, re-run: 18/18) all
+   already present, and this is structurally the *only* possible
+   design (creating/listing Auth users and writing `user_roles` both
+   have zero non-service-role path by the schema's own locked-down
+   grants). **Nothing in the implementation changed** — the working
+   staging admin dashboard was never at risk. What was actually wrong:
+   `production-cutover-checklist.md`/`production-cutover-plan.md`/
+   `production-readiness-audit.md` asserted "must not exist on any
+   Worker," which was false (staging has genuinely had it set since
+   the prior session) and contradicted Blueprint v2 §16's own text.
+   Corrected in all three docs, plus `CLAUDE.md` §8 and `.env.example`
+   for full consistency.
+2. **`/about` page** — the one remaining "not yet migrated" legacy URL
+   with real, reusable content. Rebuilt (`src/pages/about.astro`) using
+   the legacy page's own established mission language verbatim, not
+   reinvented; added to nav and a new footer "Site" landmark; wired
+   `/about.html` → `/about` into the existing redirect table.
+3. **Broken citations** — exactly 2 distinct URLs (3 flagged instances)
+   confirmed via `check:links`. Both investigated directly (redirect
+   chains followed with a browser User-Agent, cross-corroborated via
+   web search) rather than assumed dead: the JAMA DOI resolves
+   correctly but JAMA Network bot-blocks automated checkers — the
+   source's primary URL was upgraded to the PMC open-access mirror of
+   the identical article (a genuine same-source improvement, not a
+   substitution); the FDA consumer-update URL redirects to FDA's own
+   abuse-detection page (confirmed bot-wall, not a 404) and is
+   independently corroborated by multiple 2025 news outlets as a real,
+   current warning naming Lemon Bottle — left unchanged since no
+   alternate URL could be confidently confirmed as the identical
+   document. `scripts/enrichment/fix-broken-citations-2026-08-08.mjs`
+   documents the full reasoning and made the one real change (staging:
+   one `sources` row updated).
+4. **Product decisions recorded:** `www.cloudpeptides.org` permanently
+   redirects to the apex via a Cloudflare Redirect Rule, not a Worker
+   route (`wrangler.production.jsonc` updated accordingly — the `www`
+   route was removed, not just left commented); no analytics/
+   advertising/nonessential cookies, stated as a forward-looking
+   Privacy Policy commitment; no cookie-consent banner for the current
+   strictly-functional cookies, with an explicit revisit-before-
+   analytics trigger documented; checkout stays disabled (confirmed
+   consistent, unchanged); all 7 policy pages now carry an identical
+   "honest operational draft, not lawyer-reviewed" note via
+   `PolicyLayout.astro`'s shared footer rather than two hand-written
+   copies.
+
+**Verification, run once at the end:** lint/typecheck clean;
+**103/103** unit tests (interpretation of the redirect test data
+updated for `/about.html` moving out of "not yet migrated"); **40/40**
+e2e tests (2 new — `/about.html` redirect, and the "not yet migrated"
+case repointed at `/faq.html`); build clean; `check:secrets` clean;
+`check:links` — exactly the 2 documented, investigated,
+non-actionable bot-wall cases remain, no new breaks; `db:verify-security`
+14/14; `db:verify-admin-security` 18/18 (re-confirmed specifically
+because item 1 was about this exact architecture, even though no code
+changed). Deployed to staging and live-verified.
+
 ## Final Pre-Launch Readiness Phase (2026-08-08)
 
 Scope: 7 policy/trust pages, full production-readiness audit, prepared
