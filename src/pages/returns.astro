@@ -1,0 +1,34 @@
+---
+import PolicyLayout from '../layouts/PolicyLayout.astro';
+import { COMMERCE_ENABLED } from '../lib/launch-config';
+---
+
+<PolicyLayout
+  title="Return and Refund Policy"
+  description="Cloud Peptides return and refund information."
+  lastUpdated="August 8, 2026"
+>
+  {
+    !COMMERCE_ENABLED && (
+      <p class="cp-policy-note">
+        <strong>Ordering is not currently enabled on this site.</strong> Nothing can be purchased
+        right now, so there is nothing to return yet. We'll publish our real return and refund terms
+        — eligibility, timeframes, and process — here before ordering opens.
+      </p>
+    )
+  }
+
+  <h2>What this page will cover</h2>
+  <p>
+    Once ordering is enabled, this page will describe under what circumstances a return or refund is
+    available, how long you have to request one, and how the process works. We haven't finalized
+    those terms yet, so we're not going to state them here until they're real and accurate.
+  </p>
+
+  <h2>Questions</h2>
+  <p>
+    If you have a question about an existing order in the meantime, <a href="/contact">contact us</a
+    >
+    and we'll help directly.
+  </p>
+</PolicyLayout>

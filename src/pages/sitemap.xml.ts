@@ -26,6 +26,13 @@ export const GET: APIRoute = async ({ site }) => {
     urlEntry(`${base}/research/compounds`, 'daily', '0.9'),
     urlEntry(`${base}/shop`, 'weekly', '0.9'),
     urlEntry(`${base}/contact`, 'monthly', '0.5'),
+    urlEntry(`${base}/privacy`, 'yearly', '0.3'),
+    urlEntry(`${base}/terms`, 'yearly', '0.3'),
+    urlEntry(`${base}/disclaimer`, 'yearly', '0.3'),
+    urlEntry(`${base}/accessibility`, 'yearly', '0.3'),
+    urlEntry(`${base}/shipping`, 'yearly', '0.3'),
+    urlEntry(`${base}/returns`, 'yearly', '0.3'),
+    urlEntry(`${base}/shop-terms`, 'yearly', '0.3'),
   ];
 
   const productEntries = PRODUCTS.map((p) => urlEntry(`${base}/shop/${p.id}`, 'monthly', '0.7'));

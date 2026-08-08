@@ -72,7 +72,10 @@ const breadcrumbJsonLd = {
       <p class="cp-shop-disclaimer">
         For laboratory research use only. Not for human consumption. Nothing on this page is
         scientific evidence, a medical claim, or a purchase recommendation about any compound
-        discussed in Research.
+        discussed in Research. See our <a href="/shop-terms">Shop Terms</a>,
+        <a href="/shipping">Shipping Policy</a>, and <a href="/returns"
+          >Return &amp; Refund Policy</a
+        >.
       </p>
     </header>
 
@@ -250,6 +253,17 @@ const breadcrumbJsonLd = {
     border-left: 3px solid var(--terracotta-text);
     padding: 0.75rem 1rem;
     margin: 0;
+  }
+  /* Underlined always, not just on hover — axe's link-in-text-block rule
+     needs a non-color distinguisher since these links sit in plain text
+     (same fix already applied to RegulatoryRow/contact page links).
+     --primary, not --terracotta-text: axe caught --terracotta-text on
+     --bg-sunken (this element's own background) at 4.15:1, below the
+     4.5:1 AA minimum — the exact pairing ShopDisclosure.astro's own
+     comment already documents as unverified against --bg-sunken. */
+  .cp-shop-disclaimer a {
+    color: var(--primary);
+    text-decoration: underline;
   }
   .cp-coming-soon-banner {
     font-size: var(--text-caption);

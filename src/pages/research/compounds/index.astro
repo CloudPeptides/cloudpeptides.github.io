@@ -64,7 +64,8 @@ const breadcrumbJsonLd = {
       <h1 class="cp-directory-header__heading">Compound Directory</h1>
       <p class="cp-directory-header__intro">
         Browse published research summaries, organized by type, category, and identity status. Every
-        entry is claim-level cited and editorially reviewed before publication.
+        entry is claim-level cited and editorially reviewed before publication. Read our
+        <a href="/disclaimer">Research and Medical Disclaimer</a> before relying on anything here.
       </p>
     </header>
 
@@ -143,6 +144,12 @@ const breadcrumbJsonLd = {
     color: var(--text-secondary);
     line-height: var(--text-body--line-height);
     margin: 0;
+  }
+  /* Underlined always, not just on hover — axe's link-in-text-block rule
+     needs a non-color distinguisher since this link sits in plain text. */
+  .cp-directory-header__intro a {
+    color: var(--primary);
+    text-decoration: underline;
   }
   .cp-compound-grid {
     display: grid;

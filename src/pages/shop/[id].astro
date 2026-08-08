@@ -171,7 +171,7 @@ const breadcrumbJsonLd = {
 
         <p class="cp-disclaimer">
           Research use only. Not for human consumption. No peptide information or medical claims are
-          provided on this page.
+          provided on this page. See our <a href="/shop-terms">Shop Terms</a>.
         </p>
       </div>
     </div>
@@ -279,6 +279,12 @@ const breadcrumbJsonLd = {
     font-size: var(--text-caption);
     color: var(--text-muted);
     margin: 0.5rem 0;
+  }
+  /* Underlined always, not just on hover — axe's link-in-text-block rule
+     needs a non-color distinguisher since this link sits in plain text. */
+  .cp-disclaimer a {
+    color: var(--terracotta-text);
+    text-decoration: underline;
   }
   .cp-coming-soon-banner {
     font-size: var(--text-caption);
