@@ -88,7 +88,7 @@ If an implementation decision conflicts with either document, **stop and ask** �
 - Every exposed table requires RLS.
 - Roles use the approved protected RBAC/custom-claims approach (`user_roles` table + Custom Access Token Auth Hook + JWT claim) — never a client-editable role column (Blueprint §16).
 - Ordinary editorial actions (draft, edit, submit for review) use the acting user's own JWT under RLS — not service-role access.
-- Service-role access is limited to narrowly scoped, trusted Worker routes, each requiring auth, explicit authorization, input validation, rate limiting, audit logging, narrow scope, and negative tests before shipping (Blueprint §16 table).
+- Service-role access is limited to narrowly scoped, trusted Worker routes, each requiring auth, explicit authorization, input validation, rate limiting, audit logging, narrow scope, and negative tests before shipping (Blueprint §16 table). The one implemented instance is admin user/role management (`src/pages/api/admin/users/*`, backed by `src/lib/auth.ts`'s `createServiceClient()`) — the service-role secret is genuinely present as a Worker secret on the staging Worker (and will be on production too) for exactly this reason; that is expected, not a leak, as long as every requirement above still holds.
 - Never expose service-role, Resend, Cloudflare, or any other private credential to browser-reachable code.
 - Never commit secrets, of any kind, to the repository.
 - All schema changes go through reviewed, versioned SQL migrations.
