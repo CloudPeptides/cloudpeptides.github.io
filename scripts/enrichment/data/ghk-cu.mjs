@@ -32,13 +32,16 @@ export default {
         studyDesign: 'rct_human',
         population: 'Adult patients undergoing CO2 laser skin resurfacing',
         sampleSize: 13,
-        intervention: 'Topical copper tripeptide (GHK-Cu) complex, post-resurfacing skincare regimen',
+        intervention:
+          'Topical copper tripeptide (GHK-Cu) complex, post-resurfacing skincare regimen',
         comparator: 'Standard post-resurfacing regimen without copper tripeptide',
         route: 'Topical',
-        primaryOutcomes: 'Erythema resolution, wrinkle improvement, overall skin quality (objective, computer-analyzed and blinded-evaluator-assessed) and patient-reported satisfaction',
+        primaryOutcomes:
+          'Erythema resolution, wrinkle improvement, overall skin quality (objective, computer-analyzed and blinded-evaluator-assessed) and patient-reported satisfaction',
         resultsSummary:
           'No statistically significant between-group differences were found for objective measures (erythema resolution, wrinkle reduction, overall skin quality). Patient-reported satisfaction with overall skin quality was significantly higher in the GHK-Cu group (P=.04).',
-        limitations: 'Very small sample (n=13 completers); objective outcomes were null; only the subjective/patient-reported outcome reached significance.',
+        limitations:
+          'Very small sample (n=13 completers); objective outcomes were null; only the subjective/patient-reported outcome reached significance.',
         peerReviewStatus: 'peer_reviewed',
       },
     },
@@ -63,7 +66,8 @@ export default {
     {
       key: 'pmid-15655171',
       sourceType: 'pubmed_article',
-      title: 'Effects of copper tripeptide on the growth and expression of growth factors by normal and irradiated fibroblasts.',
+      title:
+        'Effects of copper tripeptide on the growth and expression of growth factors by normal and irradiated fibroblasts.',
       url: 'https://pubmed.ncbi.nlm.nih.gov/15655171/',
       publisherOrAgency: 'Archives of Facial Plastic Surgery',
       publicationDate: '2005-01-01',
@@ -74,7 +78,8 @@ export default {
         intervention: 'Copper tripeptide (GHK-Cu) applied to fibroblast cultures',
         resultsSummary:
           'Copper tripeptide accelerated growth of normal and irradiated fibroblasts and increased early production of basic fibroblast growth factor and vascular endothelial growth factor in irradiated fibroblasts.',
-        limitations: 'In-vitro only; irradiated-fibroblast findings are not evidence of an effect in irradiated human tissue.',
+        limitations:
+          'In-vitro only; irradiated-fibroblast findings are not evidence of an effect in irradiated human tissue.',
         peerReviewStatus: 'peer_reviewed',
       },
     },
@@ -90,7 +95,8 @@ export default {
         studyDesign: 'narrative_review',
         resultsSummary:
           'Narrative review (single-author) summarizing preclinical/mechanistic literature on GHK and tissue remodeling — does not itself present new primary data.',
-        limitations: 'Single-author narrative review, not a systematic review; author (Pickart) has a long publication history specifically on GHK and holds related patents, a potential conflict of interest not disclosed in the abstract reviewed.',
+        limitations:
+          'Single-author narrative review, not a systematic review; author (Pickart) has a long publication history specifically on GHK and holds related patents, a potential conflict of interest not disclosed in the abstract reviewed.',
         peerReviewStatus: 'peer_reviewed',
       },
     },
@@ -104,7 +110,8 @@ export default {
         studyDesign: 'rct_human',
         population: 'Human adults with acute skin wounds',
         intervention: 'Topical GHK-Cu gel',
-        resultsSummary: 'Status: active/recruiting as of retrieval date (this pilot did not re-verify current status via the ClinicalTrials.gov API). No results posted.',
+        resultsSummary:
+          'Status: active/recruiting as of retrieval date (this pilot did not re-verify current status via the ClinicalTrials.gov API). No results posted.',
         limitations: 'Trial in progress — no results available.',
         registrationNumber: 'NCT07437586',
         peerReviewStatus: 'unknown',
@@ -117,7 +124,8 @@ export default {
       statement:
         'In a small randomized controlled trial (n=13) of patients recovering from CO2 laser skin resurfacing, topical GHK-Cu produced no statistically significant objective improvement in erythema resolution, wrinkle reduction, or evaluator-assessed skin quality compared to standard post-procedure care — but patient-reported satisfaction with skin quality was significantly higher.',
       evidenceQuality: 'low',
-      qualityRationale: 'Very small randomized trial; the only statistically significant result was a subjective patient-reported outcome, not an objective clinical measure.',
+      qualityRationale:
+        'Very small randomized trial; the only statistically significant result was a subjective patient-reported outcome, not an objective clinical measure.',
       interpretationStatus: 'conflicting',
       sources: [{ sourceKey: 'pmid-16847171', relationship: 'directly_supports' }],
     },
@@ -126,7 +134,8 @@ export default {
       statement:
         'In cultured human fibroblasts, GHK-Cu increases matrix metalloproteinase-2 (MMP-2) expression and secretion of its tissue inhibitors (TIMP-1, TIMP-2) — an effect driven by the copper component specifically, not the GHK peptide alone.',
       evidenceQuality: 'moderate',
-      qualityRationale: 'Peer-reviewed in-vitro mechanistic study with an informative negative control (GHK alone, no effect).',
+      qualityRationale:
+        'Peer-reviewed in-vitro mechanistic study with an informative negative control (GHK alone, no effect).',
       interpretationStatus: 'preliminary',
       sources: [{ sourceKey: 'pmid-11045606', relationship: 'directly_supports' }],
     },
@@ -135,7 +144,8 @@ export default {
       statement:
         'In cultured normal and irradiated human fibroblasts, copper tripeptide (GHK-Cu) accelerated fibroblast growth and increased early production of basic fibroblast growth factor and vascular endothelial growth factor.',
       evidenceQuality: 'low',
-      qualityRationale: 'In-vitro only; irradiated-fibroblast findings do not establish an effect in irradiated human tissue in vivo.',
+      qualityRationale:
+        'In-vitro only; irradiated-fibroblast findings do not establish an effect in irradiated human tissue in vivo.',
       interpretationStatus: 'preliminary',
       sources: [{ sourceKey: 'pmid-15655171', relationship: 'directly_supports' }],
     },
@@ -157,16 +167,19 @@ export default {
   legacyReconciliations: [
     {
       legacyClaimId: 'b462d655-0e70-4954-abfe-f394e2602a2b',
-      legacyStatementExcerpt: 'GHK-Cu is a naturally occurring copper-binding peptide that has been widely investigated in regenerative biology and dermatologic research',
+      legacyStatementExcerpt:
+        'GHK-Cu is a naturally occurring copper-binding peptide that has been widely investigated in regenerative biology and dermatologic research',
       disposition: 'supported',
-      rationale: 'Directly confirmed by the verified in-vitro fibroblast/MMP-2 literature and the one human RCT identified.',
+      rationale:
+        'Directly confirmed by the verified in-vitro fibroblast/MMP-2 literature and the one human RCT identified.',
       evidenceQuality: 'moderate',
       interpretationStatus: 'preliminary',
       sources: [{ sourceKey: 'pmid-11045606', relationship: 'directly_supports' }],
     },
     {
       legacyClaimId: '00063439-61c9-4273-a7c3-32bb87582409',
-      legacyStatementExcerpt: 'Current literature explores GHK-Cu in skin health, connective tissue biology, hair follicle research, cosmetic science, and healthy aging',
+      legacyStatementExcerpt:
+        'Current literature explores GHK-Cu in skin health, connective tissue biology, hair follicle research, cosmetic science, and healthy aging',
       disposition: 'revised',
       rationale:
         'Skin health, connective tissue biology, and cosmetic science are directly confirmed by the verified fibroblast/collagen/MMP-2 sources. "Hair follicle research" was NOT independently verified for GHK-Cu specifically in this review — that finding belongs to the related-but-distinct compound AHK-Cu (see ahk-cu.mjs, batch 1), and conflating the two would repeat the exact GHK-Cu/AHK-Cu mix-up already caught and corrected on AHK-Cu\'s own page. "Healthy aging" was likewise not independently verified as a directly studied GHK-Cu outcome in this review.',
@@ -179,39 +192,56 @@ export default {
     },
     {
       legacyClaimId: '0800caff-a0dd-41aa-bfcc-88388cbc1cd2',
-      legacyStatementExcerpt: 'Researchers investigate how GHK-Cu interacts with copper-dependent biological pathways that influence gene expression, collagen turnover, antioxidant',
+      legacyStatementExcerpt:
+        'Researchers investigate how GHK-Cu interacts with copper-dependent biological pathways that influence gene expression, collagen turnover, antioxidant',
       disposition: 'supported',
-      rationale: 'Directly confirmed by the verified MMP-2/collagen-pathway mechanistic literature.',
+      rationale:
+        'Directly confirmed by the verified MMP-2/collagen-pathway mechanistic literature.',
       evidenceQuality: 'moderate',
       interpretationStatus: 'preliminary',
       sources: [{ sourceKey: 'pmid-11045606', relationship: 'directly_supports' }],
     },
     {
       legacyClaimId: '46b4b9b5-7efb-4c7c-b7a1-30f16c58f5e8',
-      legacyStatementExcerpt: 'Q: What is GHK-Cu primarily researched for? A: Published research commonly investigates skin biology, collagen production, tissue remodeling, wound re',
+      legacyStatementExcerpt:
+        'Q: What is GHK-Cu primarily researched for? A: Published research commonly investigates skin biology, collagen production, tissue remodeling, wound re',
       disposition: 'supported',
-      rationale: 'Accurately reflects the verified research focus (fibroblast growth-factor production directly relevant to wound repair).',
+      rationale:
+        'Accurately reflects the verified research focus (fibroblast growth-factor production directly relevant to wound repair).',
       evidenceQuality: 'moderate',
       interpretationStatus: 'preliminary',
       sources: [{ sourceKey: 'pmid-15655171', relationship: 'directly_supports' }],
     },
     {
       legacyClaimId: 'afafa448-00d9-4b98-ac08-4c2c14e2df33',
-      legacyStatementExcerpt: 'Q: Is GHK-Cu naturally occurring? A: Yes. GHK is a naturally occurring peptide that binds copper to form GHK-Cu',
+      legacyStatementExcerpt:
+        'Q: Is GHK-Cu naturally occurring? A: Yes. GHK is a naturally occurring peptide that binds copper to form GHK-Cu',
       disposition: 'supported',
-      rationale: 'Accurate, uncontroversial biochemical fact (GHK is a naturally occurring human plasma tripeptide).',
+      rationale:
+        'Accurate, uncontroversial biochemical fact (GHK is a naturally occurring human plasma tripeptide).',
       evidenceQuality: 'not_assessed',
       interpretationStatus: 'established',
       sources: [],
     },
-    policyReconciliation('001c7da1-5fb3-4d56-828f-931daf3498cb', 'Q: Does Cloud Peptides provide dosage information? A: No.'),
-    policyReconciliation('3d505590-a0bc-4a88-b03d-b0aa88ccb2d8', 'This page summarizes publicly available scientific literature for educational purposes only.'),
-    policyReconciliation('fdcc1579-9a20-4c7b-a83d-766830195157', 'Cloud Peptides does not provide medical advice, treatment recommendations, or dosage information.'),
+    policyReconciliation(
+      '001c7da1-5fb3-4d56-828f-931daf3498cb',
+      'Q: Does Cloud Peptides provide dosage information? A: No.',
+    ),
+    policyReconciliation(
+      '3d505590-a0bc-4a88-b03d-b0aa88ccb2d8',
+      'This page summarizes publicly available scientific literature for educational purposes only.',
+    ),
+    policyReconciliation(
+      'fdcc1579-9a20-4c7b-a83d-766830195157',
+      'Cloud Peptides does not provide medical advice, treatment recommendations, or dosage information.',
+    ),
     {
       legacyClaimId: '6d912c41-7838-46ea-9903-f381a4645551',
-      legacyStatementExcerpt: 'All products are intended strictly for laboratory research purposes only and are not for human consumption',
+      legacyStatementExcerpt:
+        'All products are intended strictly for laboratory research purposes only and are not for human consumption',
       disposition: 'supported',
-      rationale: 'GHK-Cu has no FDA drug approval — it is sold as a cosmetic ingredient, a category the FDA does not premarket-approve the way it does a prescription drug. There is no approved GHK-Cu drug product to distinguish from, so this disclaimer is simply and fully accurate.',
+      rationale:
+        'GHK-Cu has no FDA drug approval — it is sold as a cosmetic ingredient, a category the FDA does not premarket-approve the way it does a prescription drug. There is no approved GHK-Cu drug product to distinguish from, so this disclaimer is simply and fully accurate.',
       evidenceQuality: 'not_assessed',
       interpretationStatus: 'established',
       sources: [],

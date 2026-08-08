@@ -55,7 +55,8 @@ const CLAIM_UPDATES = [
     slug: 'botulinum-toxin',
     claimId: 'ead5ea2d-b8e4-4e32-a98a-13d25566a022',
     findClaim: (claims) => claims.find((c) => c.contentSection === 'regulatory'),
-    oldPrefix: 'Botulinum toxin type A (onabotulinumtoxinA, brand name Botox) was first FDA-approved',
+    oldPrefix:
+      'Botulinum toxin type A (onabotulinumtoxinA, brand name Botox) was first FDA-approved',
   },
   {
     slug: 'hcg',
@@ -79,7 +80,8 @@ const CLAIM_UPDATES = [
     slug: 'pt-141',
     claimId: '0ced6713-ea82-4a38-a405-9ead168cb86c',
     findClaim: (claims) => claims.find((c) => c.contentSection === 'regulatory'),
-    oldPrefix: 'PT-141 is the research name for bremelanotide, a melanocortin receptor agonist that the FDA approved (brand name Vyleesi) for',
+    oldPrefix:
+      'PT-141 is the research name for bremelanotide, a melanocortin receptor agonist that the FDA approved (brand name Vyleesi) for',
   },
   {
     slug: 'ss-31',
@@ -90,7 +92,12 @@ const CLAIM_UPDATES = [
   {
     slug: 'tesamorelin',
     claimId: 'd94144ec-090e-4a0a-8e5a-50324d826715',
-    findClaim: (claims) => claims.find((c) => c.statement.startsWith('In a randomized, placebo-controlled human trial of HIV-infected patients')),
+    findClaim: (claims) =>
+      claims.find((c) =>
+        c.statement.startsWith(
+          'In a randomized, placebo-controlled human trial of HIV-infected patients',
+        ),
+      ),
     oldPrefix: 'In a randomized, placebo-controlled human trial of HIV-infected patients',
   },
   {
@@ -123,12 +130,14 @@ const REGULATORY_RECORD_UPDATES = [
   {
     slug: 'oxytocin-acetate',
     recordId: 'b3b2bdee-c241-48f1-9a17-2cb6480f53f9',
-    findRecord: (recs) => recs.find((r) => r.indication.includes('Induction/augmentation of labor')),
+    findRecord: (recs) =>
+      recs.find((r) => r.indication.includes('Induction/augmentation of labor')),
   },
   {
     slug: 'pt-141',
     recordId: '8057b44d-fe50-4ee6-b16b-8f82aa38b027',
-    findRecord: (recs) => recs.find((r) => r.indication.includes('Hypoactive sexual desire disorder')),
+    findRecord: (recs) =>
+      recs.find((r) => r.indication.includes('Hypoactive sexual desire disorder')),
   },
   {
     slug: 'ss-31',
@@ -138,7 +147,8 @@ const REGULATORY_RECORD_UPDATES = [
   {
     slug: 'tesamorelin',
     recordId: '112544fe-748e-40d6-9318-080f03a0d9f2',
-    findRecord: (recs) => recs.find((r) => r.indication.includes('Reduction of excess abdominal fat')),
+    findRecord: (recs) =>
+      recs.find((r) => r.indication.includes('Reduction of excess abdominal fat')),
   },
   {
     slug: 'tirzepatide',
@@ -159,7 +169,12 @@ const REGULATORY_RECORD_UPDATES = [
 
 async function main() {
   const dataBySlug = new Map();
-  const slugs = [...new Set([...CLAIM_UPDATES.map((u) => u.slug), ...REGULATORY_RECORD_UPDATES.map((u) => u.slug)])];
+  const slugs = [
+    ...new Set([
+      ...CLAIM_UPDATES.map((u) => u.slug),
+      ...REGULATORY_RECORD_UPDATES.map((u) => u.slug),
+    ]),
+  ];
   for (const slug of slugs) {
     const mod = await import(`./data/${slug}.mjs`);
     dataBySlug.set(slug, mod.default);
@@ -179,7 +194,11 @@ async function main() {
       continue;
     }
 
-    const { data: existing, error: fetchErr } = await supabase.from('claims').select('id, statement').eq('id', u.claimId).maybeSingle();
+    const { data: existing, error: fetchErr } = await supabase
+      .from('claims')
+      .select('id, statement')
+      .eq('id', u.claimId)
+      .maybeSingle();
     if (fetchErr) {
       errors.push(`${u.slug}: claim fetch failed: ${fetchErr.message}`);
       continue;
@@ -193,7 +212,9 @@ async function main() {
       continue;
     }
     if (!existing.statement.startsWith(u.oldPrefix)) {
-      errors.push(`${u.slug}: claim ${u.claimId} current text doesn't match expected old OR new text — refusing to overwrite an unexpected row (found: "${existing.statement.slice(0, 80)}...")`);
+      errors.push(
+        `${u.slug}: claim ${u.claimId} current text doesn't match expected old OR new text — refusing to overwrite an unexpected row (found: "${existing.statement.slice(0, 80)}...")`,
+      );
       continue;
     }
 
@@ -235,7 +256,10 @@ async function main() {
       errors.push(`${u.slug}: regulatory_records id ${u.recordId} not found`);
       continue;
     }
-    if (existing.notes === (correctedRecord.notes ?? null) && existing.formulation === (correctedRecord.formulation ?? null)) {
+    if (
+      existing.notes === (correctedRecord.notes ?? null) &&
+      existing.formulation === (correctedRecord.formulation ?? null)
+    ) {
       regRecordsAlreadyCorrect++;
       continue;
     }
@@ -258,7 +282,9 @@ async function main() {
   }
 
   console.log(`\nClaims: ${claimsUpdated} updated, ${claimsAlreadyCorrect} already correct.`);
-  console.log(`Regulatory records: ${regRecordsUpdated} updated, ${regRecordsAlreadyCorrect} already correct.`);
+  console.log(
+    `Regulatory records: ${regRecordsUpdated} updated, ${regRecordsAlreadyCorrect} already correct.`,
+  );
   if (errors.length > 0) {
     console.error(`\n${errors.length} error(s):`);
     for (const e of errors) console.error(`  - ${e}`);

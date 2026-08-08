@@ -54,7 +54,9 @@ async function main() {
     problems++;
   }
   const nonDraft = compounds.filter((c) => c.status !== 'draft');
-  console.log(`1. Draft status: ${compounds.length}/${slugs.length} compounds found, ${nonDraft.length} non-draft.`);
+  console.log(
+    `1. Draft status: ${compounds.length}/${slugs.length} compounds found, ${nonDraft.length} non-draft.`,
+  );
   if (nonDraft.length) {
     console.error('   FATAL:', nonDraft.map((c) => `${c.slug}=${c.status}`).join(', '));
     problems++;
@@ -68,7 +70,9 @@ async function main() {
     .from('claims')
     .select('id', { count: 'exact', head: true })
     .neq('status', 'draft');
-  console.log(`   Whole-DB: ${dbWideNonDraftCompounds} non-draft compounds, ${dbWideNonDraftClaims} non-draft claims (expect 0, 0).`);
+  console.log(
+    `   Whole-DB: ${dbWideNonDraftCompounds} non-draft compounds, ${dbWideNonDraftClaims} non-draft claims (expect 0, 0).`,
+  );
   if (dbWideNonDraftCompounds > 0 || dbWideNonDraftClaims > 0) {
     console.error('   FATAL: something is non-draft somewhere in the database.');
     problems++;
@@ -90,7 +94,10 @@ async function main() {
   if (csErr) throw csErr;
 
   const sourceIds = [...new Set(claimSources.map((cs) => cs.source_id))];
-  const { data: sources, error: sErr } = await supabase.from('sources').select('id, title, url').in('id', sourceIds);
+  const { data: sources, error: sErr } = await supabase
+    .from('sources')
+    .select('id, title, url')
+    .in('id', sourceIds);
   if (sErr) throw sErr;
   const sourceById = new Map(sources.map((s) => [s.id, s]));
 
@@ -99,13 +106,19 @@ async function main() {
     const s = sourceById.get(cs.source_id);
     if (!s || !s.title || !s.url) {
       brokenLinks++;
-      console.error(`   FATAL: claim_sources row (claim ${cs.claim_id}) points to a missing/incomplete source ${cs.source_id}`);
+      console.error(
+        `   FATAL: claim_sources row (claim ${cs.claim_id}) points to a missing/incomplete source ${cs.source_id}`,
+      );
     }
   }
-  console.log(`2. Citation integrity: ${claimSources.length} claim_sources rows checked, ${brokenLinks} broken.`);
+  console.log(
+    `2. Citation integrity: ${claimSources.length} claim_sources rows checked, ${brokenLinks} broken.`,
+  );
   if (brokenLinks) problems++;
 
-  const { data: dupCheck } = await supabase.from('source_identifiers').select('identifier_type, identifier_value');
+  const { data: dupCheck } = await supabase
+    .from('source_identifiers')
+    .select('identifier_type, identifier_value');
   const seen = new Set();
   let dupes = 0;
   for (const row of dupCheck) {
@@ -121,19 +134,34 @@ async function main() {
   for (const c of claims) {
     if (c.evidence_quality && c.evidence_quality !== 'not_assessed' && !c.quality_rationale) {
       missingRationale++;
-      console.error(`   FATAL: claim ${c.id} has evidence_quality="${c.evidence_quality}" but no quality_rationale`);
+      console.error(
+        `   FATAL: claim ${c.id} has evidence_quality="${c.evidence_quality}" but no quality_rationale`,
+      );
     }
   }
-  console.log(`3. Claim-support check: ${claims.length} claims for this batch, ${missingRationale} missing required rationale.`);
+  console.log(
+    `3. Claim-support check: ${claims.length} claims for this batch, ${missingRationale} missing required rationale.`,
+  );
   if (missingRationale) problems++;
 
   // 4. Per-compound counts.
   console.log('\n4. Per-compound counts:');
   for (const c of compounds) {
-    const { count: claimCount } = await supabase.from('claims').select('id', { count: 'exact', head: true }).eq('compound_id', c.id);
-    const { count: regCount } = await supabase.from('regulatory_records').select('id', { count: 'exact', head: true }).eq('compound_id', c.id);
-    const { count: revCount } = await supabase.from('content_revisions').select('id', { count: 'exact', head: true }).eq('compound_id', c.id);
-    console.log(`   ${c.slug}: claims=${claimCount} regulatory_records=${regCount} content_revisions=${revCount}`);
+    const { count: claimCount } = await supabase
+      .from('claims')
+      .select('id', { count: 'exact', head: true })
+      .eq('compound_id', c.id);
+    const { count: regCount } = await supabase
+      .from('regulatory_records')
+      .select('id', { count: 'exact', head: true })
+      .eq('compound_id', c.id);
+    const { count: revCount } = await supabase
+      .from('content_revisions')
+      .select('id', { count: 'exact', head: true })
+      .eq('compound_id', c.id);
+    console.log(
+      `   ${c.slug}: claims=${claimCount} regulatory_records=${regCount} content_revisions=${revCount}`,
+    );
   }
 
   console.log(`\n${problems === 0 ? 'ALL CHECKS PASSED' : `${problems} CHECK(S) FAILED`}`);
