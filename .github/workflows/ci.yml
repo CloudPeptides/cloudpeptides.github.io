@@ -222,13 +222,28 @@ jobs:
       # (custom_domain: true). This step only runs once the required
       # reviewer approves at the environment gate above — that
       # approval is the literal act of cutover.
+      #
+      # Deliberately NO --config flag — confirmed via a real failed
+      # deploy attempt 2026-08-08 that passing --config
+      # wrangler.production.jsonc explicitly makes wrangler read that
+      # file's literal `main` value directly ("@astrojs/cloudflare/
+      # entrypoints/server", a placeholder the adapter is meant to
+      # resolve, not a real file path) instead of the real generated
+      # entry point (dist/server/wrangler.json, main: "entry.mjs") that
+      # the Build step above produces. A bare `deploy` picks that real
+      # config up automatically via dist/server's own
+      # .wrangler/deploy/config.json redirect — the astro.config.mjs
+      # `configPath` option (set to wrangler.production.jsonc only when
+      # SITE_ENV=production, see that file's own comment) is what makes
+      # the Build step above generate the *correct*, production-shaped
+      # redirect in the first place. Exactly mirrors deploy-staging's
+      # own command above, which has never passed --config either.
       - name: Deploy to Cloudflare Workers (production)
         id: deploy
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN_PRODUCTION }}
           accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --config wrangler.production.jsonc
 
       - name: Print deployment result
         run: echo "Production deploy — ${{ steps.deploy.outputs.deployment-url }}"

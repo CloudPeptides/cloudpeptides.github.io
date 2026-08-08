@@ -64,7 +64,13 @@
   // config or by approving the pending deployment. See
   // production-cutover-checklist.md Phase D for the exact steps.
   //
-  "routes": [{ "pattern": "cloudpeptides.org/*", "custom_domain": true }],
+  // Bare domain, no wildcard/path — confirmed via a real failed deploy
+  // attempt 2026-08-08 that Cloudflare's Custom Domains feature
+  // rejects "cloudpeptides.org/*" outright ("Wildcard operators (*)
+  // are not allowed in Custom Domains. Paths are not allowed in
+  // Custom Domains") — a Custom Domain always means the whole domain,
+  // there's nothing to wildcard.
+  "routes": [{ "pattern": "cloudpeptides.org", "custom_domain": true }],
   "assets": {
     "directory": "./dist/client",
     "binding": "ASSETS",
