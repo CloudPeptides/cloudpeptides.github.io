@@ -45,3 +45,7 @@ pnpm-debug.log*
 test-results/
 playwright-report/
 coverage/
+
+# database backups (scripts/migration/backup-production.mjs output) —
+# a raw SQL dump of production data must never be committed.
+backups/
