@@ -1,11 +1,21 @@
 #!/usr/bin/env node
 /**
- * PREPARED, NOT RUN. Staging → production data migration
- * (production-cutover-plan.md §2) — copies only reviewed, approved
- * rows into a brand-new production Supabase project. Cannot be
- * executed yet: no production Supabase project exists (creating one,
- * and activating its paid tier, both require your explicit approval
- * per CLAUDE.md §9 — production-cutover-plan.md §1).
+ * LARGELY MOOT as of 2026-08-08 — kept for reference, not part of the
+ * cutover path anymore. This was written for a "brand-new production
+ * Supabase project" architecture that has since been explicitly
+ * rejected: production now reuses the existing CloudPeptides project
+ * (`riuxojncmnhogclrhoys`) directly, on the Free tier, with no second
+ * project created (production-cutover-plan.md §1). There is nothing
+ * left to export — the data this script would have copied is already
+ * the live data in the one project that now serves both staging and
+ * production. Left in the repo in case a genuine future migration
+ * (an eventual move to Pro under a new project, or disaster recovery
+ * into a fresh one) needs this exact published-rows-only filtering
+ * logic again; production-cutover-checklist.md no longer calls it.
+ *
+ * Original description, for that hypothetical future use:
+ * staging → production data migration — copies only reviewed,
+ * approved rows into a separate production Supabase project.
  *
  * Explicitly does NOT copy: content_revisions, audit_log,
  * link_health_checks (production starts its own history from a clean

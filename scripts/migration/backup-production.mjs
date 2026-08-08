@@ -1,15 +1,19 @@
 #!/usr/bin/env node
 /**
- * PREPARED, NOT RUN. Plain SQL dump of the production Supabase
- * database, independent of Supabase's own backup system
+ * Plain SQL dump of the Supabase project that becomes production
+ * (`riuxojncmnhogclrhoys` — production-cutover-plan.md §1: no
+ * separate production project, this existing one transitions
+ * directly), independent of Supabase's own backup system
  * (production-cutover-plan.md §12: "a backup that depends on the same
  * provider you're protecting against isn't a complete backup story").
- * Cannot be executed yet — no production Supabase project exists.
  *
- * Intended use: once immediately after the data migration
- * (export-published-for-production.mjs) completes, and again
- * immediately before DNS cuts over — a clean, known-good restore point
- * bracketing the actual switch (production-cutover-plan.md §12).
+ * **Updated 2026-08-08 — this is now the ONLY backup this project
+ * will have**, not a supplement to a Pro-tier automatic one: the
+ * Free tier includes no automatic/point-in-time backups at all. Can
+ * and should be run now, ahead of cutover, as many times as useful;
+ * production-cutover-plan.md §12 and production-cutover-checklist.md
+ * both require one verified, restorable run of this immediately
+ * before DNS cuts over — not optional.
  *
  * Requires the `pg_dump` client (PostgreSQL client tools) on the
  * machine running this — not bundled with this repo's own
@@ -19,14 +23,19 @@
  *   PROD_DATABASE_URL="postgresql://postgres:[password]@[host]:5432/postgres" \
  *     node scripts/migration/backup-production.mjs
  *
- * PROD_DATABASE_URL is the production project's direct Postgres
- * connection string (Supabase dashboard → Project Settings →
- * Database → Connection string) — a genuine database credential,
- * never printed, logged, or committed by this script; store the
- * resulting .sql file itself somewhere encrypted, outside this repo
- * (backups/ is gitignored specifically so an accidental `git add`
- * doesn't commit it, but gitignored is not the same as "safe to leave
- * lying around" — move it to real encrypted storage after this runs).
+ * PROD_DATABASE_URL is that project's direct Postgres connection
+ * string (Supabase dashboard → Project Settings → Database →
+ * Connection string) — a genuine database credential, never printed,
+ * logged, or committed by this script; store the resulting .sql file
+ * itself somewhere encrypted, outside this repo (backups/ is
+ * gitignored specifically so an accidental `git add` doesn't commit
+ * it, but gitignored is not the same as "safe to leave lying around"
+ * — move it to real encrypted storage after this runs).
+ *
+ * Verify, don't just trust, that a dump actually restores: load it
+ * into a local/throwaway Postgres (`supabase start` gives you one)
+ * and spot-check row counts against a few key tables (`compounds`,
+ * `claims`, `user_roles`) before treating the backup gate as satisfied.
  *
  * Restore procedure (only if actually needed — never fix forward
  * against production with the service-role key under time pressure):

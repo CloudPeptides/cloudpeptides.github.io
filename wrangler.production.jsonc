@@ -17,6 +17,22 @@
   // docs/planning/production-cutover-plan.md §3/§6 for the exact
   // remaining steps and why each requires your explicit approval
   // (CLAUDE.md §9).
+  //
+  // Zero-cost database architecture, decided 2026-08-08: this Worker
+  // uses the SAME Supabase project as staging (`riuxojncmnhogclrhoys`)
+  // — there is no separate production Supabase project and none is
+  // planned (docs/planning/production-cutover-plan.md §1). Its
+  // PUBLIC_SUPABASE_URL/PUBLIC_SUPABASE_ANON_KEY/
+  // SUPABASE_SERVICE_ROLE_KEY are therefore the identical values
+  // configured on the staging Worker, not distinct per-environment
+  // ones — see §4 of that same document for exactly what to set and
+  // how. This file deliberately never sets STAGING_READ_ONLY: that var
+  // only exists on the staging Worker's config (wrangler.jsonc) to
+  // gate ITS writes once production is live; leaving it unset here
+  // means this Worker's own isStagingReadOnly() check (were it ever
+  // reached, which it won't be — src/lib/site-env.ts's default is
+  // false for anything but the exact staging Worker opting in) stays
+  // false, i.e. production is always writable, as it must be.
   "name": "cloudpeptides",
   "main": "@astrojs/cloudflare/entrypoints/server",
   // Production should not also be reachable at a *.workers.dev URL —
@@ -51,6 +67,14 @@
     // static or on-demand, must pass through src/middleware.ts for the
     // security headers/HSTS to apply uniformly.
     "run_worker_first": true,
+    // Matches staging's fix for the same confirmed Cloudflare Workers
+    // Static Assets behavior (src/middleware.ts's header comment): a
+    // legacy `.html` path with no matching static asset would
+    // otherwise be intercepted and served the static 404.html directly,
+    // before the Worker (and its redirect routes,
+    // src/pages/product.html.astro / [legacy].html.astro) ever runs.
+    // Needed here for the exact same reason, not copied blindly.
+    "not_found_handling": "none",
   },
   "observability": {
     "enabled": true,
