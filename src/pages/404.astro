@@ -1,0 +1,24 @@
+---
+/**
+ * Site-wide 404 — Astro's built-in convention (used automatically for
+ * any unmatched path, both prerendered/static requests served directly
+ * by the Cloudflare assets binding and on-demand requests that reach
+ * the Worker with no matching route). Static/prerendered: this page
+ * needs no per-request data, so there's no reason to opt out of the
+ * static-first default.
+ *
+ * Distinct from research/compounds/[slug].astro's own 404 handling,
+ * which renders the same EmptyState shape for a specific "compound
+ * slug doesn't exist" case with its own tailored copy — this is the
+ * catch-all for everything else (a mistyped URL, an old bookmark not
+ * covered by a legacy redirect, and so on).
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import NotFoundContent from '../components/NotFoundContent.astro';
+
+Astro.response.status = 404;
+---
+
+<BaseLayout title="Page Not Found" noindex>
+  <NotFoundContent />
+</BaseLayout>

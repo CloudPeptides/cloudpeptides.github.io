@@ -1,0 +1,120 @@
+---
+/**
+ * Shared shell for the policy/trust pages (Privacy, Terms, Disclaimer,
+ * Accessibility, Shipping, Returns, Shop Terms) — plain prose content,
+ * static/prerendered like the rest of the marketing pages (no
+ * per-request data), built entirely from the existing design tokens.
+ * One shared layout instead of seven near-duplicate <style> blocks.
+ */
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  eyebrow?: string;
+  lastUpdated: string;
+}
+const { title, description, eyebrow = 'Legal', lastUpdated } = Astro.props;
+---
+
+<BaseLayout title={title} description={description}>
+  <article class="cp-policy">
+    <header class="cp-policy__header">
+      <p class="cp-eyebrow">{eyebrow}</p>
+      <h1>{title}</h1>
+      <p class="cp-policy__updated">Last updated: {lastUpdated}</p>
+    </header>
+    <div class="cp-policy__body">
+      <slot />
+    </div>
+    <footer class="cp-policy__footer">
+      <p>
+        This page is an honest operational draft describing Cloud Peptides' actual current practices
+        — it has not been reviewed by a lawyer and is not represented as legal advice.
+      </p>
+    </footer>
+  </article>
+</BaseLayout>
+
+<style>
+  .cp-policy {
+    max-width: 42rem;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 5rem;
+  }
+  .cp-policy__header {
+    margin-bottom: 2rem;
+  }
+  .cp-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--primary);
+    margin: 0 0 0.5rem;
+  }
+  .cp-policy__header h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: clamp(1.875rem, 4vw, var(--text-h1));
+    margin: 0 0 0.5rem;
+  }
+  .cp-policy__updated {
+    color: var(--text-muted);
+    font-size: var(--text-caption);
+    margin: 0;
+  }
+
+  .cp-policy__body :global(h2) {
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: var(--text-h3);
+    margin: 2rem 0 0.75rem;
+  }
+  .cp-policy__body :global(h2:first-child) {
+    margin-top: 0;
+  }
+  .cp-policy__body :global(p) {
+    color: var(--text-secondary);
+    line-height: var(--text-body--line-height);
+    margin: 0 0 1rem;
+  }
+  .cp-policy__body :global(ul) {
+    color: var(--text-secondary);
+    line-height: var(--text-body--line-height);
+    margin: 0 0 1rem;
+    padding-left: 1.25rem;
+  }
+  .cp-policy__body :global(li) {
+    margin-bottom: 0.375rem;
+  }
+  .cp-policy__body :global(a) {
+    color: var(--primary);
+    text-decoration: underline;
+  }
+  .cp-policy__body :global(strong) {
+    color: var(--text-primary);
+  }
+  .cp-policy__body :global(.cp-policy-note) {
+    background: var(--bg-sunken);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-control);
+    padding: 0.875rem 1rem;
+    margin: 0 0 1.25rem;
+    font-size: var(--text-caption);
+    color: var(--text-secondary);
+  }
+  .cp-policy__footer {
+    margin-top: 2rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .cp-policy__footer p {
+    color: var(--text-muted);
+    font-size: var(--text-caption);
+    font-style: italic;
+    margin: 0;
+  }
+</style>

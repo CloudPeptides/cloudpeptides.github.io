@@ -1,0 +1,68 @@
+---
+import PolicyLayout from '../layouts/PolicyLayout.astro';
+import { COMMERCE_ENABLED } from '../lib/launch-config';
+---
+
+<PolicyLayout
+  title="Shop Terms"
+  description="The terms that apply to orders placed through the Cloud Peptides shop."
+  lastUpdated="August 8, 2026"
+>
+  {
+    !COMMERCE_ENABLED && (
+      <p class="cp-policy-note">
+        <strong>Ordering is not currently enabled on this site.</strong> The shop catalog is visible
+        as a preview only — nothing can be added to a cart or purchased right now. The terms below
+        describe what will apply once ordering opens.
+      </p>
+    )
+  }
+
+  <h2>Research use only</h2>
+  <p>
+    Everything in our shop is sold for laboratory research use only and is not for human
+    consumption. No claims of safety or effectiveness for human use are made or implied. See our
+    full <a href="/disclaimer">Research and Medical Disclaimer</a>.
+  </p>
+
+  <h2>Eligibility</h2>
+  <p>You must be at least 18 years old to place an order.</p>
+
+  <h2>Legal status is your responsibility</h2>
+  <p>
+    Laws governing research chemicals and peptides vary by location. It is your responsibility to
+    know and follow the laws that apply to you before ordering.
+  </p>
+
+  <h2>Payment</h2>
+  <p>
+    This site does not collect or process payment card data directly. When ordering is enabled, an
+    order request records the payment method you select (for example, cryptocurrency, Zelle, or
+    PayPal), and payment itself is arranged directly between you and us through that method, outside
+    this website's systems.
+  </p>
+
+  <h2>Batch testing</h2>
+  <p>
+    We intend to make batch testing documentation available for applicable products once ordering is
+    enabled. Batch testing/COA documentation is a commerce record, not scientific evidence — it's
+    kept separate from, and is never cited within, our published research claims.
+  </p>
+
+  <h2>Pricing and availability</h2>
+  <p>
+    Prices and product availability shown in the shop are subject to change and are not a binding
+    offer until an order is actually placed once ordering is enabled.
+  </p>
+
+  <h2>Shipping and returns</h2>
+  <p>
+    See our <a href="/shipping">Shipping Policy</a> and
+    <a href="/returns">Return and Refund Policy</a> — both will be finalized before ordering opens.
+  </p>
+
+  <h2>Questions</h2>
+  <p>
+    <a href="/contact">Contact us</a> with any question about an order or these terms.
+  </p>
+</PolicyLayout>

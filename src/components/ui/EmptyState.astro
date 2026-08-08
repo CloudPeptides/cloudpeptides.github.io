@@ -1,0 +1,59 @@
+---
+/**
+ * Empty state — design handoff §29: "Specific message + one clear next
+ * action; hollow-cloud motif only for global/brand-level empties,
+ * content-specific icon otherwise." The compound directory's
+ * zero-results case is exactly this global/brand-level empty.
+ */
+import Logo from '../Logo.astro';
+import Button from './Button.astro';
+
+interface Props {
+  title: string;
+  message: string;
+  actionLabel?: string;
+  actionHref?: string;
+  /** 'h1' when this is the page's only/primary heading (e.g. a
+   * not-found page with no other heading); 'h2' (default) when it's
+   * nested under a page that already has its own <h1>. */
+  headingLevel?: 'h1' | 'h2';
+}
+const { title, message, actionLabel, actionHref, headingLevel = 'h2' } = Astro.props;
+const Heading = headingLevel;
+---
+
+<div class="cp-empty-state">
+  <Logo variant="primary" size={64} hollow />
+  <Heading>{title}</Heading>
+  <p>{message}</p>
+  {
+    actionLabel && actionHref && (
+      <Button href={actionHref} variant="secondary">
+        {actionLabel}
+      </Button>
+    )
+  }
+</div>
+
+<style>
+  .cp-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.75rem;
+    padding: 4rem 1.5rem;
+    color: var(--text-secondary);
+  }
+  .cp-empty-state h1,
+  .cp-empty-state h2 {
+    font-family: var(--font-display);
+    font-size: var(--text-h3);
+    color: var(--text-primary);
+    margin: 0.5rem 0 0;
+  }
+  .cp-empty-state p {
+    margin: 0 0 0.5rem;
+    max-width: 32rem;
+  }
+</style>

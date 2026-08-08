@@ -1,0 +1,35 @@
+---
+/**
+ * Legacy `/product.html?id=<slug>` redirect, as a REAL on-demand Astro
+ * route rather than relying only on src/middleware.ts's redirect check.
+ *
+ * Found live (not assumed): Cloudflare's Workers Static Assets binding
+ * auto-serves the static 404.html for ANY path with no matching asset
+ * — including this one — before the Worker (and therefore
+ * middleware.ts) ever runs, regardless of `not_found_handling` in
+ * wrangler.jsonc (confirmed via both `astro preview` and `wrangler
+ * dev` directly). Making this a real Astro route sidesteps the
+ * ambiguity entirely — a *matched* route is handled by Astro's own
+ * on-demand rendering path, never the assets-binding fallback.
+ *
+ * An `id` that isn't a real product still renders the same branded
+ * 404 as every other unmatched page (via EmptyState below) rather than
+ * a bare text response — matches src/pages/404.astro exactly, not a
+ * degraded experience for this one path.
+ */
+export const prerender = false;
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import NotFoundContent from '../components/NotFoundContent.astro';
+import { resolveLegacyProductRedirect } from '../lib/legacy-redirects';
+
+const target = resolveLegacyProductRedirect(Astro.url.pathname, Astro.url.searchParams);
+if (target) {
+  return Astro.redirect(target, 301);
+}
+Astro.response.status = 404;
+---
+
+<BaseLayout title="Page Not Found" noindex>
+  <NotFoundContent />
+</BaseLayout>

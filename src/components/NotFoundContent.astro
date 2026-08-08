@@ -1,0 +1,20 @@
+---
+/**
+ * Shared 404 body — reused by src/pages/404.astro (Astro's own
+ * catch-all) and the legacy `.html` route handlers
+ * (src/pages/product.html.astro, src/pages/[legacy].html.astro), which
+ * need to render the identical branded not-found experience for a
+ * `.html` path that doesn't match any redirect entry, not a bare text
+ * response. One shared component instead of copy-pasting the same
+ * three lines three times.
+ */
+import EmptyState from './ui/EmptyState.astro';
+---
+
+<EmptyState
+  headingLevel="h1"
+  title="We couldn't find that page"
+  message="The page you're looking for may have moved or no longer exists. Try the research library or shop, or head back home."
+  actionLabel="Go to homepage"
+  actionHref="/"
+/>

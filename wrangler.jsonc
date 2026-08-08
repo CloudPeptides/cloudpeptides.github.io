@@ -1,0 +1,91 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "compatibility_date": "2026-08-06",
+  "compatibility_flags": ["global_fetch_strictly_public"],
+  // Staging only, per CLAUDE.md §9/§2 and the Phase 1B approval — a
+  // Cloudflare-provided *.workers.dev URL, no custom domain, no
+  // production Worker. "workers_dev: true" and the absence of any
+  // "routes"/"custom_domain" entry is what enforces that.
+  "name": "cloudpeptides-staging",
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  "workers_dev": true,
+  "assets": {
+    // The actual static-output root for `output: "static"` builds is
+    // dist/client/, not dist/ itself — verified against the real build
+    // output (dist/client/wrangler.json's own resolved config resolves
+    // its assets directory to "." relative to itself), not assumed from
+    // generic docs describing the on-demand-rendering layout. See
+    // docs/implementation-log.md for the full verification.
+    "directory": "./dist/client",
+    "binding": "ASSETS",
+    // Launch-readiness hardening: without this, Cloudflare serves
+    // prerendered/static routes (the shop pages, homepage) directly from
+    // the assets binding and never invokes the Worker at all for them —
+    // which would mean src/middleware.ts's site-wide security headers
+    // and staging X-Robots-Tag noindex header silently never applied to
+    // roughly half the site. `true` routes every request through the
+    // Worker first; it still serves static assets via `env.ASSETS`
+    // internally (through Astro's own on-demand/static routing), so
+    // there's no behavior change for the pages themselves — only every
+    // response now actually passes through middleware.ts once.
+    "run_worker_first": true,
+    // Found live (not assumed) once dist/client/404.html started
+    // existing (added this phase): Wrangler auto-detects a 404.html in
+    // the assets directory and defaults `not_found_handling` to
+    // "404-page", which serves that file directly for ANY unmatched
+    // path — including src/lib/legacy-redirects.ts's ~60 legacy `.html`
+    // URLs, which have no matching static asset (they're handled in
+    // src/middleware.ts) and were silently getting the static 404
+    // instead of ever reaching the Worker, confirmed via a direct
+    // `astro preview` + curl check (the response carried a
+    // `cf-cache-status` header and the *static*-route CSP variant with
+    // no nonce, proving it never reached middleware.ts). Explicit
+    // "none" restores "every unmatched path reaches the Worker," which
+    // both the redirect table and Astro's own on-demand 404.astro
+    // fallback depend on.
+    "not_found_handling": "none",
+  },
+  "observability": {
+    "enabled": true,
+  },
+  // Plain vars (not secrets — never sensitive) exposed to the Worker
+  // via `env`, same mechanism as the Worker-secret bindings below but
+  // for values safe to commit in the clear.
+  "vars": {
+    // Shared-database safety boundary (docs/planning/
+    // production-cutover-plan.md §1): staging and this project's
+    // production Worker now point at the SAME Supabase project
+    // (riuxojncmnhogclrhoys — see the "zero-cost architecture"
+    // decision), so this flag is what stops staging from writing to
+    // what is, after cutover, the real production database (src/
+    // middleware.ts enforces it, src/lib/site-env.ts's
+    // isStagingReadOnly() is the actual check).
+    //
+    // Flipped to "true" 2026-08-08 as part of production-cutover-
+    // checklist.md Phase E, ahead of the production deploy itself —
+    // staging now refuses every /api/admin/* write regardless of the
+    // caller's role, while GET/HEAD/OPTIONS (public reads, dashboard
+    // browsing) are unaffected. Verified live after redeploy via
+    // `npm run db:verify-staging-read-only` plus direct requests
+    // against the deployed staging URL. Do not flip this back to
+    // "false" without a specific reason — it's the only thing standing
+    // between the staging Worker and writing to the live production
+    // database once cutover completes.
+    "STAGING_READ_ONLY": "true",
+  },
+  // Cloudflare-native, per-Worker-isolate-independent rate limiting for
+  // the two public form routes (src/pages/api/contact.ts, checkout.ts).
+  // A first-class (GA, not "unsafe") wrangler.jsonc field per
+  // node_modules/wrangler/config-schema.json — durable across requests
+  // regardless of which isolate/PoP handles them, unlike the prior
+  // in-memory Map (see src/lib/rate-limit.ts's history). `namespace_id`
+  // is a locally-chosen identifier, not a pre-existing remote resource —
+  // Cloudflare provisions the actual limiter automatically on deploy.
+  "ratelimits": [
+    {
+      "name": "FORM_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 5, "period": 60 },
+    },
+  ],
+}

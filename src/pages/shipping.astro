@@ -1,0 +1,35 @@
+---
+import PolicyLayout from '../layouts/PolicyLayout.astro';
+import { COMMERCE_ENABLED } from '../lib/launch-config';
+---
+
+<PolicyLayout
+  title="Shipping Policy"
+  description="Cloud Peptides shipping information."
+  lastUpdated="August 8, 2026"
+>
+  {
+    !COMMERCE_ENABLED && (
+      <p class="cp-policy-note">
+        <strong>Ordering is not currently enabled on this site.</strong> Nothing can be purchased
+        right now, so nothing has shipped yet. We'll publish real shipping details — carriers,
+        processing times, regions, and costs — here before ordering opens, rather than guessing at
+        them now.
+      </p>
+    )
+  }
+
+  <h2>What this page will cover</h2>
+  <p>
+    Once ordering is enabled, this page will describe how orders are packaged and shipped, which
+    regions we ship to, expected processing time before an order ships, and any shipping costs. We
+    haven't finalized carriers or timelines yet, so we're not going to state them here until they're
+    real and accurate.
+  </p>
+
+  <h2>Questions</h2>
+  <p>
+    If you have a shipping question in the meantime, <a href="/contact">contact us</a> and we'll answer
+    directly.
+  </p>
+</PolicyLayout>

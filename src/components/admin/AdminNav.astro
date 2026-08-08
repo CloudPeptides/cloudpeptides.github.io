@@ -1,0 +1,167 @@
+---
+/**
+ * Admin sidebar nav — role-aware (Users/Audit Log only render for
+ * admin; every link is also independently enforced server-side by the
+ * page/route it points to, so hiding a link here is a UX convenience,
+ * never the actual access control — CLAUDE.md §8).
+ */
+import Logo from '../Logo.astro';
+import type { Role } from '../../lib/auth';
+
+interface Props {
+  role: Role;
+  email: string | null;
+}
+const { role, email } = Astro.props;
+const currentPath = Astro.url.pathname;
+
+const links = [
+  { label: 'Dashboard', href: '/admin', minRole: 'contributor' as Role },
+  { label: 'Compounds', href: '/admin/compounds', minRole: 'contributor' as Role },
+  { label: 'Sources', href: '/admin/sources', minRole: 'contributor' as Role },
+  { label: 'Studies', href: '/admin/studies', minRole: 'contributor' as Role },
+  { label: 'Audit Log', href: '/admin/audit-log', minRole: 'admin' as Role },
+  { label: 'Users', href: '/admin/users', minRole: 'admin' as Role },
+];
+
+const ROLE_RANK: Record<Role, number> = { member: 1, contributor: 2, editor: 3, admin: 4 };
+const visibleLinks = links.filter((l) => ROLE_RANK[role] >= ROLE_RANK[l.minRole]);
+---
+
+<header class="cp-admin-topbar">
+  <a href="/admin" class="cp-admin-topbar__brand">
+    <Logo variant="primary" size={28} standalone />
+    <span>Cloud Peptides Admin</span>
+  </a>
+  <div class="cp-admin-topbar__account">
+    <span class="cp-admin-topbar__email">{email}</span>
+    <span class="cp-admin-topbar__role">{role}</span>
+    <button type="button" id="adminSignOut" class="cp-admin-topbar__signout">Sign out</button>
+  </div>
+</header>
+
+<nav class="cp-admin-sidenav" aria-label="Admin">
+  <ul>
+    {
+      visibleLinks.map((link) => {
+        const isCurrent =
+          currentPath === link.href ||
+          (link.href !== '/admin' && currentPath.startsWith(link.href + '/'));
+        return (
+          <li>
+            <a href={link.href} aria-current={isCurrent ? 'page' : undefined}>
+              {link.label}
+            </a>
+          </li>
+        );
+      })
+    }
+  </ul>
+  <a href="/" class="cp-admin-sidenav__exit">&larr; Back to site</a>
+</nav>
+
+<script>
+  import '../../scripts/admin-signout.ts';
+</script>
+
+<style>
+  .cp-admin-topbar {
+    grid-area: topbar;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1.25rem;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .cp-admin-topbar__brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    text-decoration: none;
+    color: var(--text-primary);
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1rem;
+  }
+  .cp-admin-topbar__account {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    font-size: var(--text-caption);
+    color: var(--text-secondary);
+  }
+  .cp-admin-topbar__email {
+    max-width: 12rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .cp-admin-topbar__role {
+    text-transform: capitalize;
+    background: var(--accent-mint);
+    color: var(--primary);
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-weight: 500;
+  }
+  .cp-admin-topbar__signout {
+    min-height: 36px;
+    padding: 0 0.875rem;
+    border-radius: var(--radius-control);
+    border: 1.5px solid var(--border-interactive);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: var(--text-caption);
+  }
+  .cp-admin-topbar__signout:hover {
+    background: var(--bg-sunken);
+  }
+
+  .cp-admin-sidenav {
+    grid-area: sidenav;
+    background: var(--bg-elevated);
+    border-right: 1px solid var(--border-subtle);
+    padding: 1.25rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .cp-admin-sidenav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+  .cp-admin-sidenav a {
+    display: block;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 0.75rem;
+    border-radius: var(--radius-control);
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: var(--text-body);
+  }
+  .cp-admin-sidenav a:hover {
+    background: var(--bg-sunken);
+    color: var(--text-primary);
+  }
+  .cp-admin-sidenav a[aria-current='page'] {
+    background: var(--primary);
+    color: var(--text-on-primary);
+  }
+  .cp-admin-sidenav__exit {
+    display: block;
+    font-size: var(--text-caption);
+    color: var(--text-muted);
+    text-decoration: underline;
+    padding: 0.5rem 0.75rem;
+  }
+</style>

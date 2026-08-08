@@ -1,0 +1,45 @@
+---
+import PolicyLayout from '../layouts/PolicyLayout.astro';
+---
+
+<PolicyLayout
+  title="Accessibility Statement"
+  description="Our accessibility commitment and how to report a barrier on the Cloud Peptides site."
+  lastUpdated="August 8, 2026"
+>
+  <h2>Our commitment</h2>
+  <p>
+    We want this site to be usable by as many people as possible, including people using screen
+    readers, keyboard-only navigation, or other assistive technology. We aim to meet the Web Content
+    Accessibility Guidelines (WCAG) 2.1, Level AA.
+  </p>
+
+  <h2>What we've built</h2>
+  <ul>
+    <li>Semantic HTML structure with proper headings and landmarks.</li>
+    <li>
+      Full keyboard navigation, including a "skip to content" link and a focus-trapped mobile menu.
+    </li>
+    <li>Visible focus indicators on every interactive element — never removed.</li>
+    <li>Color-contrast targets checked against WCAG AA on every color pairing we use.</li>
+    <li>A dark theme, and full support for "reduce motion" operating-system settings.</li>
+    <li>
+      Automated accessibility testing (axe-core) as part of our development process, on every core
+      page template.
+    </li>
+  </ul>
+
+  <h2>Known limitations</h2>
+  <p>
+    Automated testing catches many issues but not all of them — it can't fully evaluate things like
+    the quality of a screen-reader experience end to end. We test manually where we can, but we
+    don't yet claim a formal third-party accessibility audit or certification.
+  </p>
+
+  <h2>Tell us about a barrier</h2>
+  <p>
+    If you run into something on this site that's hard to use with assistive technology, please let
+    us know — <a href="/contact">contact us</a> with what happened and what page you were on, and we'll
+    work to fix it.
+  </p>
+</PolicyLayout>

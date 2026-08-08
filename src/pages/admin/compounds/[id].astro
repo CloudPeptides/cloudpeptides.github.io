@@ -1,0 +1,435 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Badge from '../../../components/ui/Badge.astro';
+import { createUserScopedClient, hasMinRole } from '../../../lib/auth';
+import {
+  getCompoundForEdit,
+  listCompoundOptions,
+  listSourceOptions,
+} from '../../../lib/admin/queries';
+import {
+  checkPublishReadiness,
+  ENTITY_KINDS,
+  IDENTITY_CONFIDENCES,
+  REGULATORY_STATUSES,
+} from '../../../lib/admin/validation';
+
+const session = Astro.locals.session!;
+const client = createUserScopedClient(session.accessToken);
+const id = Astro.params.id!;
+
+const compound = await getCompoundForEdit(client, id);
+if (!compound) {
+  return new Response(null, { status: 404 });
+}
+
+const [compoundOptions, sourceOptions] = await Promise.all([
+  listCompoundOptions(client),
+  listSourceOptions(client),
+]);
+const otherCompounds = compoundOptions.filter((c) => c.id !== compound.id);
+const componentIds = new Set(compound.stack_components.map((sc) => sc.component_compound_id));
+const availableComponents = otherCompounds.filter((c) => !componentIds.has(c.id));
+
+const readiness = checkPublishReadiness(compound);
+
+const canEditor = hasMinRole(session.role, 'editor');
+type Transition = { label: string; value: string; variant: 'primary' | 'secondary' | 'danger' };
+const transitions: Transition[] = [];
+if (compound.status === 'draft') {
+  transitions.push({ label: 'Submit for review', value: 'in_review', variant: 'primary' });
+}
+if (compound.status === 'in_review') {
+  transitions.push({ label: 'Send back to draft', value: 'draft', variant: 'secondary' });
+  if (canEditor) transitions.push({ label: 'Publish', value: 'published', variant: 'primary' });
+}
+if (compound.status === 'published' && canEditor) {
+  transitions.push({ label: 'Revert to draft', value: 'draft', variant: 'secondary' });
+  transitions.push({ label: 'Archive', value: 'archived', variant: 'danger' });
+}
+if (compound.status === 'archived' && canEditor) {
+  transitions.push({ label: 'Restore to draft', value: 'draft', variant: 'primary' });
+}
+
+const STATUS_TONE: Record<string, 'neutral' | 'info' | 'warning' | 'success'> = {
+  draft: 'neutral',
+  in_review: 'info',
+  published: 'success',
+  archived: 'warning',
+};
+---
+
+<AdminLayout title={compound.name}>
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">Editorial &middot; {compound.slug}</p>
+      <h1>
+        {compound.name}
+        <Badge tone={STATUS_TONE[compound.status]}>{compound.status.replace('_', ' ')}</Badge>
+      </h1>
+      <p>
+        <a href={`/admin/compounds/${compound.id}/history`}>View revision history &rarr;</a>
+      </p>
+    </div>
+  </div>
+
+  <section class="cp-admin-section">
+    <h2>Publishing workflow</h2>
+    {
+      readiness.blockers.length > 0 && (
+        <p class="cp-admin-form-message" data-tone="warning">
+          Not ready to publish: {readiness.blockers.join(' ')}
+        </p>
+      )
+    }
+    {
+      readiness.warnings.length > 0 && (
+        <p class="cp-admin-form-message" data-tone="warning">
+          {readiness.warnings.join(' ')}
+        </p>
+      )
+    }
+    {
+      transitions.length === 0 ? (
+        <p class="cp-admin-empty-row">
+          No status changes available to your role for the current status.
+        </p>
+      ) : (
+        <form data-status-form data-compound-id={compound.id} class="cp-admin-form-actions">
+          {transitions.map((t) => (
+            <button
+              type="submit"
+              name="target_status"
+              value={t.value}
+              class={`cp-admin-btn cp-admin-btn--${t.variant}`}
+            >
+              {t.label}
+            </button>
+          ))}
+          <div data-status-error class="cp-admin-form-message" data-tone="error" hidden />
+        </form>
+      )
+    }
+  </section>
+
+  <section class="cp-admin-section">
+    <h2>Identity</h2>
+    <form data-admin-form data-table="compounds" data-method="PATCH" class="cp-admin-form">
+      <input type="hidden" name="id" value={compound.id} />
+      <div class="cp-admin-form-grid">
+        <div class="cp-admin-field">
+          <label for="slug">Slug</label>
+          <input
+            id="slug"
+            name="slug"
+            required
+            pattern="[a-z0-9]+(-[a-z0-9]+)*"
+            value={compound.slug}
+          />
+        </div>
+        <div class="cp-admin-field">
+          <label for="name">Name</label>
+          <input id="name" name="name" required value={compound.name} />
+        </div>
+        <div class="cp-admin-field">
+          <label for="entity_kind">Entity kind</label>
+          <select id="entity_kind" name="entity_kind">
+            {
+              ENTITY_KINDS.map((k) => (
+                <option value={k} selected={k === compound.entity_kind}>
+                  {k.replace(/_/g, ' ')}
+                </option>
+              ))
+            }
+          </select>
+        </div>
+        <div class="cp-admin-field">
+          <label for="identity_confidence">Identity confidence</label>
+          <select id="identity_confidence" name="identity_confidence">
+            {
+              IDENTITY_CONFIDENCES.map((c) => (
+                <option value={c} selected={c === compound.identity_confidence}>
+                  {c.replace(/_/g, ' ')}
+                </option>
+              ))
+            }
+          </select>
+        </div>
+        <div class="cp-admin-field">
+          <label for="category">Category</label>
+          <input id="category" name="category" value={compound.category ?? ''} />
+        </div>
+      </div>
+      <p class="cp-admin-form-message" data-tone="error" data-form-error hidden></p>
+      <div class="cp-admin-form-actions">
+        <button type="submit" class="cp-admin-btn cp-admin-btn--primary">Save identity</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="cp-admin-section">
+    <h2>Aliases</h2>
+    {
+      compound.compound_aliases.length === 0 ? (
+        <p class="cp-admin-empty-row">No aliases yet.</p>
+      ) : (
+        compound.compound_aliases.map((a) => (
+          <div class="cp-admin-repeat-row">
+            <span class="cp-admin-repeat-row__main">
+              {a.alias}{' '}
+              <span class="cp-admin-repeat-row__meta">({a.alias_type ?? 'unclassified'})</span>
+            </span>
+            <button
+              type="button"
+              class="cp-admin-btn cp-admin-btn--danger cp-admin-btn--sm"
+              data-admin-delete
+              data-table="compound_aliases"
+              data-key="id"
+              data-key-value={a.id}
+              data-confirm={`Remove alias "${a.alias}"?`}
+            >
+              Remove
+            </button>
+          </div>
+        ))
+      )
+    }
+    <form
+      data-admin-form
+      data-table="compound_aliases"
+      data-method="POST"
+      class="cp-admin-form-grid"
+      style="margin-top:0.75rem;"
+    >
+      <input type="hidden" name="compound_id" value={compound.id} />
+      <div class="cp-admin-field">
+        <label for="alias">New alias</label>
+        <input id="alias" name="alias" required />
+      </div>
+      <div class="cp-admin-field">
+        <label for="alias_type">Type</label>
+        <select id="alias_type" name="alias_type">
+          <option value="">unclassified</option>
+          <option value="scientific_name">scientific name</option>
+          <option value="generic_name">generic name</option>
+          <option value="abbreviation">abbreviation</option>
+          <option value="development_code">development code</option>
+          <option value="spelling_variant">spelling variant</option>
+          <option value="brand_name">brand name</option>
+        </select>
+      </div>
+      <div class="cp-admin-field">
+        <label for="note">Note</label>
+        <input id="note" name="note" />
+      </div>
+      <div class="cp-admin-field" style="align-self:end;">
+        <button type="submit" class="cp-admin-btn cp-admin-btn--secondary">Add alias</button>
+      </div>
+      <p class="cp-admin-form-message" data-tone="error" data-form-error hidden></p>
+    </form>
+  </section>
+
+  <section class="cp-admin-section">
+    <h2>Stack components</h2>
+    {
+      compound.stack_components.length === 0 ? (
+        <p class="cp-admin-empty-row">
+          No components linked. Relevant only for stack/blend entities.
+        </p>
+      ) : (
+        compound.stack_components.map((sc) => (
+          <div class="cp-admin-repeat-row">
+            <span class="cp-admin-repeat-row__main">
+              <a href={`/admin/compounds/${sc.compounds.id}`}>{sc.compounds.name}</a>
+              {sc.dose_or_ratio_note && (
+                <span class="cp-admin-repeat-row__meta"> — {sc.dose_or_ratio_note}</span>
+              )}
+            </span>
+            <button
+              type="button"
+              class="cp-admin-btn cp-admin-btn--danger cp-admin-btn--sm"
+              data-admin-delete
+              data-table="stack_components"
+              data-key="stack_id,component_compound_id"
+              data-key-value={`${compound.id},${sc.component_compound_id}`}
+              data-confirm="Remove this component?"
+            >
+              Remove
+            </button>
+          </div>
+        ))
+      )
+    }
+    {
+      availableComponents.length > 0 && (
+        <form
+          data-admin-form
+          data-table="stack_components"
+          data-method="POST"
+          class="cp-admin-form-grid"
+          style="margin-top:0.75rem;"
+        >
+          <input type="hidden" name="stack_id" value={compound.id} />
+          <div class="cp-admin-field">
+            <label for="component_compound_id">Add component</label>
+            <select id="component_compound_id" name="component_compound_id" required>
+              {availableComponents.map((c) => (
+                <option value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div class="cp-admin-field">
+            <label for="dose_or_ratio_note">Dose/ratio note</label>
+            <input id="dose_or_ratio_note" name="dose_or_ratio_note" />
+          </div>
+          <div class="cp-admin-field" style="align-self:end;">
+            <button type="submit" class="cp-admin-btn cp-admin-btn--secondary">
+              Add component
+            </button>
+          </div>
+          <p class="cp-admin-form-message" data-tone="error" data-form-error hidden />
+        </form>
+      )
+    }
+  </section>
+
+  <section class="cp-admin-section">
+    <h2>Regulatory records</h2>
+    {
+      compound.regulatory_records.length === 0 ? (
+        <p class="cp-admin-empty-row">No regulatory records yet.</p>
+      ) : (
+        compound.regulatory_records.map((r) => (
+          <div class="cp-admin-repeat-row">
+            <span class="cp-admin-repeat-row__main">
+              {r.agency} ({r.jurisdiction}) — {r.regulatory_status.replace(/_/g, ' ')}
+              <span class="cp-admin-repeat-row__meta">
+                {' '}
+                · source: {r.sources?.title ?? r.source_id}
+              </span>
+            </span>
+            <button
+              type="button"
+              class="cp-admin-btn cp-admin-btn--danger cp-admin-btn--sm"
+              data-admin-delete
+              data-table="regulatory_records"
+              data-key="id"
+              data-key-value={r.id}
+              data-confirm="Remove this regulatory record?"
+            >
+              Remove
+            </button>
+          </div>
+        ))
+      )
+    }
+    <form
+      data-admin-form
+      data-table="regulatory_records"
+      data-method="POST"
+      class="cp-admin-form-grid"
+      style="margin-top:0.75rem;"
+    >
+      <input type="hidden" name="compound_id" value={compound.id} />
+      <div class="cp-admin-field">
+        <label for="agency">Agency</label>
+        <input id="agency" name="agency" required />
+      </div>
+      <div class="cp-admin-field">
+        <label for="jurisdiction">Jurisdiction</label>
+        <input id="jurisdiction" name="jurisdiction" required />
+      </div>
+      <div class="cp-admin-field">
+        <label for="regulatory_status">Status</label>
+        <select id="regulatory_status" name="regulatory_status" required>
+          {REGULATORY_STATUSES.map((s) => <option value={s}>{s.replace(/_/g, ' ')}</option>)}
+        </select>
+      </div>
+      <div class="cp-admin-field">
+        <label for="source_id">Source</label>
+        <select id="source_id" name="source_id" required>
+          <option value="">Select a source&hellip;</option>
+          {sourceOptions.map((s) => <option value={s.id}>{s.title}</option>)}
+        </select>
+      </div>
+      <div class="cp-admin-field">
+        <label for="formulation">Formulation</label>
+        <input id="formulation" name="formulation" />
+      </div>
+      <div class="cp-admin-field">
+        <label for="indication">Indication</label>
+        <input id="indication" name="indication" />
+      </div>
+      <div class="cp-admin-field">
+        <label for="notes">Notes</label>
+        <input id="notes" name="notes" />
+      </div>
+      <div class="cp-admin-field" style="align-self:end;">
+        <button type="submit" class="cp-admin-btn cp-admin-btn--secondary">Add record</button>
+      </div>
+      <p class="cp-admin-form-message" data-tone="error" data-form-error hidden></p>
+    </form>
+    {
+      sourceOptions.length === 0 && (
+        <p class="cp-admin-field__hint">
+          No sources exist yet — <a href="/admin/sources/new">create one first</a>.
+        </p>
+      )
+    }
+  </section>
+
+  <section class="cp-admin-section">
+    <div class="cp-admin-page-header" style="margin-bottom:1rem;">
+      <h2 style="margin:0;">Claims</h2>
+      <a
+        href={`/admin/compounds/${compound.id}/claims/new`}
+        class="cp-admin-btn cp-admin-btn--primary">+ Add claim</a
+      >
+    </div>
+    {
+      compound.claims.length === 0 ? (
+        <p class="cp-admin-empty-row">No claims yet.</p>
+      ) : (
+        <div class="cp-admin-table-wrap">
+          <table class="cp-admin-table">
+            <thead>
+              <tr>
+                <th>Section</th>
+                <th class="cp-admin-table__wrap">Statement</th>
+                <th>Evidence</th>
+                <th>Status</th>
+                <th>Sources</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {compound.claims.map((claim) => (
+                <tr>
+                  <td>{claim.content_section}</td>
+                  <td class="cp-admin-table__wrap">{claim.statement}</td>
+                  <td>{claim.evidence_quality ?? '—'}</td>
+                  <td>
+                    <Badge tone={STATUS_TONE[claim.status] ?? 'neutral'}>
+                      {claim.status.replace('_', ' ')}
+                    </Badge>
+                  </td>
+                  <td>{claim.claim_sources.length}</td>
+                  <td>
+                    <a href={`/admin/compounds/${compound.id}/claims/${claim.id}`}>Edit</a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
+    }
+  </section>
+</AdminLayout>
+
+<script>
+  import '../../../scripts/admin-form.ts';
+  import '../../../scripts/admin-status-form.ts';
+</script>

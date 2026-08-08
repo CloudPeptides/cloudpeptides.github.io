@@ -1,0 +1,182 @@
+---
+/**
+ * Compound directory result card — design handoff §27, visually matching
+ * design-concepts/cloudpeptides_directory_concept.html: content-specific
+ * icon, Fraunces name, mono alias line, entity/category/identity badges.
+ *
+ * Favorite/Compare actions from the concept are intentionally omitted —
+ * they're Phase 5 (auth) features with no real persistence yet, and this
+ * codebase's standing policy (see git history) is to never stub fake
+ * interactivity.
+ *
+ * Phase 3: now that listPublishedCompounds() computes real evidence
+ * aggregates (see src/lib/supabase.ts), the card surfaces a compact
+ * evidence-strength indicator and, for the small set of compounds
+ * flagged during the research-enrichment audit
+ * (src/lib/expert-review-flags.ts), a review-flagged badge — satisfying
+ * the directory's "evidence and expert-review warnings" requirement
+ * without duplicating the full profile-page evidence breakdown.
+ */
+import type { CompoundListItem } from '../../lib/supabase';
+import Card from '../ui/Card.astro';
+import Badge from '../ui/Badge.astro';
+import { EVIDENCE_QUALITY_LABELS } from '../../lib/evidence';
+import { getExpertReviewFlag } from '../../lib/expert-review-flags';
+
+interface Props {
+  compound: CompoundListItem;
+}
+const { compound } = Astro.props;
+
+const ENTITY_LABELS: Record<string, string> = {
+  peptide: 'Peptide',
+  peptide_blend: 'Peptide blend',
+  stack: 'Stack',
+  small_molecule_drug: 'Small molecule',
+  biologic: 'Biologic',
+  supplement: 'Supplement',
+  non_peptide_research_compound: 'Research compound',
+};
+
+// 1.5px stroke, rounded caps/joins, 20px grid — design handoff §18.
+// Content-specific per entity_kind — never the brand mark (§19).
+const ENTITY_ICONS: Record<string, string> = {
+  peptide: '<path d="M8 3h4M8.5 3v5l-4 8a1.5 1.5 0 0 0 1.3 2.2h8.4A1.5 1.5 0 0 0 15.5 16l-4-8V3"/>',
+  peptide_blend:
+    '<circle cx="7" cy="7" r="3"/><circle cx="13" cy="13" r="3"/><path d="M9.2 9.2l1.6 1.6"/>',
+  stack: '<path d="M10 3 3 7l7 4 7-4-7-4Z"/><path d="M3 11l7 4 7-4M3 15l7 4 7-4"/>',
+  small_molecule_drug:
+    '<circle cx="6" cy="6" r="2"/><circle cx="14" cy="6" r="2"/><circle cx="10" cy="13" r="2"/><path d="M7.5 7.5l1.8 4M12.5 7.5l-1.8 4"/>',
+  biologic: '<path d="M10 3c-3 2-5 5-5 8a5 5 0 0 0 10 0c0-3-2-6-5-8Z"/><path d="M10 9v6"/>',
+  supplement: '<circle cx="10" cy="10" r="7"/><path d="M10 6v4l3 2"/>',
+  non_peptide_research_compound:
+    '<circle cx="10" cy="10" r="2.2"/><path d="M10 3v2.2M10 14.8V17M17 10h-2.2M5.2 10H3"/>',
+};
+const icon = ENTITY_ICONS[compound.entity_kind] ?? ENTITY_ICONS.non_peptide_research_compound;
+const reviewFlag = getExpertReviewFlag(compound.slug);
+---
+
+<a href={`/research/compounds/${compound.slug}`} class="cp-compound-card-link">
+  <Card
+    class="cp-compound-card"
+    accent={compound.entity_kind === 'stack' ? 'var(--terracotta-text)' : 'var(--primary)'}
+  >
+    <div class="cp-compound-card__top">
+      <svg
+        class="cp-compound-card__icon"
+        aria-hidden="true"
+        viewBox="0 0 20 20"
+        width="20"
+        height="20"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        set:html={icon}
+      />
+      <div class="cp-compound-card__top-badges">
+        {reviewFlag && <Badge tone="danger">Review flagged</Badge>}
+        {
+          compound.identity_confidence !== 'verified' && (
+            <Badge tone="warning">{compound.identity_confidence.replace(/_/g, ' ')}</Badge>
+          )
+        }
+      </div>
+    </div>
+    <h2 class="cp-compound-card__name">{compound.name}</h2>
+    {
+      compound.compound_aliases.length > 0 && (
+        <p class="cp-compound-card__alias">
+          aka {compound.compound_aliases.map((a) => a.alias).join(', ')}
+        </p>
+      )
+    }
+    <div class="cp-compound-card__badges">
+      <Badge tone={compound.entity_kind === 'stack' ? 'terracotta' : 'forest'}>
+        {ENTITY_LABELS[compound.entity_kind] ?? compound.entity_kind}
+      </Badge>
+      {compound.category && <Badge tone="neutral">{compound.category}</Badge>}
+    </div>
+    <div class="cp-compound-card__evidence-strip">
+      <span>
+        {
+          compound.maxEvidenceQuality
+            ? `${EVIDENCE_QUALITY_LABELS[compound.maxEvidenceQuality]} evidence`
+            : 'Not yet assessed'
+        }
+      </span>
+      <span aria-hidden="true">·</span>
+      <span>{compound.studyCount} {compound.studyCount === 1 ? 'source' : 'sources'}</span>
+      {
+        compound.hasHumanEvidence && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span>Human evidence</span>
+          </>
+        )
+      }
+    </div>
+  </Card>
+</a>
+
+<style>
+  .cp-compound-card-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    height: 100%;
+  }
+  .cp-compound-card :global(.cp-card__body) {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .cp-compound-card__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.625rem;
+  }
+  .cp-compound-card__top-badges {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.375rem;
+  }
+  .cp-compound-card__icon {
+    color: var(--primary);
+    flex-shrink: 0;
+  }
+  .cp-compound-card__name {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.1875rem;
+    margin: 0 0 0.25rem;
+    color: var(--text-primary);
+  }
+  .cp-compound-card__alias {
+    margin: 0 0 0.75rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+  }
+  .cp-compound-card__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: auto;
+    padding-top: 0.625rem;
+  }
+  .cp-compound-card__evidence-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin-top: 0.625rem;
+    padding-top: 0.625rem;
+    border-top: 1px solid var(--border-subtle);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+</style>

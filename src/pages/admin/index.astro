@@ -1,0 +1,165 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import ErrorState from '../../components/ui/ErrorState.astro';
+import { createUserScopedClient } from '../../lib/auth';
+import {
+  getCompoundStatusCounts,
+  getEvidenceGaps,
+  getUnsupportedClaimsCount,
+  getExpertReviewFlaggedCompounds,
+  getRecentRevisions,
+} from '../../lib/admin/queries';
+
+const session = Astro.locals.session!;
+const client = createUserScopedClient(session.accessToken);
+
+let loadError: string | null = null;
+let counts = { draft: 0, in_review: 0, published: 0, archived: 0 };
+let gaps = { compoundsWithNoClaims: 0, claimsNotAssessed: 0 };
+let unsupportedCount = 0;
+let expertReview: Awaited<ReturnType<typeof getExpertReviewFlaggedCompounds>> = [];
+let recentRevisions: Awaited<ReturnType<typeof getRecentRevisions>> = [];
+
+try {
+  [counts, gaps, unsupportedCount, expertReview, recentRevisions] = await Promise.all([
+    getCompoundStatusCounts(client),
+    getEvidenceGaps(client),
+    getUnsupportedClaimsCount(client),
+    getExpertReviewFlaggedCompounds(client),
+    getRecentRevisions(client),
+  ]);
+} catch {
+  loadError = 'Could not load dashboard data right now.';
+}
+
+const totalCompounds = counts.draft + counts.in_review + counts.published + counts.archived;
+---
+
+<AdminLayout title="Dashboard">
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">Editorial Dashboard</p>
+      <h1>Overview</h1>
+      <p>Signed in as {session.email} ({session.role}).</p>
+    </div>
+  </div>
+
+  {loadError && <ErrorState message={loadError} retryHref="/admin" />}
+
+  {
+    !loadError && (
+      <>
+        <section class="cp-admin-stat-grid">
+          <div class="cp-admin-stat-card">
+            <p class="cp-admin-stat-card__value">{totalCompounds}</p>
+            <p class="cp-admin-stat-card__label">Total compounds</p>
+            <a href="/admin/compounds">View all &rarr;</a>
+          </div>
+          <div class="cp-admin-stat-card">
+            <p class="cp-admin-stat-card__value">{counts.draft}</p>
+            <p class="cp-admin-stat-card__label">Draft</p>
+            <a href="/admin/compounds?status=draft">View &rarr;</a>
+          </div>
+          <div class="cp-admin-stat-card">
+            <p class="cp-admin-stat-card__value">{counts.in_review}</p>
+            <p class="cp-admin-stat-card__label">In review</p>
+            <a href="/admin/compounds?status=in_review">View &rarr;</a>
+          </div>
+          <div class="cp-admin-stat-card">
+            <p class="cp-admin-stat-card__value">{counts.published}</p>
+            <p class="cp-admin-stat-card__label">Published</p>
+            <a href="/admin/compounds?status=published">View &rarr;</a>
+          </div>
+          <div class="cp-admin-stat-card">
+            <p class="cp-admin-stat-card__value">{counts.archived}</p>
+            <p class="cp-admin-stat-card__label">Archived</p>
+            <a href="/admin/compounds?status=archived">View &rarr;</a>
+          </div>
+        </section>
+
+        <section class="cp-admin-stat-grid">
+          <div class="cp-admin-stat-card">
+            <p class="cp-admin-stat-card__value">{gaps.compoundsWithNoClaims}</p>
+            <p class="cp-admin-stat-card__label">Compounds with zero claims</p>
+          </div>
+          <div class="cp-admin-stat-card">
+            <p class="cp-admin-stat-card__value">{gaps.claimsNotAssessed}</p>
+            <p class="cp-admin-stat-card__label">Claims not yet evidence-assessed</p>
+          </div>
+          <div class="cp-admin-stat-card">
+            <p class="cp-admin-stat-card__value">{unsupportedCount}</p>
+            <p class="cp-admin-stat-card__label">Unsupported / contradicted legacy claims</p>
+          </div>
+          <div class="cp-admin-stat-card">
+            <p class="cp-admin-stat-card__value">{expertReview.length}</p>
+            <p class="cp-admin-stat-card__label">Expert-review-flagged compounds</p>
+          </div>
+        </section>
+
+        <section class="cp-admin-section">
+          <h2>Expert-review flags</h2>
+          {expertReview.length === 0 ? (
+            <p class="cp-admin-empty-row">None.</p>
+          ) : (
+            <div class="cp-admin-table-wrap">
+              <table class="cp-admin-table">
+                <thead>
+                  <tr>
+                    <th>Compound</th>
+                    <th>Status</th>
+                    <th class="cp-admin-table__wrap">Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {expertReview.map((row) => (
+                    <tr>
+                      <td>
+                        {row.id ? <a href={`/admin/compounds/${row.id}`}>{row.name}</a> : row.name}
+                      </td>
+                      <td>{row.status}</td>
+                      <td class="cp-admin-table__wrap">{row.reason}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section class="cp-admin-section">
+          <h2>Recent revisions</h2>
+          {recentRevisions.length === 0 ? (
+            <p class="cp-admin-empty-row">No revisions recorded yet.</p>
+          ) : (
+            <div class="cp-admin-table-wrap">
+              <table class="cp-admin-table">
+                <thead>
+                  <tr>
+                    <th>Compound</th>
+                    <th>Editor</th>
+                    <th>When</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentRevisions.map((rev) => (
+                    <tr>
+                      <td>
+                        <a href={`/admin/compounds/${rev.compound_id}/history`}>
+                          {rev.compound_name}
+                        </a>
+                      </td>
+                      <td>{rev.editor_id === session.userId ? 'You' : (rev.editor_id ?? '—')}</td>
+                      <td>{new Date(rev.created_at).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </>
+    )
+  }
+</AdminLayout>

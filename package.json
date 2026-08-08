@@ -1,0 +1,60 @@
+{
+  "name": "cloudpeptides",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build && node scripts/postbuild-headers.mjs",
+    "preview": "astro preview",
+    "astro": "astro",
+    "generate-types": "wrangler types",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "astro check && tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "check:links": "node scripts/check-links.mjs",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "db:extract-legacy": "node scripts/migration/extract-legacy-compounds.mjs",
+    "db:import-legacy": "node scripts/migration/import-to-supabase.mjs",
+    "db:verify-security": "node scripts/migration/verify-security.mjs",
+    "db:verify-admin-security": "node scripts/migration/verify-admin-security.mjs",
+    "db:verify-staging-read-only": "node scripts/migration/verify-staging-read-only.mjs",
+    "db:export-for-production": "node scripts/migration/export-published-for-production.mjs",
+    "db:backup-production": "node scripts/migration/backup-production.mjs",
+    "db:restore-verify-backup": "node scripts/migration/restore-verify-backup.mjs"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^14.2.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "astro": "^7.2.0",
+    "tailwindcss": "^4.3.3",
+    "wrangler": "^4.119.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@axe-core/playwright": "^4.12.1",
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.62.1",
+    "@supabase/supabase-js": "^2.112.2",
+    "@types/node": "^26.1.2",
+    "cheerio": "^1.2.0",
+    "eslint": "^10.8.0",
+    "eslint-plugin-astro": "^3.1.0",
+    "globals": "^17.9.0",
+    "happy-dom": "^20.11.1",
+    "linkinator": "^8.0.3",
+    "prettier": "^3.9.6",
+    "prettier-plugin-astro": "^0.14.1",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "supabase": "^2.111.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.66.0",
+    "vitest": "^4.1.10"
+  }
+}

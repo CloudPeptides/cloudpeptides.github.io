@@ -1,0 +1,119 @@
+---
+/**
+ * Site footer — design handoff §19.
+ * "Footer: a barely-there cloud-lobe watermark (~5% opacity) in one
+ * corner" — reuses the same brand mark geometry rather than a separate
+ * decorative icon, aria-hidden since it's purely decorative.
+ *
+ * Policy/trust page links added for launch readiness — grouped under
+ * a labeled nav landmark, distinct from the copyright line, so screen
+ * reader users get a real "Legal"/"Policies" region rather than a
+ * flat list of links buried in prose.
+ */
+import Logo from './Logo.astro';
+
+const year = new Date().getFullYear();
+
+const siteLinks = [
+  { label: 'About', href: '/about' },
+  { label: 'Contact', href: '/contact' },
+];
+
+const policyLinks = [
+  { label: 'Privacy Policy', href: '/privacy' },
+  { label: 'Terms of Use', href: '/terms' },
+  { label: 'Research & Medical Disclaimer', href: '/disclaimer' },
+  { label: 'Accessibility Statement', href: '/accessibility' },
+  { label: 'Shipping Policy', href: '/shipping' },
+  { label: 'Return & Refund Policy', href: '/returns' },
+  { label: 'Shop Terms', href: '/shop-terms' },
+];
+---
+
+<footer class="cp-footer">
+  <div class="cp-footer__watermark" aria-hidden="true">
+    <Logo variant="primary" size={160} />
+  </div>
+  <div class="cp-footer__content">
+    <nav class="cp-footer__policies" aria-label="Site">
+      <ul>
+        {
+          siteLinks.map((link) => (
+            <li>
+              <a href={link.href}>{link.label}</a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+    <nav class="cp-footer__policies" aria-label="Policies">
+      <ul>
+        {
+          policyLinks.map((link) => (
+            <li>
+              <a href={link.href}>{link.label}</a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+    <p>&copy; {year} Cloud Peptides. For research purposes only.</p>
+  </div>
+</footer>
+
+<style>
+  .cp-footer {
+    position: relative;
+    overflow: hidden;
+    border-top: 1px solid var(--border-subtle);
+    background: var(--bg-sunken);
+  }
+
+  .cp-footer__watermark {
+    position: absolute;
+    right: -1.5rem;
+    bottom: -1.5rem;
+    opacity: 0.05;
+    pointer-events: none;
+  }
+
+  .cp-footer__content {
+    position: relative;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+
+  .cp-footer__policies ul {
+    list-style: none;
+    margin: 0 0 1rem;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+  }
+
+  .cp-footer__policies a {
+    /* Same --text-muted-on-bg-sunken pairing the copyright line below
+       already uses (verified via this page's own axe check) — reused
+       here rather than introducing an unverified new pairing. */
+    color: var(--text-muted);
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    font-size: var(--text-caption);
+    font-family: var(--font-body);
+  }
+
+  .cp-footer__policies a:hover,
+  .cp-footer__policies a:focus-visible {
+    color: var(--text-primary);
+    text-decoration-color: currentColor;
+  }
+
+  .cp-footer__content p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--text-caption);
+    font-family: var(--font-body);
+  }
+</style>

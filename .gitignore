@@ -1,0 +1,51 @@
+.claude/settings.local.json
+
+# build output
+dist/
+# generated types
+.astro/
+
+# dependencies
+node_modules/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# environment variables — real Supabase/service-role credentials for the
+# migration scripts (scripts/migration/*.mjs) go in .env.local, never
+# committed.
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Wrangler's local-dev-only secrets file (RESEND_API_KEY, etc.) — never
+# uploaded by `wrangler deploy`; the real deployed Worker gets secrets
+# via `wrangler secret put`, not this file. `!.dev.vars.example` un-
+# ignores the committed, value-free template (the plain `.dev.vars.*`
+# pattern below would otherwise also hide it — caught live: it silently
+# vanished from `git status` instead of showing as untracked).
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+
+# macOS-specific files
+.DS_Store
+
+# jetbrains setting folder
+.idea/
+
+# wrangler local state
+.wrangler/
+
+# test output
+test-results/
+playwright-report/
+coverage/
+
+# database backups (scripts/migration/backup-production.mjs output) —
+# a raw SQL dump of production data must never be committed.
+backups/

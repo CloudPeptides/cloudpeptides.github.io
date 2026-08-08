@@ -1,0 +1,222 @@
+name: CI
+
+# ci: lint/typecheck/test/build/link-check gating, every push and PR.
+# deploy-staging: Phase 1B — staging-only Cloudflare Workers deploy,
+# gated on `ci` passing, push-to-rebuild/astro-platform only (never on
+# pull_request, and never main). Requires secrets.CLOUDFLARE_API_TOKEN
+# and vars.CLOUDFLARE_ACCOUNT_ID to be configured in the repo; the job
+# is skipped entirely if the token secret isn't set.
+# deploy-production: gated behind the `production` GitHub Environment
+# (Settings → Environments → production — required reviewer
+# CloudPeptides, self-review off, admin bypass off, main-branch-only —
+# configured 2026-08-08), reachable only on a push to `main`. A push
+# to main queues the run; nothing in it executes until the required
+# reviewer explicitly approves in the Actions UI. Deploys
+# wrangler.production.jsonc, whose `routes` block now attaches
+# cloudpeptides.org on approval (see that file's own comments). See
+# docs/planning/production-cutover-plan.md and
+# production-cutover-checklist.md Phase D.
+on:
+  push:
+    branches: [rebuild/astro-platform, main]
+  pull_request:
+    branches: [rebuild/astro-platform]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Build
+        # PUBLIC_SUPABASE_URL/PUBLIC_SUPABASE_ANON_KEY are the anon key —
+        # meaningless without RLS, safe to pass here. Reusing the
+        # vars.SUPABASE_URL/vars.SUPABASE_ANON_KEY already configured in
+        # Phase 2, just under Astro's PUBLIC_ naming. Never the
+        # service-role key — that never appears in any workflow.
+        run: npm run build
+        env:
+          PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+
+      # Cache the Chromium binary itself (keyed on the lockfile, since
+      # Playwright's version — and therefore the compatible browser build —
+      # only changes when package-lock.json does). The cache stores the
+      # browser binary but not the OS-level libraries it needs to run, so a
+      # cache hit still requires installing those separately.
+      - name: Cache Playwright Chromium
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright Chromium (cache miss)
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright OS dependencies (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      # test:e2e's global-setup/global-teardown (tests/e2e/global-setup.ts,
+      # tests/e2e/global-teardown.ts) manage the preview server's full
+      # lifecycle explicitly — `astro preview` self-detaches immediately
+      # rather than staying in the foreground, so Playwright's automatic
+      # webServer process-tracking can't be relied on to start/stop it
+      # correctly. See those files for the verified reasoning.
+      - name: E2E + accessibility tests (Chromium)
+        run: npm run test:e2e
+        env:
+          PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+      # Crawls a real running preview server (scripts/check-links.mjs),
+      # not just the static dist/client output — Phase 3's on-demand
+      # routes (src/pages/research/compounds/**) have no static HTML
+      # file for a filesystem-only crawler to find.
+      - name: Broken link check
+        run: npm run check:links
+        env:
+          PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+
+  deploy-staging:
+    needs: ci
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/rebuild/astro-platform' &&
+      vars.CLOUDFLARE_ACCOUNT_ID != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+
+      # Staging only: wrangler.jsonc sets name "cloudpeptides-staging" and
+      # workers_dev: true, with no "routes"/custom domain configured —
+      # this always deploys to a Cloudflare-provided *.workers.dev URL,
+      # never a custom domain, and there is no production Worker for this
+      # command to ever touch.
+      - name: Deploy to Cloudflare Workers (staging)
+        id: deploy
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Print staging URL
+        run: echo "Staging URL — ${{ steps.deploy.outputs.deployment-url }}"
+
+  deploy-production:
+    needs: ci
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      vars.CLOUDFLARE_ACCOUNT_ID != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Manual-approval gate: the "production" GitHub Environment
+    # (Settings → Environments → production; required reviewer
+    # CloudPeptides, self-review off, admin bypass off, main-branch-only
+    # — configured 2026-08-08) makes the job pause here and wait for
+    # explicit human approval in the Actions UI before any step below
+    # runs, even once the `if:` condition above is satisfied.
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (production)
+        # SITE_ENV=production is what tells scripts/postbuild-headers.mjs
+        # to emit the indexable/HSTS static-route headers instead of
+        # staging's noindex/no-HSTS default (see that script's own
+        # comment) — the on-demand path (src/middleware.ts) needs no
+        # such flag, it's already automatic based on request hostname.
+        # PUBLIC_SUPABASE_URL/ANON_KEY: updated 2026-08-08 — production
+        # now reuses vars.SUPABASE_URL/vars.SUPABASE_ANON_KEY, the exact
+        # same repo variables deploy-staging uses above, rather than a
+        # separate PROD_SUPABASE_URL/PROD_SUPABASE_ANON_KEY pair. This
+        # is intentional, not a shortcut: staging and production now
+        # share one Supabase project (docs/planning/
+        # production-cutover-plan.md §1 — no Pro tier, no second
+        # project), so there is no longer a distinct "production anon
+        # key" to keep in sync with a second pair of repo variables.
+        # Never the service-role key, which never appears in any
+        # workflow.
+        run: npm run build
+        env:
+          SITE_ENV: production
+          PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+
+      # Deploys wrangler.production.jsonc — name "cloudpeptides",
+      # workers_dev: false, `routes` attaching cloudpeptides.org
+      # (custom_domain: true). This step only runs once the required
+      # reviewer approves at the environment gate above — that
+      # approval is the literal act of cutover.
+      - name: Deploy to Cloudflare Workers (production)
+        id: deploy
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN_PRODUCTION }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --config wrangler.production.jsonc
+
+      - name: Print deployment result
+        run: echo "Production deploy — ${{ steps.deploy.outputs.deployment-url }}"

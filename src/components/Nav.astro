@@ -1,0 +1,330 @@
+---
+/**
+ * Sticky top nav — design handoff §22/§26.
+ * Desktop: horizontal lockup + inline links + theme toggle.
+ * Mobile: collapses into a native <dialog> slide-in panel (large tap
+ * targets, focus-trapped, Escape-to-close) — see src/scripts/nav.ts.
+ * No React: this is a plain Astro component with a small vanilla script.
+ *
+ * `links` intentionally defaults to just Home — the full Research/Shop/
+ * About/FAQ IA (handoff §26) gets wired in as those routes are actually
+ * built in later phases. Pointing this component at not-yet-existing
+ * routes now would break the Phase 1A link-check in CI.
+ */
+import Logo from './Logo.astro';
+
+interface NavLink {
+  label: string;
+  href: string;
+}
+
+interface Props {
+  links?: NavLink[];
+}
+
+const { links = [{ label: 'Home', href: '/' }] } = Astro.props;
+const currentPath = Astro.url.pathname;
+---
+
+<header class="cp-nav">
+  <nav class="cp-nav__bar" aria-label="Primary">
+    <a href="/" class="cp-nav__brand" aria-label="Cloud Peptides home">
+      <Logo variant="primary" size={36} standalone />
+      <span class="cp-nav__wordmark">Cloud Peptides</span>
+    </a>
+
+    <ul class="cp-nav__links">
+      {
+        links.map((link) => (
+          <li>
+            <a href={link.href} aria-current={currentPath === link.href ? 'page' : undefined}>
+              {link.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+
+    <div class="cp-nav__actions">
+      <a href="/shop/cart" class="cp-nav__cart" aria-label="Cart">
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 20 20"
+          width="18"
+          height="18"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M4 6h12l-1 10a1.5 1.5 0 0 1-1.5 1.3h-7A1.5 1.5 0 0 1 5 16L4 6Z"></path>
+          <path d="M7 6V5a3 3 0 0 1 6 0v1"></path>
+        </svg>
+        <span class="cp-nav__cart-count" data-cart-count hidden>0</span>
+      </a>
+      <button type="button" data-theme-toggle aria-pressed="false" aria-label="Toggle dark theme">
+        <span aria-hidden="true">◐</span>
+      </button>
+      <button
+        type="button"
+        data-nav-toggle
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="cp-nav-dialog"
+        class="cp-nav__menu-btn"
+      >
+        <span aria-hidden="true">☰</span>
+        <span class="cp-visually-hidden">Open menu</span>
+      </button>
+    </div>
+  </nav>
+
+  <dialog id="cp-nav-dialog" data-nav-dialog class="cp-nav__dialog" aria-label="Navigation menu">
+    <div class="cp-nav__dialog-header">
+      <span class="cp-nav__dialog-brand">
+        <Logo variant="primary" size={22} />
+        <span>Cloud Peptides</span>
+      </span>
+      <button type="button" data-nav-close aria-label="Close menu" class="cp-nav__dialog-close">
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 20 20"
+          width="16"
+          height="16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        >
+          <path d="M5 5l10 10M15 5L5 15"></path>
+        </svg>
+      </button>
+    </div>
+    <ul class="cp-nav__dialog-links">
+      {
+        links.map((link) => (
+          <li>
+            <a href={link.href} aria-current={currentPath === link.href ? 'page' : undefined}>
+              {link.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+    <button type="button" data-theme-toggle aria-pressed="false" class="cp-btn-full">
+      Toggle dark theme
+    </button>
+  </dialog>
+</header>
+
+<script>
+  import '../scripts/nav.ts';
+</script>
+
+<style>
+  .cp-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .cp-nav {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .cp-nav__bar {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .cp-nav__brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    text-decoration: none;
+    color: var(--text-primary);
+  }
+
+  .cp-nav__wordmark {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.125rem;
+  }
+
+  .cp-nav__links {
+    display: none;
+    list-style: none;
+    gap: 1.5rem;
+    margin: 0;
+    padding: 0;
+  }
+
+  .cp-nav__links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-family: var(--font-body);
+    font-weight: 500;
+    padding-bottom: 2px;
+    border-bottom: 2px solid transparent;
+  }
+
+  .cp-nav__links a:hover,
+  .cp-nav__links a[aria-current='page'] {
+    color: var(--text-primary);
+    border-bottom-color: var(--primary);
+  }
+
+  .cp-nav__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .cp-nav__actions button {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1.5px solid var(--border-interactive);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+    color: var(--text-primary);
+  }
+
+  .cp-nav__cart {
+    position: relative;
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1.5px solid var(--border-interactive);
+    border-radius: var(--radius-control);
+    color: var(--terracotta-text);
+    text-decoration: none;
+  }
+
+  .cp-nav__cart-count {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: var(--terracotta-strong);
+    color: var(--text-on-terracotta);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .cp-nav__menu-btn {
+    display: inline-flex;
+  }
+
+  .cp-nav__dialog {
+    padding: 1.5rem;
+    border: none;
+    border-radius: 0;
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    margin: 0;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+  }
+
+  .cp-nav__dialog::backdrop {
+    background: rgba(20, 32, 26, 0.4);
+  }
+
+  .cp-nav__dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+  }
+
+  .cp-nav__dialog-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 1rem;
+  }
+
+  .cp-nav__dialog-close {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1.5px solid var(--border-interactive);
+    border-radius: var(--radius-control);
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+
+  .cp-nav__dialog-links {
+    list-style: none;
+    margin: 0 0 1.5rem;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .cp-nav__dialog-links a {
+    display: block;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    color: var(--text-primary);
+    text-decoration: none;
+    font-size: 1.125rem;
+    font-weight: 500;
+  }
+
+  .cp-btn-full {
+    width: 100%;
+    min-height: 44px;
+    background: transparent;
+    border: 1.5px solid var(--border-interactive);
+    border-radius: var(--radius-control);
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+
+  @media (min-width: 768px) {
+    .cp-nav__links {
+      display: flex;
+    }
+    .cp-nav__actions .cp-nav__menu-btn {
+      display: none;
+    }
+  }
+</style>

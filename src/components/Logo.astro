@@ -1,0 +1,90 @@
+---
+/**
+ * The approved Molecular Lightning Cloud mark.
+ * Geometry, z-order (chain behind, cloud in front), and coloring are
+ * exactly as specified in docs/planning/cloudpeptides-design-handoff.md §1–2
+ * and §3–12 — do not alter the source SVGs or this component's markup
+ * without a design change approved through that document.
+ *
+ * Variants (handoff §3–12):
+ *  - "primary"   default lockup mark, theme-aware via --logo-cloud/--logo-chain
+ *                (inlined so the CSS custom properties in tokens.css apply)
+ *  - "one-color" currentColor throughout — inherits the parent text color
+ *  - "dark"      fixed dark-theme coloring, for contexts needing it
+ *                regardless of the page's own theme
+ *  - "favicon"   simplified "Mark C", reserved for true 16px contexts only
+ *                (handoff §13) — never used elsewhere the primary mark
+ *                still reads clearly
+ *
+ * Accessibility (handoff Appendix "Usage note on accessibility"):
+ *  - Default: aria-hidden="true" — for the common case of the mark sitting
+ *    beside a visible "Cloud Peptides" text wordmark, which already
+ *    announces the name.
+ *  - `standalone`: when the mark is used with no adjacent text (e.g. a bare
+ *    icon-only link), set this so aria-hidden is dropped and the wrapping
+ *    <a>/<button> is expected to carry aria-label="Cloud Peptides home" (or
+ *    similar) itself — this component does not render its own link wrapper.
+ *
+ * `hollow` (design handoff §29 empty state): "the mark rendered
+ * hollow/unfilled with no chain — an 'empty cloud,' reusing the same
+ * geometry rather than inventing a new icon". Implemented purely with
+ * CSS targeting the primary SVG's existing .cp-logo-chain/.cp-logo-cloud
+ * groups — geometry itself is untouched.
+ */
+import primarySvg from '../../public/brand/logo-primary.svg?raw';
+import oneColorSvg from '../../public/brand/logo-one-color.svg?raw';
+import darkSvg from '../../public/brand/logo-dark-theme.svg?raw';
+import faviconSvg from '../../public/brand/logo-favicon.svg?raw';
+
+interface Props {
+  variant?: 'primary' | 'one-color' | 'dark' | 'favicon';
+  size?: number;
+  standalone?: boolean;
+  hollow?: boolean;
+  class?: string;
+}
+
+const {
+  variant = 'primary',
+  size = 40,
+  standalone = false,
+  hollow = false,
+  class: className,
+} = Astro.props;
+
+const markup = {
+  primary: primarySvg,
+  'one-color': oneColorSvg,
+  dark: darkSvg,
+  favicon: faviconSvg,
+}[variant];
+---
+
+<span
+  class:list={['cp-logo', { 'cp-logo--hollow': hollow }, className]}
+  style={{ width: `${size}px`, height: `${size}px` }}
+  aria-hidden={standalone ? undefined : 'true'}
+  set:html={markup}
+/>
+
+<style>
+  .cp-logo {
+    display: inline-block;
+    line-height: 0;
+    color: var(--text-muted);
+  }
+  .cp-logo :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .cp-logo--hollow :global(.cp-logo-chain) {
+    display: none;
+  }
+  .cp-logo--hollow :global(.cp-logo-cloud circle),
+  .cp-logo--hollow :global(.cp-logo-cloud rect) {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+  }
+</style>

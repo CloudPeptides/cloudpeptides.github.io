@@ -1,0 +1,459 @@
+---
+/**
+ * Cart page — rebuild of legacy-site/cart.html + js/cart.js. Same copy,
+ * same business rules (2-kit minimum, $15/free shipping, $5 non-crypto
+ * processing-fee disclosure that was never actually computed into the
+ * total in the legacy site either — see src/lib/shop.ts). The checkout
+ * form posts to src/pages/api/checkout.ts (a server-side Worker route
+ * calling Resend) instead of the legacy client-side Web3Forms call,
+ * which embedded a public access key in browser JS.
+ *
+ * Research-platform-first launch: while COMMERCE_ENABLED is false
+ * (src/lib/launch-config.ts), this page never renders the interactive
+ * cart/checkout markup at all — no cart-page.ts import, no localStorage
+ * read, no <form> — only a static "coming soon" notice. This is
+ * deliberately more than just disabling the submit button: even a
+ * browser with items already sitting in `cp-shop-cart` localStorage
+ * from before this phase (or from local testing) sees the same static
+ * notice, never a live-looking cart it could try to check out from.
+ * src/pages/api/checkout.ts's own hard gate is the real backstop
+ * either way.
+ *
+ * On-demand: matches the other interactive-state pages in this project
+ * (directory, profile) for consistency.
+ */
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { COMMERCE_ENABLED } from '../../lib/launch-config';
+---
+
+<BaseLayout
+  title="Cart"
+  description="Review your Cloud Peptides order request before submitting."
+  noindex
+>
+  <section class="cp-cart-container">
+    <header class="cp-cart-header">
+      <p class="cp-eyebrow cp-eyebrow--shop">Shop</p>
+      <h1 class="cp-cart-header__heading">Your Cart</h1>
+      <p class="cp-cart-header__intro">Review your order request before submitting.</p>
+    </header>
+
+    {
+      !COMMERCE_ENABLED && (
+        <div class="cp-cart-coming-soon">
+          <h2>Ordering isn't available yet</h2>
+          <p>
+            Cloud Peptides is launching as a research platform first. The shop catalog is a preview
+            — carts, checkout, and order requests are not active yet, and no order or payment
+            information can be submitted at this time.
+          </p>
+          <a href="/shop" class="cp-btn-outline">
+            Back to Shop
+          </a>
+        </div>
+      )
+    }
+
+    {
+      COMMERCE_ENABLED && (
+        <Fragment>
+          <div id="cartItems" class="cp-cart-items" />
+
+          <div id="cartEmptyPanel" class="cp-cart-empty" hidden>
+            <h2>Your cart is empty</h2>
+            <p>Browse the shop to add products to your cart.</p>
+            <a href="/shop" class="cp-btn-outline">
+              Shop Now
+            </a>
+          </div>
+
+          <div class="cp-cart-total">
+            <p class="cp-cart-rules">
+              Minimum order: 2 kits.
+              <br />
+              $15 shipping on 2 kits.
+              <br />
+              FREE shipping on 3+ kits.
+              <br />
+              $5 processing fee for orders not paid with crypto.
+              <br />
+              <span class="cp-cart-rules__note">
+                This fee is applied during payment processing, not shown in the total below.
+              </span>
+            </p>
+            <div class="cp-cart-total__row">
+              <span>Subtotal:</span> <span id="subtotal">$0.00</span>
+            </div>
+            <div class="cp-cart-total__row">
+              <span>Shipping:</span> <span id="shipping">$0.00</span>
+            </div>
+            <div class="cp-cart-total__grand">
+              <span>Total:</span> <span id="total">$0.00</span>
+            </div>
+          </div>
+
+          <form id="checkoutForm" class="cp-checkout-form">
+            <h2>Checkout</h2>
+
+            <p class="cp-disclaimer">
+              Payment is not collected at checkout. After your order request is reviewed, we will
+              contact you with payment instructions. This is a research-supply order request, not a
+              medical purchase or a scientific/commerce endorsement of any kind.
+            </p>
+
+            <div class="cp-honeypot" aria-hidden="true">
+              <label for="checkoutHoneypot">Leave this field blank</label>
+              <input
+                id="checkoutHoneypot"
+                name="website"
+                type="text"
+                tabindex="-1"
+                autocomplete="off"
+              />
+            </div>
+
+            <label for="customerName" class="cp-visually-hidden">
+              Full name
+            </label>
+            <input id="customerName" name="name" required placeholder="Full Name" />
+
+            <label for="customerEmail" class="cp-visually-hidden">
+              Email
+            </label>
+            <input id="customerEmail" name="email" type="email" required placeholder="Email" />
+
+            <label for="customerContact" class="cp-visually-hidden">
+              Contact
+            </label>
+            <input
+              id="customerContact"
+              name="contact"
+              required
+              placeholder="Phone / Discord / WhatsApp"
+            />
+
+            <label for="paymentMethod" class="cp-visually-hidden">
+              Preferred payment method
+            </label>
+            <select id="paymentMethod" name="payment" required>
+              <option value="">Preferred Payment Method</option>
+              <option value="Bitcoin (BTC)">Bitcoin (BTC)</option>
+              <option value="Ethereum (ETH)">Ethereum (ETH)</option>
+              <option value="Zelle">Zelle</option>
+              <option value="PayPal">PayPal</option>
+            </select>
+
+            <label for="customerNotes" class="cp-visually-hidden">
+              Additional notes
+            </label>
+            <textarea id="customerNotes" name="notes" placeholder="Additional notes (optional)" />
+
+            <div class="cf-turnstile" data-turnstile />
+
+            <p
+              class="cp-form-message"
+              data-tone="error"
+              id="checkoutFormMessage"
+              role="alert"
+              hidden
+            />
+
+            <button id="submitOrder" class="cp-btn-full" type="submit">
+              Place Order Request
+            </button>
+          </form>
+
+          <div id="successMessage" class="cp-cart-success" hidden>
+            <h2>♡ Thank you for your order!</h2>
+            <p>
+              Your order request has been received successfully. We will contact you shortly with
+              payment instructions.
+            </p>
+            <a href="/" class="cp-btn-outline">
+              Return Home
+            </a>
+          </div>
+        </Fragment>
+      )
+    }
+  </section>
+</BaseLayout>
+
+{
+  COMMERCE_ENABLED && (
+    <script>
+      import '../../scripts/cart-page.ts'; import '../../scripts/turnstile-widget.ts';
+    </script>
+  )
+}
+
+<style>
+  .cp-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .cp-honeypot {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+  .cp-cart-container {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 5rem;
+  }
+  .cp-cart-header {
+    margin-bottom: 2rem;
+  }
+  .cp-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem;
+  }
+  .cp-eyebrow--shop {
+    color: var(--terracotta-text);
+  }
+  .cp-cart-header__heading {
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: var(--text-h1);
+    margin: 0 0 0.5rem;
+  }
+  .cp-cart-header__intro {
+    color: var(--text-secondary);
+    margin: 0;
+  }
+
+  .cp-cart-coming-soon {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+  }
+  .cp-cart-coming-soon h2 {
+    font-family: var(--font-display);
+    color: var(--text-primary);
+    margin: 0 0 0.75rem;
+  }
+  .cp-cart-coming-soon p {
+    color: var(--text-secondary);
+    line-height: var(--text-body--line-height);
+    max-width: 40ch;
+    margin: 0 auto;
+  }
+
+  .cp-cart-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    margin-bottom: 1.5rem;
+  }
+  :global(.cp-cart-item) {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    padding: 1rem 1.25rem;
+  }
+  :global(.cp-cart-item__info) {
+    flex: 1;
+  }
+  :global(.cp-cart-item__name) {
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 0.125rem;
+  }
+  :global(.cp-cart-item__spec) {
+    font-size: var(--text-caption);
+    color: var(--text-muted);
+    margin: 0 0 0.125rem;
+  }
+  :global(.cp-cart-item__price) {
+    font-family: var(--font-mono);
+    font-size: var(--text-caption);
+    color: var(--text-secondary);
+    margin: 0;
+  }
+  :global(.cp-cart-item__qty) {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+  }
+  :global(.cp-cart-item__qty button) {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-control);
+    border: 1.5px solid var(--border-interactive);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 1rem;
+  }
+  :global(.cp-cart-item__remove) {
+    border: none;
+    background: transparent;
+    color: var(--danger-text);
+    font-size: var(--text-caption);
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
+  .cp-cart-empty {
+    /* --terracotta-text (used by .cp-btn-outline inside here) is only
+       AA-verified against --bg, not --bg-sunken — same class of bug
+       already caught once in ShopDisclosure.astro; --bg-elevated keeps
+       the button's contrast at a verified ratio (confirmed via axe:
+       0 violations after this change). */
+    text-align: center;
+    padding: 3rem 1.5rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    margin-bottom: 1.5rem;
+  }
+  .cp-cart-empty h2 {
+    font-family: var(--font-display);
+    color: var(--text-primary);
+  }
+
+  .cp-cart-total {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .cp-cart-rules {
+    font-size: var(--text-caption);
+    color: var(--text-muted);
+    line-height: 1.7;
+    margin: 0 0 1rem;
+  }
+  .cp-cart-rules__note {
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+  .cp-cart-total__row {
+    display: flex;
+    justify-content: space-between;
+    color: var(--text-secondary);
+    padding: 0.25rem 0;
+  }
+  .cp-cart-total__grand {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.5rem;
+    color: var(--text-primary);
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .cp-checkout-form {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+  }
+  .cp-checkout-form h2 {
+    font-family: var(--font-display);
+    font-size: var(--text-h3);
+    color: var(--text-primary);
+    margin: 0;
+  }
+  .cp-checkout-form input,
+  .cp-checkout-form select,
+  .cp-checkout-form textarea {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    border-radius: var(--radius-control);
+    border: 1.5px solid var(--border-interactive);
+    background: var(--bg-sunken);
+    color: var(--text-primary);
+    font-size: var(--text-body);
+    font-family: var(--font-body);
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+  .cp-checkout-form textarea {
+    min-height: 6rem;
+    resize: vertical;
+  }
+  .cp-disclaimer {
+    font-size: var(--text-caption);
+    color: var(--text-muted);
+    margin: 0;
+  }
+  .cp-form-message {
+    font-size: var(--text-caption);
+    padding: 0.625rem 0.875rem;
+    border-radius: var(--radius-control);
+    margin: 0;
+  }
+  .cp-form-message[data-tone='error'] {
+    background: var(--bg-sunken);
+    color: var(--danger-text);
+    border: 1px solid var(--danger-text);
+  }
+  .cp-btn-full {
+    width: 100%;
+    min-height: 48px;
+    background: var(--terracotta-strong);
+    color: var(--text-on-terracotta);
+    border: none;
+    border-radius: var(--radius-control);
+    font-weight: 600;
+    font-size: var(--text-body);
+    cursor: pointer;
+  }
+  .cp-btn-full:hover {
+    filter: brightness(0.94);
+  }
+  .cp-btn-full:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .cp-btn-outline {
+    display: inline-block;
+    padding: 0.625rem 1.25rem;
+    border-radius: var(--radius-control);
+    border: 1.5px solid var(--terracotta-text);
+    color: var(--terracotta-text);
+    text-decoration: none;
+    font-weight: 500;
+    margin-top: 0.5rem;
+  }
+
+  .cp-cart-success {
+    /* Same --terracotta-text-on-sunken contrast issue as .cp-cart-empty
+       above (its "Return Home" link is also .cp-btn-outline). */
+    text-align: center;
+    padding: 3rem 1.5rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+  }
+  .cp-cart-success h2 {
+    font-family: var(--font-display);
+    color: var(--text-primary);
+  }
+</style>

@@ -1,0 +1,13 @@
+dist/
+.astro/
+node_modules/
+legacy-site/
+.wrangler/
+package-lock.json
+
+# Documentation content — not application source. Deliberately out of
+# Prettier's scope so formatting can never silently touch approved/
+# authoritative text (CLAUDE.md, the Blueprint, the design handoff) or
+# the migration manifest.
+*.md
+docs/

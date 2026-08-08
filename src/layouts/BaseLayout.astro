@@ -1,0 +1,195 @@
+---
+/**
+ * Shared page shell — design handoff §19/§23/§25/§26.
+ * Skip-link, theme bootstrap (no flash of wrong theme), Nav + Footer,
+ * design tokens loaded once here for every page.
+ *
+ * SEO (canonical/OG/structured data): every page passes its own `title`
+ * and `description` (already required); `canonical` defaults to the
+ * current URL if not given, `ogImage` to the shared brand-logo PNG
+ * (public/brand/logo-og.png — the same PNG logo already used across the
+ * legacy site, not a new asset). `structuredData` accepts one or more
+ * JSON-LD objects; the Organization+WebSite block is site-wide and
+ * always included, page-specific data (BreadcrumbList, Product, etc.)
+ * is passed in per-page. `noindex` is for pages that should never be
+ * indexed even though they resolve with a 200. Deliberately NOT
+ * defaulted from Astro.locals.indexable here: that would be correct for
+ * on-demand routes (middleware runs per-request, before the page
+ * renders) but wrong for prerendered/static routes, whose HTML is
+ * baked once at *build* time — Astro middleware doesn't run during
+ * prerendering, so `Astro.locals.indexable` would be permanently
+ * undefined in that HTML regardless of which environment later serves
+ * it, which would defeat "production builds must retain indexable
+ * behavior" the moment a real production build exists. The
+ * X-Robots-Tag response header (src/middleware.ts) is the authoritative,
+ * environment-aware signal instead — it wraps every response, static or
+ * on-demand, at actual request time, and search engines treat it as
+ * equivalent to this meta tag. This prop stays available for the one
+ * case that's genuinely a build-time constant regardless of environment
+ * (the profile 404 case, passed explicitly).
+ */
+import '../styles/tokens.css';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+  canonical?: string;
+  ogImage?: string;
+  ogType?: 'website' | 'article' | 'product';
+  noindex?: boolean;
+  structuredData?: Record<string, unknown> | Record<string, unknown>[];
+  /** Skips the public Nav/Footer — used only by the /admin surface,
+   * which has its own AdminNav (src/components/admin/AdminNav.astro)
+   * and no public-site footer. Everything else here (theme bootstrap,
+   * meta/OG tags, skip-link, tokens.css, focus/reduced-motion rules)
+   * still applies — a single source of truth for the page shell rather
+   * than a second, duplicated <html> boilerplate for admin pages. */
+  hideChrome?: boolean;
+}
+
+const {
+  title,
+  description = 'Cloud Peptides research platform.',
+  canonical = new URL(Astro.url.pathname, Astro.site).toString(),
+  ogImage = new URL('/brand/logo-og.png', Astro.site).toString(),
+  ogType = 'website',
+  noindex = false,
+  structuredData,
+  hideChrome = false,
+} = Astro.props;
+
+const ORG_WEBSITE_JSONLD = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      name: 'Cloud Peptides',
+      url: Astro.site?.toString(),
+      logo: new URL('/brand/logo-og.png', Astro.site).toString(),
+    },
+    {
+      '@type': 'WebSite',
+      name: 'Cloud Peptides',
+      url: Astro.site?.toString(),
+    },
+  ],
+};
+
+const jsonLdBlocks = [
+  ORG_WEBSITE_JSONLD,
+  ...(structuredData ? (Array.isArray(structuredData) ? structuredData : [structuredData]) : []),
+];
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="icon" type="image/svg+xml" href="/brand/logo-favicon.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <title>{title} | Cloud Peptides</title>
+
+    <!-- Open Graph / social — design handoff-approved brand mark only. -->
+    <meta property="og:site_name" content="Cloud Peptides" />
+    <meta property="og:title" content={`${title} | Cloud Peptides`} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:image" content={ogImage} />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={`${title} | Cloud Peptides`} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+
+    {
+      jsonLdBlocks.map((block) => (
+        <script
+          is:inline
+          type="application/ld+json"
+          nonce={Astro.locals.cspNonce}
+          set:html={JSON.stringify(block)}
+        />
+      ))
+    }
+
+    <!-- Design handoff §16: Fraunces (display), IBM Plex Sans (body), IBM
+         Plex Mono (data/technical). Loaded once here for every page. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap"
+    />
+    <script is:inline nonce={Astro.locals.cspNonce}>
+      // Set the theme before first paint to avoid a flash of the wrong
+      // theme. The full toggle interaction is wired later by
+      // src/scripts/theme-toggle.ts once the DOM (and toggle buttons)
+      // actually exist. Default is always light — system
+      // prefers-color-scheme is deliberately not consulted, only an
+      // explicit stored choice can select dark (matches src/lib/theme.ts).
+      (function () {
+        const stored = localStorage.getItem('cp-theme');
+        if (stored === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <a href="#main-content" class="cp-skip-link">Skip to content</a>
+    {
+      !hideChrome && (
+        <Nav
+          links={[
+            { label: 'Home', href: '/' },
+            { label: 'Research', href: '/research/compounds' },
+            { label: 'Shop', href: '/shop' },
+            { label: 'About', href: '/about' },
+            { label: 'Contact', href: '/contact' },
+          ]}
+        />
+      )
+    }
+    <main id="main-content">
+      <slot />
+    </main>
+    {!hideChrome && <Footer />}
+    <script>
+      import '../scripts/theme-toggle.ts';
+      import '../scripts/cart-badge.ts';
+    </script>
+  </body>
+</html>
+
+<style is:global>
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+  }
+
+  .cp-skip-link {
+    position: absolute;
+    top: -100%;
+    left: 0;
+    z-index: 100;
+    background: var(--primary);
+    color: var(--text-on-primary);
+    padding: 0.75rem 1.25rem;
+    border-radius: 0 0 var(--radius-control) 0;
+    text-decoration: none;
+  }
+
+  .cp-skip-link:focus {
+    top: 0;
+  }
+</style>

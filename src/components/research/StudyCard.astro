@@ -1,0 +1,246 @@
+---
+/**
+ * Study/citation card — design handoff §28: "title, design, sample
+ * size, peer-review status, DOI/identifier in mono type, relationship
+ * tag (directly supports/contradicts/etc.), access date." Extended in
+ * Phase 3 to also surface population/species, outcomes, limitations, and
+ * DOI/PMID/trial-ID identifier chips (source_identifiers) — the fields
+ * the research-database integration explicitly requires be shown, not
+ * just stored.
+ */
+import type { Source, Study } from '../../lib/database.types';
+import Card from '../ui/Card.astro';
+
+interface Props {
+  source: Source;
+  study?: Study | null;
+  relationship?: string;
+  dateAccessed?: string;
+}
+const { source, study, relationship, dateAccessed } = Astro.props;
+
+const IDENTIFIER_LABELS: Record<string, string> = {
+  doi: 'DOI',
+  pmid: 'PMID',
+  nct_number: 'Trial ID',
+  patent_number: 'Patent',
+  cas_number: 'CAS',
+  pubchem_cid: 'PubChem CID',
+  other: 'ID',
+};
+
+function identifierHref(type: string, value: string): string | null {
+  if (type === 'doi') return `https://doi.org/${value}`;
+  if (type === 'pmid') return `https://pubmed.ncbi.nlm.nih.gov/${value}/`;
+  if (type === 'nct_number') return `https://clinicaltrials.gov/study/${value}`;
+  return null;
+}
+
+const identifiers = source.source_identifiers ?? [];
+const outcomes = study?.primary_outcomes || study?.results_summary;
+---
+
+<Card class="cp-study-card">
+  <h3 class="cp-study-card__title">
+    <a href={source.url} target="_blank" rel="noopener noreferrer">{source.title}</a>
+  </h3>
+  {
+    source.retraction_status !== 'none' && (
+      <p class="cp-study-card__retraction" data-status={source.retraction_status}>
+        {source.retraction_status === 'retracted'
+          ? 'Retracted'
+          : source.retraction_status.replace(/_/g, ' ')}
+        {source.retraction_note ? ` — ${source.retraction_note}` : ''}
+      </p>
+    )
+  }
+
+  {
+    identifiers.length > 0 && (
+      <div class="cp-study-card__identifiers">
+        {identifiers.map((id) => {
+          const href = identifierHref(id.identifier_type, id.identifier_value);
+          const label = IDENTIFIER_LABELS[id.identifier_type] ?? id.identifier_type;
+          return href ? (
+            <a class="cp-study-card__id-chip" href={href} target="_blank" rel="noopener noreferrer">
+              {label}: {id.identifier_value}
+            </a>
+          ) : (
+            <span class="cp-study-card__id-chip">
+              {label}: {id.identifier_value}
+            </span>
+          );
+        })}
+      </div>
+    )
+  }
+
+  <dl class="cp-study-card__meta">
+    {
+      study?.study_design && (
+        <>
+          <dt>Design</dt>
+          <dd>{study.study_design.replace(/_/g, ' ')}</dd>
+        </>
+      )
+    }
+    {
+      study?.population && (
+        <>
+          <dt>Population</dt>
+          <dd>{study.population}</dd>
+        </>
+      )
+    }
+    {
+      study?.sample_size && (
+        <>
+          <dt>Sample size</dt>
+          <dd>{study.sample_size}</dd>
+        </>
+      )
+    }
+    {
+      study?.comparator && (
+        <>
+          <dt>Comparator</dt>
+          <dd>{study.comparator}</dd>
+        </>
+      )
+    }
+    {
+      study?.route && (
+        <>
+          <dt>Route</dt>
+          <dd>{study.route}</dd>
+        </>
+      )
+    }
+    {
+      study?.duration && (
+        <>
+          <dt>Duration</dt>
+          <dd>{study.duration}</dd>
+        </>
+      )
+    }
+    {
+      study?.registration_number && (
+        <>
+          <dt>Registration</dt>
+          <dd>{study.registration_number}</dd>
+        </>
+      )
+    }
+    {
+      study?.peer_review_status && (
+        <>
+          <dt>Peer review</dt>
+          <dd>{study.peer_review_status.replace(/_/g, ' ')}</dd>
+        </>
+      )
+    }
+    {
+      relationship && (
+        <>
+          <dt>Relationship</dt>
+          <dd>{relationship.replace(/_/g, ' ')}</dd>
+        </>
+      )
+    }
+    {
+      dateAccessed && (
+        <>
+          <dt>Accessed</dt>
+          <dd>{dateAccessed}</dd>
+        </>
+      )
+    }
+  </dl>
+
+  {
+    outcomes && (
+      <p class="cp-study-card__prose">
+        <span class="cp-study-card__prose-label">Outcomes: </span>
+        {outcomes}
+      </p>
+    )
+  }
+  {
+    study?.limitations && (
+      <p class="cp-study-card__prose cp-study-card__prose--limitations">
+        <span class="cp-study-card__prose-label">Limitations: </span>
+        {study.limitations}
+      </p>
+    )
+  }
+</Card>
+
+<style>
+  .cp-study-card__title {
+    margin: 0 0 0.5rem;
+    font-family: var(--font-body);
+    font-size: 1rem;
+  }
+  .cp-study-card__title a {
+    color: var(--text-primary);
+  }
+  .cp-study-card__retraction {
+    margin: 0 0 0.5rem;
+    padding: 0.375rem 0.625rem;
+    background: color-mix(in srgb, var(--danger-text) 12%, transparent);
+    color: var(--danger-text);
+    border-radius: var(--radius-control);
+    font-size: var(--text-caption);
+    font-weight: 600;
+    text-transform: capitalize;
+  }
+  .cp-study-card__identifiers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin-bottom: 0.625rem;
+  }
+  .cp-study-card__id-chip {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--radius-control);
+    background: var(--bg-sunken);
+    border: 1px solid var(--border-subtle);
+    color: var(--info-text);
+    text-decoration: none;
+  }
+  a.cp-study-card__id-chip:hover {
+    text-decoration: underline;
+  }
+  .cp-study-card__meta {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.25rem 0.75rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-data);
+  }
+  .cp-study-card__meta dt {
+    color: var(--text-muted);
+  }
+  .cp-study-card__meta dd {
+    margin: 0;
+    color: var(--text-secondary);
+  }
+  .cp-study-card__prose {
+    margin: 0.625rem 0 0;
+    font-size: var(--text-caption);
+    color: var(--text-secondary);
+    line-height: var(--text-body--line-height);
+  }
+  .cp-study-card__prose-label {
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+  .cp-study-card__prose--limitations {
+    color: var(--text-muted);
+    font-style: italic;
+  }
+</style>

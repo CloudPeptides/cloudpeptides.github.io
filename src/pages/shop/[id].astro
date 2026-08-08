@@ -1,0 +1,326 @@
+---
+/**
+ * Product detail — rebuild of legacy-site/product.html + js/product.js.
+ * Static: one prerendered page per catalog product (47 total), same
+ * approach as the legacy site's own hardcoded catalog, just resolved at
+ * build time via getStaticPaths instead of a client-side ?id= query
+ * param lookup.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { PRODUCTS } from '../../lib/shop-products';
+import { formatMoney } from '../../lib/shop';
+import { COMMERCE_ENABLED } from '../../lib/launch-config';
+
+export function getStaticPaths() {
+  return PRODUCTS.map((product) => ({
+    params: { id: product.id },
+    props: { product },
+  }));
+}
+
+const { product } = Astro.props;
+
+const prices = product.options.map((o) => o.price);
+const lowPrice = Math.min(...prices);
+const highPrice = Math.max(...prices);
+
+// Product + (Aggregate)Offer only — truthful fields alone: real name,
+// real price range, no fabricated availability/rating/review (none of
+// that data exists — CLAUDE.md: never invent inventory/reviews).
+// Research-platform-first launch: the `offers` block itself is a
+// purchasability claim (schema.org readers/crawlers reasonably treat a
+// Product's presence of `offers` as "this can be bought"), so it's
+// omitted entirely while commerce is disabled — the Product entity
+// (name/category) stays as plain, honest catalog-preview description,
+// but nothing here asserts an active offer to sell.
+const productJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: product.name,
+  category: product.category,
+  ...(COMMERCE_ENABLED
+    ? product.options.length > 1
+      ? {
+          offers: {
+            '@type': 'AggregateOffer',
+            priceCurrency: 'USD',
+            lowPrice,
+            highPrice,
+            offerCount: product.options.length,
+          },
+        }
+      : {
+          offers: {
+            '@type': 'Offer',
+            priceCurrency: 'USD',
+            price: lowPrice,
+          },
+        }
+    : {}),
+};
+
+const breadcrumbJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: new URL('/', Astro.site).toString() },
+    {
+      '@type': 'ListItem',
+      position: 2,
+      name: 'Shop',
+      item: new URL('/shop', Astro.site).toString(),
+    },
+    {
+      '@type': 'ListItem',
+      position: 3,
+      name: product.name,
+      item: new URL(`/shop/${product.id}`, Astro.site).toString(),
+    },
+  ],
+};
+---
+
+<BaseLayout
+  title={product.name}
+  description={`${product.name} — 10 vial research kit, ${product.options.length} mg option${product.options.length === 1 ? '' : 's'} available. For laboratory research use only.`}
+  ogType="product"
+  structuredData={[productJsonLd, breadcrumbJsonLd]}
+>
+  <section class="cp-product-page-container">
+    <nav class="cp-breadcrumb" aria-label="Breadcrumb">
+      <a href="/shop">Shop</a>
+      <span aria-hidden="true">/</span>
+      <span aria-current="page">{product.name}</span>
+    </nav>
+
+    <div class="cp-product-page">
+      <div class="cp-product-vial" aria-hidden="true">
+        <svg viewBox="0 0 100 180" width="100%" height="100%">
+          <rect
+            x="30"
+            y="20"
+            width="40"
+            height="140"
+            rx="16"
+            fill="none"
+            stroke="var(--border-interactive)"
+            stroke-width="2"></rect>
+          <rect
+            x="38"
+            y="6"
+            width="24"
+            height="20"
+            rx="4"
+            fill="none"
+            stroke="var(--border-interactive)"
+            stroke-width="2"></rect>
+        </svg>
+      </div>
+
+      <div class="cp-product-info">
+        <h1 id="productName">{product.name}</h1>
+        <p class="cp-product-note">
+          Batch-produced peptides tested by JANOSHIK.<br />
+          Supplied directly from the lab.
+        </p>
+
+        {
+          !COMMERCE_ENABLED && (
+            <p class="cp-coming-soon-banner">
+              Coming soon — ordering is not yet available. Pricing shown below is informational
+              only.
+            </p>
+          )
+        }
+
+        <div class="cp-selector">
+          <label for="optionSelect">Select MG</label>
+          <select id="optionSelect" data-option-select>
+            {
+              product.options.map((option, i) => (
+                <option value={i}>
+                  {option.spec} • {option.count} vial kit • {formatMoney(option.price)}
+                </option>
+              ))
+            }
+          </select>
+          <div class="cp-detail-price" id="price" data-price>
+            {formatMoney(product.options[0].price)}
+          </div>
+          <p id="codeLine" class="cp-disclaimer" data-code-line>
+            Code: {product.options[0].code} • {product.category}
+          </p>
+          <button
+            type="button"
+            class="cp-btn-full"
+            id="addToCart"
+            data-add-to-cart
+            disabled={!COMMERCE_ENABLED}
+            aria-disabled={!COMMERCE_ENABLED}
+          >
+            {COMMERCE_ENABLED ? 'Add To Cart' : 'Coming Soon'}
+          </button>
+          {
+            COMMERCE_ENABLED && (
+              <p class="cp-add-feedback" data-add-feedback role="status" aria-live="polite" hidden>
+                Added to cart.
+              </p>
+            )
+          }
+        </div>
+
+        <p class="cp-disclaimer">
+          Research use only. Not for human consumption. No peptide information or medical claims are
+          provided on this page. See our <a href="/shop-terms">Shop Terms</a>.
+        </p>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script
+  is:inline
+  nonce={Astro.locals.cspNonce}
+  define:vars={{ productId: product.id, productName: product.name, options: product.options }}
+>
+  window.__cpProduct = { id: productId, name: productName, options };
+</script>
+<script>
+  import '../../scripts/product-page.ts';
+</script>
+
+<style>
+  .cp-product-page-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 5rem;
+  }
+  .cp-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: var(--text-caption);
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+  }
+  .cp-breadcrumb a {
+    color: var(--text-muted);
+    text-decoration: none;
+  }
+  .cp-breadcrumb a:hover {
+    color: var(--terracotta-text);
+    text-decoration: underline;
+  }
+  .cp-breadcrumb [aria-current='page'] {
+    color: var(--text-secondary);
+  }
+
+  .cp-product-page {
+    display: grid;
+    grid-template-columns: 1fr 1.3fr;
+    gap: 2.5rem;
+    align-items: start;
+  }
+  .cp-product-vial {
+    background: var(--bg-sunken);
+    border-radius: var(--radius-card);
+    padding: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 16rem;
+  }
+  .cp-product-info h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: var(--text-h1);
+    color: var(--text-primary);
+    margin: 0 0 0.5rem;
+  }
+  .cp-product-note {
+    color: var(--text-secondary);
+    font-size: var(--text-caption);
+    line-height: 1.5;
+    margin: 0 0 1.5rem;
+  }
+  .cp-selector {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+  .cp-selector label {
+    display: block;
+    font-size: var(--text-caption);
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 0.375rem;
+  }
+  .cp-selector select {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    border-radius: var(--radius-control);
+    border: 1.5px solid var(--border-interactive);
+    background: var(--bg-sunken);
+    color: var(--text-primary);
+    font-size: var(--text-body);
+    min-height: 44px;
+    margin-bottom: 0.75rem;
+  }
+  .cp-detail-price {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.75rem;
+    color: var(--terracotta-text);
+    margin-bottom: 0.375rem;
+  }
+  .cp-disclaimer {
+    font-size: var(--text-caption);
+    color: var(--text-muted);
+    margin: 0.5rem 0;
+  }
+  /* Underlined always, not just on hover — axe's link-in-text-block rule
+     needs a non-color distinguisher since this link sits in plain text. */
+  .cp-disclaimer a {
+    color: var(--terracotta-text);
+    text-decoration: underline;
+  }
+  .cp-coming-soon-banner {
+    font-size: var(--text-caption);
+    font-weight: 500;
+    color: var(--warning-text);
+    background: var(--bg-sunken);
+    border-left: 3px solid var(--warning-text);
+    padding: 0.75rem 1rem;
+    margin: 0 0 1.25rem;
+  }
+  .cp-btn-full {
+    width: 100%;
+    min-height: 48px;
+    background: var(--terracotta-strong);
+    color: var(--text-on-terracotta);
+    border: none;
+    border-radius: var(--radius-control);
+    font-weight: 600;
+    font-size: var(--text-body);
+    cursor: pointer;
+    margin-top: 0.5rem;
+  }
+  .cp-btn-full:hover {
+    filter: brightness(0.94);
+  }
+  .cp-add-feedback {
+    color: var(--success-text);
+    font-size: var(--text-caption);
+    font-weight: 500;
+    margin: 0.625rem 0 0;
+    text-align: center;
+  }
+
+  @media (max-width: 760px) {
+    .cp-product-page {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

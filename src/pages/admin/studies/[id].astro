@@ -1,0 +1,163 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { createUserScopedClient } from '../../../lib/auth';
+import { getStudyForEdit } from '../../../lib/admin/queries';
+import { PEER_REVIEW_STATUSES, STUDY_DESIGNS } from '../../../lib/admin/validation';
+
+const session = Astro.locals.session!;
+const client = createUserScopedClient(session.accessToken);
+const id = Astro.params.id!;
+const study = await getStudyForEdit(client, id);
+if (!study) return new Response(null, { status: 404 });
+---
+
+<AdminLayout title="Edit Study">
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">Editorial</p>
+      <h1>Edit study</h1>
+    </div>
+    <a href="/admin/studies" class="cp-admin-btn cp-admin-btn--secondary">&larr; Back to studies</a>
+  </div>
+
+  <div class="cp-admin-section">
+    <form data-admin-form data-table="studies" data-method="PATCH" class="cp-admin-form">
+      <input type="hidden" name="id" value={study.id} />
+      <div class="cp-admin-form-grid">
+        <div class="cp-admin-field">
+          <label for="study_design">Design</label>
+          <select id="study_design" name="study_design">
+            {
+              STUDY_DESIGNS.map((d) => (
+                <option value={d} selected={d === study.study_design}>
+                  {d.replace(/_/g, ' ')}
+                </option>
+              ))
+            }
+          </select>
+        </div>
+        <div class="cp-admin-field">
+          <label for="population">Population</label>
+          <input id="population" name="population" value={study.population ?? ''} />
+        </div>
+        <div class="cp-admin-field">
+          <label for="sample_size">Sample size</label>
+          <input
+            id="sample_size"
+            name="sample_size"
+            type="number"
+            min="0"
+            value={study.sample_size ?? ''}
+          />
+        </div>
+        <div class="cp-admin-field">
+          <label for="peer_review_status">Peer review status</label>
+          <select id="peer_review_status" name="peer_review_status">
+            <option value="" selected={!study.peer_review_status}>not set</option>
+            {
+              PEER_REVIEW_STATUSES.map((p) => (
+                <option value={p} selected={p === study.peer_review_status}>
+                  {p.replace(/_/g, ' ')}
+                </option>
+              ))
+            }
+          </select>
+        </div>
+        <div class="cp-admin-field">
+          <label for="comparator">Comparator</label>
+          <input id="comparator" name="comparator" value={study.comparator ?? ''} />
+        </div>
+        <div class="cp-admin-field">
+          <label for="intervention">Intervention</label>
+          <input id="intervention" name="intervention" value={study.intervention ?? ''} />
+        </div>
+        <div class="cp-admin-field">
+          <label for="route">Route</label>
+          <input id="route" name="route" value={study.route ?? ''} />
+        </div>
+        <div class="cp-admin-field">
+          <label for="duration">Duration</label>
+          <input id="duration" name="duration" value={study.duration ?? ''} />
+        </div>
+        <div class="cp-admin-field">
+          <label for="registration_number">Registration number</label>
+          <input
+            id="registration_number"
+            name="registration_number"
+            value={study.registration_number ?? ''}
+          />
+        </div>
+      </div>
+
+      <div class="cp-admin-field">
+        <label for="published_research_dose">Published research dose</label>
+        <p class="cp-admin-field__hint">
+          Contextualized study data only — never usage instructions (CLAUDE.md §6).
+        </p>
+        <input
+          id="published_research_dose"
+          name="published_research_dose"
+          value={study.published_research_dose ?? ''}
+        />
+      </div>
+      <div class="cp-admin-field">
+        <label for="primary_outcomes">Primary outcomes</label>
+        <textarea id="primary_outcomes" name="primary_outcomes"
+          >{study.primary_outcomes ?? ''}</textarea
+        >
+      </div>
+      <div class="cp-admin-field">
+        <label for="secondary_outcomes">Secondary outcomes</label>
+        <textarea id="secondary_outcomes" name="secondary_outcomes"
+          >{study.secondary_outcomes ?? ''}</textarea
+        >
+      </div>
+      <div class="cp-admin-field">
+        <label for="results_summary">Results summary</label>
+        <textarea id="results_summary" name="results_summary"
+          >{study.results_summary ?? ''}</textarea
+        >
+      </div>
+      <div class="cp-admin-field">
+        <label for="limitations">Limitations</label>
+        <textarea id="limitations" name="limitations">{study.limitations ?? ''}</textarea>
+      </div>
+      <div class="cp-admin-form-grid">
+        <div class="cp-admin-field">
+          <label for="funding_source">Funding source</label>
+          <input id="funding_source" name="funding_source" value={study.funding_source ?? ''} />
+        </div>
+        <div class="cp-admin-field">
+          <label for="conflicts_of_interest">Conflicts of interest</label>
+          <input
+            id="conflicts_of_interest"
+            name="conflicts_of_interest"
+            value={study.conflicts_of_interest ?? ''}
+          />
+        </div>
+      </div>
+
+      <p class="cp-admin-form-message" data-tone="error" data-form-error hidden></p>
+      <div class="cp-admin-form-actions">
+        <button type="submit" class="cp-admin-btn cp-admin-btn--primary">Save study</button>
+        <button
+          type="button"
+          class="cp-admin-btn cp-admin-btn--danger"
+          data-admin-delete
+          data-table="studies"
+          data-key="id"
+          data-key-value={study.id}
+          data-confirm="Delete this study? Any source linking to it will lose that link."
+        >
+          Delete study
+        </button>
+      </div>
+    </form>
+  </div>
+</AdminLayout>
+
+<script>
+  import '../../../scripts/admin-form.ts';
+</script>

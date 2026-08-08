@@ -1,0 +1,98 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "compatibility_date": "2026-08-06",
+  "compatibility_flags": ["global_fetch_strictly_public"],
+  // PREPARED, NOT YET DEPLOYED — updated 2026-08-08. The `production`
+  // GitHub Environment now exists (Settings → Environments →
+  // production: required reviewer CloudPeptides, self-review off,
+  // admin bypass off, main-branch-only deploys) and the
+  // deploy-production job in .github/workflows/ci.yml is gated behind
+  // it. This file existing, and even this file being deployed, still
+  // requires that gate: a push to `main` queues the run, but no step
+  // in it executes until the required reviewer explicitly approves in
+  // the GitHub Actions UI. The `routes` block below is no longer
+  // commented out (see its own comment) — approving the waiting run
+  // is what actually attaches cloudpeptides.org, not this commit.
+  //
+  // cloudpeptides.org was purchased 2026-08-07; its nameservers are
+  // propagating to Cloudflare. See docs/planning/
+  // production-cutover-plan.md §3/§6 and
+  // production-cutover-checklist.md Phase D for the full remaining
+  // steps and why each requires explicit approval (CLAUDE.md §9).
+  //
+  // Zero-cost database architecture, decided 2026-08-08: this Worker
+  // uses the SAME Supabase project as staging (`riuxojncmnhogclrhoys`)
+  // — there is no separate production Supabase project and none is
+  // planned (docs/planning/production-cutover-plan.md §1). Its
+  // PUBLIC_SUPABASE_URL/PUBLIC_SUPABASE_ANON_KEY/
+  // SUPABASE_SERVICE_ROLE_KEY are therefore the identical values
+  // configured on the staging Worker, not distinct per-environment
+  // ones — see §4 of that same document for exactly what to set and
+  // how. This file deliberately never sets STAGING_READ_ONLY: that var
+  // only exists on the staging Worker's config (wrangler.jsonc) to
+  // gate ITS writes once production is live; leaving it unset here
+  // means this Worker's own isStagingReadOnly() check (were it ever
+  // reached, which it won't be — src/lib/site-env.ts's default is
+  // false for anything but the exact staging Worker opting in) stays
+  // false, i.e. production is always writable, as it must be.
+  "name": "cloudpeptides",
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  // Production should not also be reachable at a *.workers.dev URL —
+  // that's the staging Worker's identity, not this one. One fewer
+  // indexable duplicate surface, and it keeps "which URL is real
+  // production" unambiguous.
+  "workers_dev": false,
+  // Uncommented 2026-08-08 as part of production-cutover-checklist.md
+  // Phase D — the actual attachment only happens when this config is
+  // deployed, which only happens if the protected `production`
+  // GitHub Environment's required reviewer (CloudPeptides) approves
+  // the waiting deploy-production run. Nothing before that approval
+  // click touches DNS.
+  //
+  // Decided 2026-08-08: `www.cloudpeptides.org` permanently redirects
+  // to the apex — it is deliberately NOT a route here. A Worker route
+  // would mean www traffic gets fully rendered by this app just to
+  // redirect (or, worse, silently serve duplicate content if a future
+  // edit forgets the redirect), and it would burn Worker request time
+  // for something that never needs any app logic. The redirect belongs
+  // at the Cloudflare zone level instead — a Redirect Rule (Rules →
+  // Redirect Rules → "www.cloudpeptides.org/*" → 301 →
+  // "https://cloudpeptides.org/${1}") or an equivalent Bulk Redirect.
+  // **Still not created as of this commit** — it's a Cloudflare
+  // dashboard/zone-level action, independent of this file and of the
+  // GitHub-gated Worker deploy, so it isn't done by pushing this
+  // config or by approving the pending deployment. See
+  // production-cutover-checklist.md Phase D for the exact steps.
+  //
+  "routes": [{ "pattern": "cloudpeptides.org/*", "custom_domain": true }],
+  "assets": {
+    "directory": "./dist/client",
+    "binding": "ASSETS",
+    // Same reasoning as staging's wrangler.jsonc — every response,
+    // static or on-demand, must pass through src/middleware.ts for the
+    // security headers/HSTS to apply uniformly.
+    "run_worker_first": true,
+    // Matches staging's fix for the same confirmed Cloudflare Workers
+    // Static Assets behavior (src/middleware.ts's header comment): a
+    // legacy `.html` path with no matching static asset would
+    // otherwise be intercepted and served the static 404.html directly,
+    // before the Worker (and its redirect routes,
+    // src/pages/product.html.astro / [legacy].html.astro) ever runs.
+    // Needed here for the exact same reason, not copied blindly.
+    "not_found_handling": "none",
+  },
+  "observability": {
+    "enabled": true,
+  },
+  // Production's OWN rate-limit binding — a distinct namespace_id from
+  // staging's "1001", so the two environments' request counts never
+  // share a bucket. Cloudflare provisions it automatically on first
+  // deploy to this config, same as staging's.
+  "ratelimits": [
+    {
+      "name": "FORM_RATE_LIMITER",
+      "namespace_id": "2001",
+      "simple": { "limit": 5, "period": 60 },
+    },
+  ],
+}

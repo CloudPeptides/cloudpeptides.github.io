@@ -1,0 +1,96 @@
+---
+/**
+ * Base button primitive — design handoff §22.
+ * - primary: solid forest fill, one per view
+ * - secondary: outlined, --border-interactive
+ * - tertiary: text + underline on hover
+ * - terracotta-strong: reserved for one specific warm affirmative action
+ *   (e.g. "Add to reading list") — never mixed with primary on the same view
+ *
+ * Renders an <a> when `href` is passed, otherwise a <button>.
+ */
+interface Props {
+  variant?: 'primary' | 'secondary' | 'tertiary' | 'terracotta-strong';
+  href?: string;
+  type?: 'button' | 'submit' | 'reset';
+  class?: string;
+}
+
+const { variant = 'primary', href, type = 'button', class: className } = Astro.props;
+const Tag = href ? 'a' : 'button';
+---
+
+<Tag
+  href={href}
+  type={href ? undefined : type}
+  class:list={['cp-btn', `cp-btn--${variant}`, className]}
+>
+  <slot />
+</Tag>
+
+<style>
+  .cp-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: var(--text-body);
+    padding: 0.625rem 1.25rem;
+    border-radius: var(--radius-control);
+    border: 1.5px solid transparent;
+    cursor: pointer;
+    text-decoration: none;
+    transition:
+      background-color 150ms ease-out,
+      border-color 150ms ease-out,
+      color 150ms ease-out;
+  }
+
+  .cp-btn--primary {
+    background: var(--primary);
+    color: var(--text-on-primary);
+  }
+  .cp-btn--primary:hover {
+    background: var(--primary-hover);
+  }
+
+  .cp-btn--secondary {
+    background: transparent;
+    color: var(--text-primary);
+    border-color: var(--border-interactive);
+  }
+  .cp-btn--secondary:hover {
+    background: var(--bg-sunken);
+  }
+  /* Browsers restyle :visited links from their own UA/history state
+     rather than always deferring to the author's theme-aware color —
+     caught live via axe in dark theme against a link this browser
+     profile had actually visited before (confirmed with an unvisited
+     clone rendering correctly without this rule). Explicit here so a
+     real visitor's history can't silently break the theme's contrast. */
+  .cp-btn--secondary:visited {
+    color: var(--text-primary);
+  }
+
+  .cp-btn--tertiary {
+    background: transparent;
+    color: var(--text-primary);
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+  }
+  .cp-btn--tertiary:hover {
+    text-decoration-color: currentColor;
+  }
+
+  .cp-btn--terracotta-strong {
+    background: var(--terracotta-strong);
+    color: var(--text-on-terracotta);
+  }
+  .cp-btn--terracotta-strong:hover {
+    filter: brightness(0.92);
+  }
+</style>

@@ -1,0 +1,231 @@
+---
+/**
+ * Contact page — rebuild of legacy-site/contact.html. Same contact
+ * options (Discord/email/phone) and same form fields (name/email/
+ * message + honeypot), posting to src/pages/api/contact.ts (a
+ * server-side Worker route calling Resend) instead of the legacy
+ * client-side Web3Forms call.
+ */
+export const prerender = false;
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="Contact"
+  description="Reach Cloud Peptides through Discord, email, phone, or the contact form below."
+>
+  <section class="cp-contact-container">
+    <header class="cp-contact-header">
+      <h1>Contact</h1>
+      <p>Reach out through Discord, email, iMessage, WhatsApp, or send us a message below.</p>
+    </header>
+
+    <div class="cp-contact-grid">
+      <div class="cp-contact-options">
+        <h2>Contact Options</h2>
+        <div class="cp-contact-row">
+          <strong>Discord</strong>
+          <a href="https://discord.gg/8pF3AvHgT" target="_blank" rel="noopener noreferrer"
+            >https://discord.gg/8pF3AvHgT</a
+          >
+        </div>
+        <div class="cp-contact-row">
+          <strong>Email</strong>
+          <a href="mailto:info.order.thecloud@proton.me">info.order.thecloud@proton.me</a>
+        </div>
+        <div class="cp-contact-row">
+          <strong>iMessage / WhatsApp</strong>
+          <a href="tel:4434700714">443-470-0714</a>
+        </div>
+      </div>
+
+      <form id="contactForm" class="cp-contact-form">
+        <h2>Send Message</h2>
+
+        <div class="cp-honeypot" aria-hidden="true">
+          <label for="contactHoneypot">Leave this field blank</label>
+          <input id="contactHoneypot" name="website" type="text" tabindex="-1" autocomplete="off" />
+        </div>
+
+        <label for="name" class="cp-visually-hidden">Your name</label>
+        <input type="text" name="name" id="name" required placeholder="Your Name" />
+
+        <label for="email" class="cp-visually-hidden">Your email</label>
+        <input type="email" name="email" id="email" required placeholder="Your Email" />
+
+        <label for="message" class="cp-visually-hidden">Your message</label>
+        <textarea name="message" id="message" required placeholder="Your Message"></textarea>
+
+        <!-- Cloudflare Turnstile — renders only once PUBLIC_TURNSTILE_SITE_KEY
+             is configured (src/scripts/turnstile-widget.ts); the widget
+             auto-injects a hidden cf-turnstile-response field into this
+             form once solved, read by contact-form.ts on submit. -->
+        <div class="cf-turnstile" data-turnstile></div>
+
+        <p class="cp-form-message" data-tone="error" id="contactFormMessage" role="alert" hidden>
+        </p>
+        <p class="cp-form-message" data-tone="success" id="contactFormSuccess" role="status" hidden>
+          Thank you! Your message has been sent successfully. We will get back to you as soon as
+          possible.
+        </p>
+
+        <button class="cp-btn-full" type="submit" id="contactSubmit">Send Message</button>
+
+        <p class="cp-disclaimer">
+          Your message will be sent directly to our support inbox. We typically respond as soon as
+          possible.
+        </p>
+      </form>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import '../scripts/contact-form.ts';
+  import '../scripts/turnstile-widget.ts';
+</script>
+
+<style>
+  .cp-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .cp-honeypot {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+  .cp-contact-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 5rem;
+  }
+  .cp-contact-header {
+    max-width: 40rem;
+    margin-bottom: 2rem;
+  }
+  .cp-contact-header h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: var(--text-h1);
+    color: var(--text-primary);
+    margin: 0 0 0.5rem;
+  }
+  .cp-contact-header p {
+    color: var(--text-secondary);
+    margin: 0;
+  }
+  .cp-contact-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.3fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+  .cp-contact-options,
+  .cp-contact-form {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    padding: 1.5rem;
+  }
+  .cp-contact-options h2,
+  .cp-contact-form h2 {
+    font-family: var(--font-display);
+    font-size: var(--text-h3);
+    color: var(--text-primary);
+    margin: 0 0 1rem;
+  }
+  .cp-contact-row {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .cp-contact-row:last-child {
+    border-bottom: none;
+  }
+  .cp-contact-row strong {
+    display: block;
+    color: var(--text-secondary);
+    font-size: var(--text-caption);
+    margin-bottom: 0.25rem;
+  }
+  .cp-contact-row a {
+    /* Underlined always, not just on hover — axe's link-in-text-block
+       rule needs a non-color distinguisher since these links sit in
+       plain text context (same fix as RegulatoryRow's source links). */
+    color: var(--primary);
+    text-decoration: underline;
+  }
+  .cp-contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+  }
+  .cp-contact-form input,
+  .cp-contact-form textarea {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    border-radius: var(--radius-control);
+    border: 1.5px solid var(--border-interactive);
+    background: var(--bg-sunken);
+    color: var(--text-primary);
+    font-size: var(--text-body);
+    font-family: var(--font-body);
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+  .cp-contact-form textarea {
+    min-height: 8rem;
+    resize: vertical;
+  }
+  .cp-disclaimer {
+    font-size: var(--text-caption);
+    color: var(--text-muted);
+    margin: 0;
+  }
+  .cp-form-message {
+    font-size: var(--text-caption);
+    padding: 0.625rem 0.875rem;
+    border-radius: var(--radius-control);
+    margin: 0;
+  }
+  .cp-form-message[data-tone='error'] {
+    background: var(--bg-sunken);
+    color: var(--danger-text);
+    border: 1px solid var(--danger-text);
+  }
+  .cp-form-message[data-tone='success'] {
+    background: var(--bg-sunken);
+    color: var(--success-text);
+    border: 1px solid var(--success-text);
+  }
+  .cp-btn-full {
+    width: 100%;
+    min-height: 48px;
+    background: var(--primary);
+    color: var(--text-on-primary);
+    border: none;
+    border-radius: var(--radius-control);
+    font-weight: 600;
+    font-size: var(--text-body);
+    cursor: pointer;
+  }
+  .cp-btn-full:hover {
+    background: var(--primary-hover);
+  }
+  .cp-btn-full:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  @media (max-width: 760px) {
+    .cp-contact-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

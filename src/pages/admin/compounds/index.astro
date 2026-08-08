@@ -1,0 +1,150 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Pagination from '../../../components/admin/Pagination.astro';
+import Badge from '../../../components/ui/Badge.astro';
+import ErrorState from '../../../components/ui/ErrorState.astro';
+import { createUserScopedClient } from '../../../lib/auth';
+import { listCompoundsForAdmin } from '../../../lib/admin/queries';
+import { EDITORIAL_STATUSES, ENTITY_KINDS } from '../../../lib/admin/validation';
+import type { EditorialStatus } from '../../../lib/database.types';
+
+const session = Astro.locals.session!;
+const client = createUserScopedClient(session.accessToken);
+
+const params = Astro.url.searchParams;
+const q = params.get('q') ?? '';
+const statusParam = params.get('status') ?? '';
+const entityKindParam = params.get('entityKind') ?? '';
+const page = Math.max(1, Number(params.get('page') ?? '1') || 1);
+const PAGE_SIZE = 25;
+
+const status = (EDITORIAL_STATUSES as readonly string[]).includes(statusParam)
+  ? (statusParam as EditorialStatus)
+  : undefined;
+const entityKind = (ENTITY_KINDS as readonly string[]).includes(entityKindParam)
+  ? entityKindParam
+  : undefined;
+
+let loadError: string | null = null;
+let rows: Awaited<ReturnType<typeof listCompoundsForAdmin>>['rows'] = [];
+let total = 0;
+try {
+  const result = await listCompoundsForAdmin(client, {
+    q: q || undefined,
+    status,
+    entityKind,
+    page,
+    pageSize: PAGE_SIZE,
+  });
+  rows = result.rows;
+  total = result.total;
+} catch {
+  loadError = 'Could not load the compounds list right now.';
+}
+
+const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+const STATUS_TONE: Record<string, 'neutral' | 'info' | 'warning' | 'success'> = {
+  draft: 'neutral',
+  in_review: 'info',
+  published: 'success',
+  archived: 'warning',
+};
+---
+
+<AdminLayout title="Compounds">
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">Editorial</p>
+      <h1>Compounds</h1>
+      <p>Search, filter, and open any compound for editing.</p>
+    </div>
+    <a href="/admin/compounds/new" class="cp-admin-btn cp-admin-btn--primary">+ New compound</a>
+  </div>
+
+  <form method="get" class="cp-admin-toolbar">
+    <input
+      type="search"
+      name="q"
+      placeholder="Search by name or slug…"
+      value={q}
+      aria-label="Search compounds"
+    />
+    <select name="status" aria-label="Filter by status">
+      <option value="">All statuses</option>
+      {
+        EDITORIAL_STATUSES.map((s) => (
+          <option value={s} selected={status === s}>
+            {s.replace('_', ' ')}
+          </option>
+        ))
+      }
+    </select>
+    <select name="entityKind" aria-label="Filter by type">
+      <option value="">All types</option>
+      {
+        ENTITY_KINDS.map((k) => (
+          <option value={k} selected={entityKind === k}>
+            {k.replace(/_/g, ' ')}
+          </option>
+        ))
+      }
+    </select>
+    <button type="submit" class="cp-admin-btn cp-admin-btn--secondary">Apply</button>
+    <span class="cp-admin-toolbar__spacer"></span>
+    <span class="cp-admin-toolbar__count">{total} compound{total === 1 ? '' : 's'}</span>
+  </form>
+
+  {loadError && <ErrorState message={loadError} retryHref="/admin/compounds" />}
+
+  {
+    !loadError && rows.length === 0 && (
+      <div class="cp-admin-section">
+        <p class="cp-admin-empty-row">No compounds match those filters.</p>
+      </div>
+    )
+  }
+
+  {
+    !loadError && rows.length > 0 && (
+      <div class="cp-admin-table-wrap">
+        <table class="cp-admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Slug</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Identity</th>
+              <th>Claims</th>
+              <th>Updated</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((c) => (
+              <tr>
+                <td>
+                  <a href={`/admin/compounds/${c.id}`}>{c.name}</a>
+                </td>
+                <td>{c.slug}</td>
+                <td>{c.entity_kind.replace(/_/g, ' ')}</td>
+                <td>
+                  <Badge tone={STATUS_TONE[c.status] ?? 'neutral'}>
+                    {c.status.replace('_', ' ')}
+                  </Badge>
+                </td>
+                <td>{c.identity_confidence.replace(/_/g, ' ')}</td>
+                <td>{c.claimCount}</td>
+                <td>{new Date(c.updated_at).toLocaleDateString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  <Pagination currentUrl={Astro.url} page={page} totalPages={totalPages} />
+</AdminLayout>
