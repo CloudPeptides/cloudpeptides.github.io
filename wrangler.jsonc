@@ -48,6 +48,26 @@
   "observability": {
     "enabled": true,
   },
+  // Plain vars (not secrets — never sensitive) exposed to the Worker
+  // via `env`, same mechanism as the Worker-secret bindings below but
+  // for values safe to commit in the clear.
+  "vars": {
+    // Shared-database safety boundary (docs/planning/
+    // production-cutover-plan.md §1): staging and this project's
+    // production Worker now point at the SAME Supabase project
+    // (riuxojncmnhogclrhoys — see the "zero-cost architecture"
+    // decision), so this flag is what stops staging from writing to
+    // what is, after cutover, the real production database (src/
+    // middleware.ts enforces it, src/lib/site-env.ts's
+    // isStagingReadOnly() is the actual check). Deliberately "false"
+    // right now — staging is still the only consumer of this database
+    // today, and flipping this on prematurely would lock out ongoing
+    // editorial/admin work for no benefit. Flip to "true" (and
+    // redeploy staging) as one of the cutover-day steps in
+    // docs/planning/production-cutover-checklist.md, once the
+    // production Worker is actually live — never before.
+    "STAGING_READ_ONLY": "false",
+  },
   // Cloudflare-native, per-Worker-isolate-independent rate limiting for
   // the two public form routes (src/pages/api/contact.ts, checkout.ts).
   // A first-class (GA, not "unsafe") wrangler.jsonc field per

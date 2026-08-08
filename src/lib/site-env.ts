@@ -32,3 +32,28 @@ export function isIndexableHost(
   const site = typeof siteUrl === 'string' ? new URL(siteUrl) : siteUrl;
   return requestHostname.toLowerCase() === site.hostname.toLowerCase();
 }
+
+/**
+ * Whether this deployment must refuse every database write — the
+ * safety boundary for the shared-database architecture decided
+ * 2026-08-08 (docs/planning/production-cutover-plan.md §1): staging
+ * and production now point at the *same* Supabase project
+ * (`riuxojncmnhogclrhoys`), so nothing at the database/RLS layer can
+ * tell staging and production traffic apart — a contributor/editor/
+ * admin JWT is equally "real" no matter which Worker issued the
+ * request. This is the application-level control that fills that gap:
+ * once production launches, the staging Worker gets
+ * `STAGING_READ_ONLY=true` (a plain Worker var, not a secret — see
+ * wrangler.jsonc) and src/middleware.ts refuses every non-GET
+ * `/api/admin/*` request regardless of the caller's role.
+ *
+ * Deliberately a plain string-equality check on the raw env value
+ * (never assumed to already be boolean — Cloudflare Worker vars are
+ * always strings) and defaults to `false` (writable) for anything
+ * other than the exact string `"true"`, including unset/undefined —
+ * fails toward "staging behaves as it does today," not toward
+ * silently locking out ongoing editorial work before cutover.
+ */
+export function isStagingReadOnly(rawValue: string | undefined): boolean {
+  return rawValue === 'true';
+}

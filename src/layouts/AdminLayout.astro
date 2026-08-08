@@ -25,6 +25,14 @@ if (!session) {
   <div class="cp-admin-shell">
     <AdminNav role={session.role} email={session.email} />
     <main class="cp-admin-main">
+      {
+        Astro.locals.stagingReadOnly && (
+          <p class="cp-admin-readonly-banner" role="status">
+            <strong>Read-only staging.</strong> This deployment shares its database with production
+            and cannot save changes here — make edits on the production site.
+          </p>
+        )
+      }
       <slot />
     </main>
   </div>
@@ -43,6 +51,15 @@ if (!session) {
     padding: 1.75rem 2rem 4rem;
     max-width: 72rem;
     width: 100%;
+  }
+  .cp-admin-readonly-banner {
+    background: color-mix(in srgb, var(--warning-text) 12%, var(--bg-elevated));
+    border: 1.5px solid var(--warning-text);
+    color: var(--warning-text);
+    border-radius: var(--radius-control);
+    padding: 0.75rem 1rem;
+    margin: 0 0 1.25rem;
+    font-size: var(--text-caption);
   }
   @media (max-width: 860px) {
     .cp-admin-shell {

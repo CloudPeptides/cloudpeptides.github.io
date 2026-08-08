@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isIndexableHost } from '../../src/lib/site-env';
+import { isIndexableHost, isStagingReadOnly } from '../../src/lib/site-env';
 
 // Locks in the exact guarantee this domain-preparation phase depends
 // on: astro.config.mjs's `site` can safely be set to the real
@@ -44,5 +44,32 @@ describe('isIndexableHost', () => {
 
   it('accepts a URL instance as well as a string for site', () => {
     expect(isIndexableHost('cloudpeptides.org', new URL(PRODUCTION_SITE))).toBe(true);
+  });
+});
+
+// The shared-database safety boundary (docs/planning/
+// production-cutover-plan.md §1) — must fail toward "writable" (today's
+// behavior) for anything except the exact opt-in string, since Worker
+// vars are always strings and a typo here would otherwise silently
+// disable the read-only protection instead of enabling it.
+describe('isStagingReadOnly', () => {
+  it('is true only for the exact string "true"', () => {
+    expect(isStagingReadOnly('true')).toBe(true);
+  });
+
+  it('is false when unset', () => {
+    expect(isStagingReadOnly(undefined)).toBe(false);
+  });
+
+  it('is false for "false"', () => {
+    expect(isStagingReadOnly('false')).toBe(false);
+  });
+
+  it('fails safe to false for near-miss values, not silently true', () => {
+    expect(isStagingReadOnly('True')).toBe(false);
+    expect(isStagingReadOnly('TRUE')).toBe(false);
+    expect(isStagingReadOnly('1')).toBe(false);
+    expect(isStagingReadOnly('yes')).toBe(false);
+    expect(isStagingReadOnly('')).toBe(false);
   });
 });

@@ -50,6 +50,12 @@ declare namespace App {
      * no reason to pay the verification round-trip on public pages)
      * and for /admin/login itself. */
     session: import('./lib/auth').Session | null;
+    /** Set by src/middleware.ts from env.STAGING_READ_ONLY — true only
+     * on the staging Worker after production has launched. Purely
+     * informational here (drives AdminLayout.astro's read-only banner)
+     * — the actual write-blocking enforcement lives in middleware.ts
+     * itself, server-side, regardless of what any page renders. */
+    stagingReadOnly: boolean;
   }
 }
 
@@ -92,5 +98,13 @@ declare module 'cloudflare:workers' {
      * SUPABASE_SERVICE_ROLE_KEY --config wrangler.jsonc`, never written
      * to any file. */
     SUPABASE_SERVICE_ROLE_KEY?: string;
+    /** Plain Worker var (not a secret — never sensitive), unset/"false"
+     * everywhere except staging after production launches. See
+     * src/lib/site-env.ts's isStagingReadOnly() for the full reasoning:
+     * staging and production share one Supabase project, so this is
+     * the application-level control that stops the staging Worker from
+     * writing to what is, after cutover, the real production database.
+     * Read once, centrally, in src/middleware.ts — never per-route. */
+    STAGING_READ_ONLY?: string;
   };
 }

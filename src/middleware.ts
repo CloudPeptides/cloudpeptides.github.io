@@ -18,9 +18,15 @@
  * variation (a nonce, a request-specific noindex decision) matters.
  */
 import { defineMiddleware } from 'astro:middleware';
-import { isIndexableHost } from './lib/site-env';
+import { env } from 'cloudflare:workers';
+import { isIndexableHost, isStagingReadOnly } from './lib/site-env';
 import { SECURITY_HEADERS_BASE, buildDynamicCsp } from './lib/security-headers';
 import { hasMinRole, resolveSession } from './lib/auth';
+
+// Methods that never write anything — always allowed through, even in
+// staging read-only mode, so browsing the admin dashboard (viewing
+// compounds, sources, the audit log, etc.) still works after cutover.
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 // Legacy GitHub Pages URL redirects (CLAUDE.md §10) are deliberately
 // NOT handled here. Found live, not assumed: a `.html` path with no
@@ -60,6 +66,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   context.locals.indexable = indexable;
   context.locals.cspNonce = nonce;
   context.locals.session = null;
+  context.locals.stagingReadOnly = isStagingReadOnly(env.STAGING_READ_ONLY);
 
   const pathname = context.url.pathname;
   // Resolved for every /admin* path, including /admin/login itself —
@@ -100,6 +107,30 @@ export const onRequest = defineMiddleware(async (context, next) => {
       const headers = new Headers({ Location: redirectUrl.toString() });
       for (const cookie of sessionSetCookies) headers.append('Set-Cookie', cookie);
       return new Response(null, { status: 302, headers });
+    }
+
+    // Shared-database safety boundary (docs/planning/production-cutover-plan.md
+    // §1): once STAGING_READ_ONLY=true, this Worker refuses to write to
+    // the database at all — regardless of the caller's role, and even
+    // though that role check just passed. Checked centrally, here, not
+    // per-route: any current or future /api/admin/* mutation route
+    // inherits this automatically. GET/HEAD/OPTIONS are exempt so the
+    // dashboard stays browsable.
+    if (
+      isProtectedAdminApi(pathname) &&
+      !SAFE_METHODS.has(context.request.method) &&
+      isStagingReadOnly(env.STAGING_READ_ONLY)
+    ) {
+      const headers = new Headers({ 'Content-Type': 'application/json' });
+      for (const cookie of sessionSetCookies) headers.append('Set-Cookie', cookie);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error:
+            'This deployment is read-only. Staging and production share one database; make editorial changes on the production site instead.',
+        }),
+        { status: 403, headers },
+      );
     }
   }
 
