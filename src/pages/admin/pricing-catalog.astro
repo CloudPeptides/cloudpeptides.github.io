@@ -1,0 +1,125 @@
+---
+/**
+ * Private admin pricing catalog — staging-only internal reference.
+ * Read-only, admin-role-gated, no checkout/payment/public-ordering
+ * wiring, no public API. Two independent guards keep this off
+ * production: (1) procedural — this feature is never merged past
+ * rebuild/astro-platform until explicitly approved; (2) this page's
+ * own explicit indexable-host check below, which 404s on the real
+ * production hostname regardless of what's deployed there — defense
+ * in depth, matching this codebase's existing STAGING_READ_ONLY/
+ * isIndexableHost patterns.
+ *
+ * AdminLayout's middleware-enforced session already guarantees
+ * contributor+; this page additionally requires admin specifically,
+ * matching the same bar as /admin/coas and /admin/users (internal
+ * pricing data, even without cost, is not contributor-level content).
+ */
+export const prerender = false;
+
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { hasMinRole } from '../../lib/auth';
+import {
+  PRICING_CATALOG,
+  PRICING_CATALOG_CATEGORIES,
+  isTenVialKit,
+} from '../../lib/admin/pricing-catalog';
+
+if (Astro.locals.indexable) {
+  return new Response('Not found', { status: 404 });
+}
+
+const session = Astro.locals.session!;
+if (!hasMinRole(session.role, 'admin')) {
+  return new Response('Admin access required.', { status: 403 });
+}
+---
+
+<AdminLayout title="Pricing Catalog">
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">Private — Staging only</p>
+      <h1>Pricing Catalog</h1>
+      <p>
+        Internal reference only. Not connected to checkout, payment processing, or public ordering —
+        and never deployed to production. Cost data is never stored here; prices only.
+      </p>
+    </div>
+  </div>
+
+  <p class="cp-pricing-notice" role="note">
+    This catalog is staging-only and admin-only. It does not affect the live public shop, and
+    nothing here is reachable through any public page or API.
+  </p>
+
+  {
+    PRICING_CATALOG_CATEGORIES.map((category) => {
+      const rows = PRICING_CATALOG.filter((entry) => entry.category === category);
+      return (
+        <section class="cp-admin-section">
+          <h2>{category}</h2>
+          <div class="cp-admin-table-wrap">
+            <table class="cp-admin-table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Product</th>
+                  <th>Spec</th>
+                  <th>Kit</th>
+                  <th>Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((entry) => (
+                  <tr>
+                    <td>
+                      <code>{entry.code}</code>
+                    </td>
+                    <td>{entry.name}</td>
+                    <td>{entry.spec}</td>
+                    <td>
+                      {isTenVialKit(entry.count) ? (
+                        <span class="cp-pricing-kit-label">10-vial kit</span>
+                      ) : (
+                        <span class="cp-pricing-kit-label cp-pricing-kit-label--single">
+                          {entry.count} vial
+                        </span>
+                      )}
+                    </td>
+                    <td>${entry.price.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      );
+    })
+  }
+</AdminLayout>
+
+<style>
+  .cp-pricing-notice {
+    background: color-mix(in srgb, var(--warning-text) 12%, var(--bg-elevated));
+    border: 1.5px solid var(--warning-text);
+    color: var(--warning-text);
+    border-radius: var(--radius-control);
+    padding: 0.75rem 1rem;
+    margin: 0 0 1.5rem;
+    font-size: var(--text-caption);
+  }
+  .cp-pricing-kit-label {
+    display: inline-block;
+    font-size: var(--text-caption);
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    background: var(--accent-mint);
+    color: var(--primary);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .cp-pricing-kit-label--single {
+    background: var(--bg-sunken);
+    color: var(--text-secondary);
+  }
+</style>

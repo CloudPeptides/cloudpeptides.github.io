@@ -11,22 +11,40 @@ import type { Role } from '../../lib/auth';
 interface Props {
   role: Role;
   email: string | null;
+  /** Hides staging-only nav entries (e.g. the private pricing catalog)
+   * when true — this is UX convenience only, mirroring this file's own
+   * header note; the real guard is each staging-only page's own
+   * indexable-host check. */
+  indexable?: boolean;
 }
-const { role, email } = Astro.props;
+const { role, email, indexable = false } = Astro.props;
 const currentPath = Astro.url.pathname;
 
 const links = [
-  { label: 'Dashboard', href: '/admin', minRole: 'contributor' as Role },
-  { label: 'Compounds', href: '/admin/compounds', minRole: 'contributor' as Role },
-  { label: 'Sources', href: '/admin/sources', minRole: 'contributor' as Role },
-  { label: 'Studies', href: '/admin/studies', minRole: 'contributor' as Role },
-  { label: 'COAs', href: '/admin/coas', minRole: 'admin' as Role },
-  { label: 'Audit Log', href: '/admin/audit-log', minRole: 'admin' as Role },
-  { label: 'Users', href: '/admin/users', minRole: 'admin' as Role },
+  { label: 'Dashboard', href: '/admin', minRole: 'contributor' as Role, stagingOnly: false },
+  {
+    label: 'Compounds',
+    href: '/admin/compounds',
+    minRole: 'contributor' as Role,
+    stagingOnly: false,
+  },
+  { label: 'Sources', href: '/admin/sources', minRole: 'contributor' as Role, stagingOnly: false },
+  { label: 'Studies', href: '/admin/studies', minRole: 'contributor' as Role, stagingOnly: false },
+  { label: 'COAs', href: '/admin/coas', minRole: 'admin' as Role, stagingOnly: false },
+  {
+    label: 'Pricing Catalog',
+    href: '/admin/pricing-catalog',
+    minRole: 'admin' as Role,
+    stagingOnly: true,
+  },
+  { label: 'Audit Log', href: '/admin/audit-log', minRole: 'admin' as Role, stagingOnly: false },
+  { label: 'Users', href: '/admin/users', minRole: 'admin' as Role, stagingOnly: false },
 ];
 
 const ROLE_RANK: Record<Role, number> = { member: 1, contributor: 2, editor: 3, admin: 4 };
-const visibleLinks = links.filter((l) => ROLE_RANK[role] >= ROLE_RANK[l.minRole]);
+const visibleLinks = links.filter(
+  (l) => ROLE_RANK[role] >= ROLE_RANK[l.minRole] && (!l.stagingOnly || !indexable),
+);
 ---
 
 <header class="cp-admin-topbar">

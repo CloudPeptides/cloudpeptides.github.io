@@ -23,7 +23,7 @@ if (!session) {
 
 <BaseLayout title={`${title} — Admin`} noindex hideChrome>
   <div class="cp-admin-shell">
-    <AdminNav role={session.role} email={session.email} />
+    <AdminNav role={session.role} email={session.email} indexable={Astro.locals.indexable} />
     <main class="cp-admin-main">
       {
         Astro.locals.stagingReadOnly && (
