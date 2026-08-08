@@ -3,6 +3,25 @@
 **Status:** Planning only. Nothing has been built, no accounts created, no dependencies installed, no repository files touched.
 **Supersedes:** Blueprint v1. This document incorporates your 12 decisions and the full set of corrections you sent — data model, security model, editorial policy, and 15 additional requirements. Where v1 already had it right and nothing changed, I've kept it brief and said so; where you asked for a rebuild, it's rebuilt in full.
 
+> **Amendment, 2026-08-08 — zero-cost production database.** §0 item 12,
+> §21, and §25 below assumed production would run on its own Supabase
+> project, most likely on the Pro tier, once real usage justified the
+> cost. You've since made an explicit, different decision: the
+> existing CloudPeptides project (`riuxojncmnhogclrhoys`) — already
+> holding the complete published research database, RLS, auth, the
+> custom access-token hook, and the admin account — **becomes**
+> production rather than being replaced by a new one, and no Pro tier
+> is being purchased. This is a deliberate cost decision, not a
+> discovered constraint. The original text below is left as the
+> historical record of what was planned; the current, governing
+> architecture is docs/planning/production-cutover-plan.md §1, which
+> this amendment supersedes on that specific point. Isolation between
+> staging and production traffic — no longer achievable via separate
+> databases — is instead enforced application-side (a server-side
+> `STAGING_READ_ONLY` flag, checked centrally in `src/middleware.ts`
+> on every mutating `/api/admin/*` request); see that same document's
+> §1 for the full reasoning.
+
 ---
 
 ## 0. Your Decisions — Confirmed
@@ -20,7 +39,7 @@
 | 9 | Commerce: preserve existing shop/cart behavior only, no new payment processing | Confirmed |
 | 10 | Research and commerce visually/editorially/structurally separated | Confirmed — see §15 |
 | 11 | Brand assets are just the logo PNG today; plan a real brand-asset phase | Noted — added as its own line item in the roadmap (§26) |
-| 12 | Staging environment + staging Supabase project; production untouched | Confirmed — unchanged from v1 |
+| 12 | Staging environment + staging Supabase project; production untouched | Confirmed — unchanged from v1. **Amended 2026-08-08:** at cutover, the staging Supabase project itself is what becomes production (see amendment note above), not a newly created second project — "production untouched" continued to hold throughout the entire build; it's the cutover-time database topology that changed |
 
 ---
 
@@ -449,7 +468,7 @@ Being honest about what's realistic at launch versus later:
 
 ## 21. Data Export & Backup Plan
 
-- **Supabase automatic backups** from day one (included at the Pro tier — see cost notes in §25; Point-in-Time Recovery is a separate paid add-on, not bundled, and is a Phase-2-or-later decision once real usage patterns justify the cost).
+- **Supabase automatic backups** from day one (included at the Pro tier — see cost notes in §25; Point-in-Time Recovery is a separate paid add-on, not bundled, and is a Phase-2-or-later decision once real usage patterns justify the cost). **Amended 2026-08-08:** production is launching on the Free tier (see amendment note at the top of this document) — no automatic backups are included. A manual `pg_dump` immediately before cutover, plus the ability to re-run one on demand (`scripts/migration/backup-production.mjs`), stands in for this until/unless Pro is purchased later.
 - **Independent weekly export**, in addition to Supabase's own backups: a scheduled Worker job exports all `published` content to human-readable JSON/CSV into a private Supabase Storage bucket (or a private git repo) — protects against vendor-specific catastrophic failure, not just database corruption, and gives you a copy of your own content outside any single vendor's system.
 - **Written restore runbook** produced during Phase 2, not left as "we have backups" — a documented, tested procedure for both a Supabase-native restore and a restore from the independent export.
 
@@ -486,12 +505,12 @@ Real, currently-verified figures (checked against current pricing pages rather t
 | Service | Staging | Production (launch-scale traffic) |
 |---|---|---|
 | Cloudflare Workers | Free tier (100k requests/day free) | Likely still free tier at launch traffic; Paid plan is **$5/month minimum** if you exceed it (includes 10M requests/month) — static asset requests don't count against this at all |
-| Supabase | Free tier ($0 — note: free projects auto-pause after 7 days of inactivity, fine for staging) | **Pro tier, $25/month base** (includes $10/month compute credit covering a Micro instance) — recommended for production once real user accounts exist, since it's needed for backups and custom-domain auth email. **Point-in-Time Recovery is a separate add-on (~$100/month per 7-day retention window)** — not recommended at launch, revisit if uptime requirements grow |
+| Supabase | Free tier ($0 — note: free projects auto-pause after 7 days of inactivity, fine for staging) | **Amended 2026-08-08:** launching on the **Free tier, $0/month** — the existing project becomes production directly rather than moving to a new Pro-tier one (see amendment note at the top of this document). Accepted trade-offs: possible auto-pause after 7 days with zero traffic (unlikely once real visitors arrive, but worth knowing), no included backups (mitigated by a manual `pg_dump` before cutover and on demand), and standard Free-tier resource limits. Original plan, kept for reference: Pro tier, $25/month base (includes $10/month compute credit covering a Micro instance), needed for backups and custom-domain auth email. Point-in-Time Recovery is a separate add-on (~$100/month per 7-day retention window) either way — not in scope now |
 | Resend | Free tier | **Free tier (3,000 emails/month, 100/day cap) is very likely sufficient** for a contact form + feedback form + auth emails at this scale; **Pro is $20/month for 50,000 emails/month** if you outgrow it |
 | Supabase Storage | Included in above | Included in Supabase plan up to its bandwidth/storage limits |
 | Domain registration | — | Typically $10–20/year, separate from the above, depends on registrar and TLD |
 
-**Realistic all-in monthly estimate at launch: roughly $25–35/month** (Supabase Pro + likely-free Workers + likely-free Resend), separate from one-time domain registration. This will move if traffic or email volume grow meaningfully past the free tiers — the table above tells you exactly which line moves first.
+**Realistic all-in monthly estimate at launch: roughly $25–35/month** (Supabase Pro + likely-free Workers + likely-free Resend), separate from one-time domain registration. This will move if traffic or email volume grow meaningfully past the free tiers — the table above tells you exactly which line moves first. **Amended 2026-08-08:** with Supabase staying on the Free tier at launch (see above), the realistic all-in estimate is **roughly $0–10/month** — likely-free Workers + likely-free Supabase + likely-free Resend, separate from one-time domain registration. Revisit Supabase Pro if Free-tier limits or the lack of automatic backups become a real problem once production has real traffic.
 
 ---
 

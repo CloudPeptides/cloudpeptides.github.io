@@ -27,18 +27,20 @@ same way, not re-inventing new checks.
 ## Admin
 
 - [ ] `/admin` with no session redirects to `/admin/login`.
-- [ ] Bootstrap the first production admin (same one-time
-      service-role script pattern used for staging — a fresh admin
-      account, since production has its own, empty `user_roles`
-      table).
-- [ ] Sign in, confirm the dashboard loads with real (migrated)
-      compound counts.
+- [ ] **Updated 2026-08-08 — no bootstrap needed.** Production shares
+      staging's Supabase project (production-cutover-plan.md §1), so
+      the existing admin account (`jessica.holsopple3@gmail.com`) and
+      `user_roles` table already carry over as-is — sign in with the
+      same credentials already in use on staging.
+- [ ] Sign in, confirm the dashboard loads with the real published
+      compound counts (the same ones already visible on staging — one
+      shared database, not a fresh/migrated copy).
 - [ ] Confirm a contributor-role test account cannot publish; an
-      editor-role test account can (same check as
-      `scripts/migration/verify-admin-security.mjs`, re-run with
-      `STAGING_*` env vars pointed at production instead — or adapt
-      the script to accept a `--base-url` if you want it repeatable
-      long-term).
+      editor-role test account can. `scripts/migration/
+      verify-admin-security.mjs` already runs against this exact
+      project (it always has, since it's the same one) — re-running it
+      here confirms production's own Worker/middleware enforces the
+      same boundaries, not just that the database rules do.
 
 ## SEO / indexability (the inverse of staging's checks)
 
@@ -61,8 +63,29 @@ same way, not re-inventing new checks.
       domain, should).
 - [ ] `npm run check:secrets` clean against the production build
       artifact.
-- [ ] `npm run db:verify-security` — 14/14 — against the production
-      Supabase project.
+- [ ] `npm run db:verify-security` — 14/14 — against the shared
+      Supabase project (same one behind both staging and production —
+      production-cutover-plan.md §1).
+
+## Staging read-only boundary (new, 2026-08-08)
+
+Confirm staging can no longer write to what is now the live production
+database — see production-cutover-checklist.md Phase E for the flip
+step this depends on:
+
+- [ ] `STAGING_READ_ONLY` is `"true"` in staging's deployed
+      `wrangler.jsonc` and staging has been redeployed since.
+- [ ] `npm run db:verify-staging-read-only` passes (10/10 as of this
+      writing) — or, run by hand: sign in on the **staging** URL as an
+      editor/admin and attempt a publish or user-management action;
+      expect a 403 with a message mentioning read-only, and confirm
+      the underlying row is unchanged in the database.
+- [ ] `/admin` still loads on staging (GET requests are unaffected —
+      confirms this is a write boundary, not staging being fully
+      broken).
+- [ ] The identical action, performed by a properly authorized account
+      against the **production** URL, still succeeds — confirms the
+      boundary is scoped to staging specifically, not a global outage.
 
 ## Legacy redirects
 

@@ -41,60 +41,103 @@ for the full pre-launch audit this phase performed.
 
 ## 1. Does production need its own Supabase project?
 
-**Yes.** CLAUDE.md §8 and Blueprint §26 both treat staging and
-production as separate Supabase projects — never point a production
-domain at the staging database. Reasons specific to this project, not
-generic caution:
+**No — decided 2026-08-08, superseding everything this section said
+before.** The existing CloudPeptides Supabase project
+(`riuxojncmnhogclrhoys`) becomes the real production database. It
+already holds the complete published research database, RLS, Auth,
+the custom access-token hook, and the admin account
+(`jessica.holsopple3@gmail.com`) — there is nothing left to migrate.
+Explicit, confirmed constraints behind this decision:
 
-- The staging project (`riuxojncmnhogclrhoys`) currently holds 56
-  compounds that are real, cited, published content — but it also has
-  every draft/reconciliation/audit-log artifact from the entire
-  enrichment build process. Production should start from a clean,
-  reviewed export, not the staging project's full history.
-- The staging project's free tier auto-pauses after 7 days of
-  inactivity (Blueprint §26 cost table) — unacceptable for production
-  uptime. Production needs the Pro tier ($25/month base) for backups
-  and to avoid auto-pause.
-- Anon/service-role keys differ per project; keeping them separate is
-  what makes "never expose the service-role key" enforceable per
-  environment.
+- The **Jess Bakes** Supabase organization/project is unrelated and
+  stays completely untouched by anything in this document.
+- **No Supabase Pro purchase.** Production launches on the Free tier.
+- **No second Supabase project.** One project serves both staging and
+  production traffic going forward.
 
-## 2. Schema + data migration, staging → production
+This replaces the "clean reviewed export into a fresh project"
+approach the rest of this section originally described (§2 below,
+also rewritten) — since there's no second project, there's no export
+to do; the data that would have been exported is already the live
+data in the one project that now serves both roles.
 
-1. Create the production Supabase project (your action — CLAUDE.md
-   §9 requires explicit approval for this and for activating a paid
-   tier).
-2. Apply all 11 existing migrations (`supabase/migrations/`, in
-   filename order — they're already timestamp-ordered and this repo's
-   `supabase db push` already applies them idempotently) to the new
-   project via `supabase link` + `supabase db push` against the
-   production project ref, using a fresh personal access token scoped
-   for that one operation (this repo's existing pattern: use once,
-   then revoke — see docs/implementation-log.md's Phase 2 entry and
-   this session's own use of that exact pattern).
-3. Data: **do not copy the whole staging database.** Export only the
-   reviewed, approved rows:
-   - `compounds`, `compound_aliases`, `claims`, `claim_sources`,
-     `sources`, `source_identifiers`, `studies`, `regulatory_records`,
-     `stack_components` — filtered to `status = 'published'` on
-     `compounds`/`claims` (currently: all 56/609, but re-filter at
-     actual cutover time in case new drafts exist by then).
-   - Do **not** carry over `content_revisions`, `audit_log`, or
-     `link_health_checks` from staging — production starts its own
-     revision/audit history from a clean slate at the moment of
-     import, not inheriting staging's build-process noise.
-   - `user_roles` — do not copy; production roles are assigned fresh
-     to real accounts once Phase 5 (auth) exists.
-   - Commerce tables (`products`, `orders`, `batch_coas`) — currently
-     unused (the shop is still the static-catalog rebuild, not yet
-     backed by these tables); nothing to migrate there yet.
-   - Use `pg_dump --data-only --table=...` per table (or a small
-     Node script using the service-role key against staging to read,
-     production to write, mirroring this project's existing
-     `scripts/migration/import-to-supabase.mjs` pattern) rather than a
-     full database clone.
-4. Re-run `scripts/migration/verify-security.mjs` (already exists)
-   against the production project before any traffic reaches it.
+**What this changes, and what it doesn't:**
+
+- Anon key, `PUBLIC_SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY` are
+  now the *same values* on both the staging and production Workers
+  (previously planned as distinct per-project values) — see §4.
+- RLS, roles, and the custom access-token hook were already exercised
+  against real production-shaped traffic on staging throughout this
+  entire build; nothing about the security model itself changes at
+  cutover.
+- **What used to be "separate databases" as the staging/production
+  isolation boundary is now an application-level boundary instead:**
+  a `STAGING_READ_ONLY` Worker var, checked centrally in
+  `src/middleware.ts`, refuses every mutating `/api/admin/*` request
+  from the staging Worker once it's set to `"true"` — regardless of
+  the caller's role. RLS itself has no way to tell which Worker
+  (staging vs. production) issued a request when both hold valid
+  credentials against the same project, so this check has to live in
+  the application, not the database. It ships off by default
+  (`"false"` in `wrangler.jsonc` today, preserving staging's normal
+  read-write editorial use) and gets flipped to `"true"` — with
+  staging redeployed — as an explicit, late step in
+  docs/planning/production-cutover-checklist.md, only once production
+  is actually live. See `src/lib/site-env.ts`'s `isStagingReadOnly()`
+  and its accompanying tests
+  (`tests/unit/site-env.test.ts`,
+  `scripts/migration/verify-staging-read-only.mjs`) for the full
+  mechanism and its proof.
+- **Free-tier limits, honestly stated, not glossed over:**
+  - The project can auto-pause after 7 days with zero requests of any
+    kind. Real visitor traffic to a live production site makes this
+    unlikely in practice, but it's a real possibility worth knowing
+    about, unlike on the Pro tier.
+  - No Point-in-Time Recovery and no automatic daily backups are
+    included — both are Pro-tier-only. The only backup this project
+    has is the manual one taken via `scripts/migration/
+    backup-production.mjs` (a `pg_dump` wrapper, independent of
+    Supabase's own systems) — see §12. **A verified backup
+    immediately before cutover is not optional under this plan; it is
+    the only safety net that exists.**
+  - Standard Free-tier resource limits (database size, monthly active
+    users, egress, edge-function invocations) apply — none of them
+    are close to being approached at this project's current scale
+    (56 published compounds, a handful of staff accounts), but revisit
+    this note if that changes materially.
+- Future database/migration testing (schema changes, data
+  backfills, anything experimental) should use a **local Supabase
+  instance** (`supabase start`, already available via this repo's
+  `supabase` devDependency) rather than the live hosted project, now
+  that the live project is real production data with no staging
+  buffer in front of it.
+
+## 2. Verifying current state + taking a pre-cutover backup
+
+There is no schema or data migration step anymore — the project that
+will serve production traffic already has the current schema and the
+current published content. What's left, immediately before cutover:
+
+1. Confirm all 11 existing migrations (`supabase/migrations/`) are
+   applied and match what's live — `supabase migration list` against
+   the project (using a fresh personal access token scoped for that
+   one check, then revoked, same pattern as before) should show no
+   pending migrations.
+2. Re-run `scripts/migration/verify-security.mjs` and
+   `scripts/migration/verify-admin-security.mjs` (both already exist
+   and already pass — see docs/implementation-log.md) one more time,
+   immediately before cutover, as a final confirmation that RLS and
+   admin authorization still hold against the project as it actually
+   exists today — not re-derived from an export, the real thing.
+3. Take a verified `pg_dump` backup
+   (`npm run db:backup-production`, i.e.
+   `scripts/migration/backup-production.mjs`) and confirm it restores
+   cleanly (see §12 for the exact verification step) — this is the
+   one and only backup this project will have, so "verified" here
+   means actually test-restored somewhere, not just "the file exists."
+4. Commerce tables (`products`, `orders`, `batch_coas`) remain unused
+   — the shop is still the static-catalog rebuild, checkout stays
+   disabled (`COMMERCE_ENABLED = false`); nothing to reconcile there.
 
 ## 3. Production Worker
 
@@ -112,7 +155,21 @@ actually in that file:
   `*.workers.dev` URL (staging is the one and only such deployment;
   one fewer indexable duplicate surface).
 - Its own `FORM_RATE_LIMITER` rate-limit binding (a new
-  `namespace_id`, not shared with staging).
+  `namespace_id`, not shared with staging) — this stays Worker-scoped
+  and separate even though the database is now shared; rate limiting
+  is about protecting each Worker's own request handling, not the
+  database.
+- **Does not, and should not, set `STAGING_READ_ONLY`** — that var only
+  ever applies to the staging Worker's config (`wrangler.jsonc`).
+  Leaving it unset on production is correct and required: an unset
+  value evaluates to `false` (`isStagingReadOnly()`'s fail-safe
+  default), meaning production is always writable, which is the whole
+  point of it being production.
+- Needs `"not_found_handling": "none"` added to its `assets` block, to
+  match staging's fix — the same Cloudflare Workers Static Assets
+  bypass issue documented at the top of `src/middleware.ts` applies
+  identically to production once it's live, and the legacy-URL
+  redirects (§8 below) depend on it.
 - `astro.config.mjs`'s `site` field is **already** `https://
   cloudpeptides.org` (updated this phase, ahead of DNS/attachment —
   safe, because src/lib/site-env.ts's `isIndexableHost()` gates
@@ -127,15 +184,20 @@ actually in that file:
 
 ## 4. Environment variables / secrets, by name only
 
-Production Worker needs its own values (never copied from staging)
-for every name below — set as Cloudflare Worker secrets/vars against
-the production Worker, never in a committed file:
+**Amended 2026-08-08:** since staging and production now share the
+same Supabase project (§1), the Supabase-related values below are the
+*same values* on both Workers — not distinct per-environment values as
+originally planned. Resend/Turnstile/Cloudflare values were already
+planned to be reused; that part is unchanged. Set as Cloudflare Worker
+secrets/vars against the production Worker, never in a committed file
+— never print any actual value while doing this:
 
-- `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY` — production
-  project's own anon key.
+- `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY` — **the same
+  values already configured on staging** (one project, one anon key).
+  Not copied into a new project's own keys; there is no new project.
 - `RESEND_API_KEY`, `RESEND_FROM_ADDRESS`, `TURNSTILE_SECRET_KEY` —
-  can reuse the same Resend/Turnstile accounts created for staging
-  (see docs/planning/resend-turnstile-setup.md — Turnstile explicitly
+  reuse the same Resend/Turnstile accounts created for staging (see
+  docs/planning/resend-turnstile-setup.md — Turnstile explicitly
   supports multiple associated hostnames on one sitekey, avoiding a
   rotation; Resend's sending domain, once verified, works for any
   Worker that has the API key).
@@ -146,27 +208,37 @@ the production Worker, never in a committed file:
   name:
   - `secrets.CLOUDFLARE_API_TOKEN_PRODUCTION` — a separate token,
     scoped to the production Worker only (least privilege — not
-    `secrets.CLOUDFLARE_API_TOKEN`, which `deploy-staging` uses).
+    `secrets.CLOUDFLARE_API_TOKEN`, which `deploy-staging` uses). This
+    stays Worker-scoped and distinct even though the database is
+    shared — it controls which Cloudflare deployment target the token
+    can touch, unrelated to which database is behind it.
   - `vars.CLOUDFLARE_ACCOUNT_ID` — same Cloudflare account, already
     configured for `deploy-staging`, reused as-is.
-  - `vars.PROD_SUPABASE_URL`, `vars.PROD_SUPABASE_ANON_KEY` — the
-    production Supabase project's own anon key, distinct from
-    `vars.SUPABASE_URL`/`vars.SUPABASE_ANON_KEY` (staging's).
-- `SUPABASE_SERVICE_ROLE_KEY` — **corrected 2026-08-08.** This
-  document originally said this key must never appear in any Worker
-  config, staging or production. That was wrong — it contradicted
-  Blueprint v2 §16's own explicit design ("service-role key is used
-  only inside trusted Worker routes for... user role changes... and
-  other narrowly-scoped admin operations") and the deployed reality:
-  admin user creation and role management
-  (`src/pages/api/admin/users/*`) call the Supabase Auth admin API and
-  write `user_roles`, neither of which has any non-service-role path
-  at all. It **is** set as a Worker secret on staging today, and needs
-  to be set the same way on production at cutover — see
+  - **`vars.PROD_SUPABASE_URL`/`vars.PROD_SUPABASE_ANON_KEY` are no
+    longer needed and should not be created.** `deploy-production`'s
+    build step now reuses `vars.SUPABASE_URL`/`vars.SUPABASE_ANON_KEY`
+    — the exact same two repo variables `deploy-staging` already
+    uses — since both jobs now build against the one shared project.
+    This simplifies the checklist: two fewer GitHub variables to ever
+    create or keep in sync.
+- `SUPABASE_SERVICE_ROLE_KEY` — **corrected 2026-08-08, twice now.**
+  This document originally said this key must never appear in any
+  Worker config, staging or production; that was wrong (see Blueprint
+  v2 §16's explicit design and CLAUDE.md §8's approved exception —
+  admin user creation and role management have no non-service-role
+  path at all). It **is** set as a Worker secret on staging today. At
+  cutover, set the **identical value** (same project, so there is only
+  one real service-role key to use — not a new one to generate) as a
+  Worker secret on production too, via `wrangler secret put
+  SUPABASE_SERVICE_ROLE_KEY --config wrangler.production.jsonc`,
+  piping the value in rather than typing/echoing it. See
   docs/planning/production-cutover-checklist.md's Phase C for the
-  full reasoning and the specific safeguards (auth, admin-role
-  re-check, rate limiting, audit logging, narrow scope, negative
-  tests) that make this the approved exception rather than a leak.
+  full safeguard list (auth, admin-role re-check, rate limiting,
+  audit logging, narrow scope, negative tests) that makes this the
+  approved exception rather than a leak.
+- **`STAGING_READ_ONLY` is deliberately absent from this list** — it's
+  a staging-only Worker var (see §1 and §3 above), never set on
+  production.
 
 ## 5. Branch and pull-request strategy
 
@@ -326,31 +398,62 @@ cutover, only the `astro.config.mjs` `site` update in §3 above:
   1. `wrangler rollback --config wrangler.production.jsonc` to the
      previous production Worker version
      (Cloudflare keeps prior deployments) — for a bad code deploy.
+     Since the database is shared, this alone fixes any problem that's
+     purely in Worker code with no bad writes involved — the more
+     common case.
   2. Revert the DNS/Custom-Domain binding back to GitHub Pages if the
      Worker itself is unhealthy and (1) doesn't resolve it — this is
      exactly why Pages stays live and untouched for 30 days (§7).
-  3. Supabase: production project's own point-in-time backups (see
-     §12) for a data-level problem — never fix forward by writing
-     directly against production with the service-role key under
-     time pressure; restore from backup instead.
+  3. **Amended 2026-08-08 — no Pro-tier point-in-time recovery
+     exists.** The Free tier has no automatic backups at all (§1), so
+     a data-level problem can only be fixed by restoring the manual
+     `pg_dump` taken immediately before cutover (§12) — there is no
+     "restore to 10 minutes ago" option the way there would be on Pro.
+     This makes the pre-cutover backup materially more important than
+     it would be under the original plan, not just a nice-to-have:
+     never fix forward by writing directly against production with
+     the service-role key under time pressure; restore from that
+     backup instead, accepting the loss of anything written since it
+     was taken.
+  4. Because staging and production share a database, rolling back the
+     *production Worker* does not by itself stop the *staging Worker*
+     from having already written something unwanted — confirm
+     `STAGING_READ_ONLY` is (and stays) `"true"` on staging as part of
+     any rollback investigation, not just at initial cutover.
 - Define an explicit rollback owner and communication step before
   cutover day, not during it — this plan doesn't prescribe who, that's
   your call.
 
 ## 12. Backup/export immediately before cutover
 
-- Supabase: trigger a manual backup (or confirm the Pro tier's
-  automatic daily backup has run) on the production project
-  immediately after the data migration (§2) completes and immediately
-  before DNS cuts over — a clean, known-good restore point bracketing
-  the actual switch.
-- Also export a plain SQL dump (`pg_dump`) of the production
-  database to a location outside Supabase itself (encrypted local
-  storage or similar) — a backup that depends on the same provider
-  you're protecting against isn't a complete backup story.
+**Amended 2026-08-08 — rewritten for the shared-project architecture
+(§1).** There is no data migration step to bracket anymore; the one
+thing that must happen, without exception, immediately before DNS
+cuts over:
+
+- Run `npm run db:backup-production`
+  (`scripts/migration/backup-production.mjs`) — a `pg_dump` of the
+  live project to a location outside Supabase itself (this script
+  already exists and already works; nothing new to build). This *is*
+  the backup — there is no Supabase-native automatic backup to
+  additionally trigger or confirm on the Free tier (§1), unlike the
+  original plan's assumption of a Pro-tier daily backup underneath it.
+- **Verify the backup is actually restorable**, not just that the
+  file was written — e.g. restore it into a local/throwaway Postgres
+  instance (`supabase start` gives you one) and spot-check row counts
+  against the live project for a few key tables (`compounds`,
+  `claims`, `user_roles`). A backup nobody has ever restored is a
+  hope, not a backup.
+- Store the dump somewhere durable and outside Supabase (encrypted
+  local storage or similar) — a backup that depends on the same
+  provider you're protecting against isn't a complete backup story.
 - Git: tag the exact commit merged to `main` at cutover (e.g. `git tag
   cutover-2026-XX-XX`) so "what was actually deployed" is unambiguous
   later, independent of Cloudflare's own deployment history.
+- This backup step is a hard prerequisite for cutover, not a
+  parallel/optional task — see
+  docs/planning/production-cutover-checklist.md, which now sequences
+  it as its own gating phase before DNS/domain steps.
 
 ## 13. Post-launch verification
 
@@ -373,3 +476,10 @@ categories already exercised on staging this phase:
   actually deliver a real test email end-to-end, not just "route
   responds."
 - `scripts/check-links.mjs` clean against the production URL.
+- **New for the shared-database architecture:** confirm
+  `STAGING_READ_ONLY` was flipped to `"true"` and staging redeployed
+  (docs/planning/production-cutover-checklist.md's dedicated step),
+  then run `npm run db:verify-staging-read-only` (or attempt a real
+  mutation against the staging URL by hand) and confirm it's refused
+  with a 403 — while the same action against the production URL, by a
+  properly authorized editor/admin, still succeeds.

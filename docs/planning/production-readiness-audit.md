@@ -122,6 +122,14 @@ Legend: ✅ Ready — 🟡 Deferred/needs a decision or production-only step —
   (RLS enabled on all 14 tables, draft visibility boundaries,
   contributor-cannot-publish/editor-can, cross-user isolation, no
   client role self-write).
+- **Amended 2026-08-08:** this project (`riuxojncmnhogclrhoys`) is
+  transitioning from staging to also serving as production (see
+  production-cutover-plan.md §1) — no separate production project, no
+  Pro tier. RLS, the auth hook, and the admin account
+  (`jessica.holsopple3@gmail.com`) were already exercised against this
+  exact project throughout the whole build, so nothing about this
+  section's ✅ status changes; §16 below covers the new staging/
+  production isolation mechanism this decision requires.
 
 ## 7. Admin authorization — ✅
 
@@ -278,29 +286,53 @@ Legend: ✅ Ready — 🟡 Deferred/needs a decision or production-only step —
   documented in this project's own history/memory and are not
   repeated by anything added this phase.
 
-## 15. Backup and rollback procedures — 🟡 prepared, not yet executable (no production project exists)
+## 15. Backup and rollback procedures — 🟡 prepared, one step still required before cutover
+
+**Amended 2026-08-08** for the shared-database architecture
+(production-cutover-plan.md §1) — there is no longer a separate
+production project to prepare backups *for*; the existing project
+itself needs one *of* it before it starts serving production traffic.
 
 - Rollback path is already documented (production-cutover-plan.md
-  §11): `wrangler rollback` for a bad code deploy; revert the DNS/
-  custom-domain binding back to GitHub Pages (kept live untouched for
-  30 days) if the Worker itself is unhealthy; restore-from-backup
-  (never fix forward with the service-role key under time pressure)
-  for a data-level problem.
-- **This phase adds the actual scripts** (prepared, not run — no
-  production Supabase project exists yet to run them against):
-  `scripts/migration/export-published-for-production.mjs` (staging →
-  production data export, published rows only, exact table scope
-  matching production-cutover-plan.md §2) and
-  `scripts/migration/backup-production.mjs` (a `pg_dump`-based export
-  wrapper, prepared for post-cutover use). See
-  docs/planning/production-cutover-checklist.md for exactly when each
-  runs.
+  §11, rewritten this phase): `wrangler rollback` for a bad code
+  deploy; revert the DNS/custom-domain binding back to GitHub Pages
+  (kept live untouched for 30 days) if the Worker itself is unhealthy;
+  restore-from-backup (never fix forward with the service-role key
+  under time pressure) for a data-level problem.
+- **No Pro-tier automatic/point-in-time backup exists or will exist**
+  — the Free tier includes neither. `scripts/migration/
+  backup-production.mjs` (a `pg_dump`-based wrapper, already built and
+  working) is not a supplement to Supabase's own backups here; it is
+  the *only* backup this project has. `npm run db:backup-production`
+  runs it.
+- `scripts/migration/export-published-for-production.mjs` (built for
+  the original staging→new-project export) is now **largely moot** —
+  there is no second project to export into. Left in the repo as
+  reference/in case a genuine future migration (e.g. an eventual move
+  to Pro, or disaster recovery into a fresh project) needs the same
+  published-rows-only filtering logic, but it is not part of the
+  cutover path anymore; production-cutover-checklist.md's steps no
+  longer call it.
+- 🟡 **What's still required, not yet done:** run
+  `db:backup-production` once, for real, against the live project,
+  and verify the dump actually restores (spot-check row counts in a
+  local/throwaway Postgres) — production-cutover-plan.md §12 and
+  production-cutover-checklist.md's backup-verification phase both
+  now require this as a hard gate immediately before cutover, not
+  optional and not yet executed as of this writing.
 
-## 16. Staging vs. production environment separation — ✅
+## 16. Staging vs. production environment separation — ✅ (rearchitected 2026-08-08 for one shared database)
+
+**The database is no longer the isolation boundary.** Both Workers
+will point at the same Supabase project (`riuxojncmnhogclrhoys`) —
+production-cutover-plan.md §1 records the decision and the reasoning
+(no Pro purchase, no second project). What separates them now:
 
 - Two separate `wrangler*.jsonc` configs (`name`, `workers_dev`,
   `routes`, and rate-limiter `namespace_id` all distinct) — confirmed
-  by inspection, not assumed.
+  by inspection, not assumed. Both configs point at the *same*
+  Supabase URL/anon key/service-role key — that part is intentionally
+  no longer distinct (production-cutover-plan.md §4).
 - Two separate GitHub Actions jobs (`deploy-staging` /
   `deploy-production`), gated on different branches, using different
   Cloudflare API token secrets by name
@@ -308,13 +340,42 @@ Legend: ✅ Ready — 🟡 Deferred/needs a decision or production-only step —
   `deploy-production` additionally requires a `production` GitHub
   Environment with required reviewers — doesn't exist yet, so the job
   cannot currently run even if every other condition were met (the
-  safe default).
-- Production Supabase project doesn't exist yet — by design
-  (production-cutover-plan.md §1); staging's project
-  (`riuxojncmnhogclrhoys`) is never referenced by any production
-  config, and no code path can point a production build at it (the
-  build step reads `vars.PROD_SUPABASE_URL`/`PROD_SUPABASE_ANON_KEY`,
-  distinct GitHub Actions variables from staging's).
+  safe default). Both jobs' build steps now read the *same*
+  `vars.SUPABASE_URL`/`vars.SUPABASE_ANON_KEY` repo variables (the
+  `PROD_SUPABASE_URL`/`PROD_SUPABASE_ANON_KEY` variables this document
+  previously described no longer exist — nothing to keep in sync
+  across two values that were always meant to be identical).
+- **New application-level write boundary, since RLS/the database layer
+  has no way to tell which Worker issued a request when both hold
+  valid credentials against the same project:** a `STAGING_READ_ONLY`
+  Worker var (`wrangler.jsonc`, currently `"false"`), read once,
+  centrally, in `src/middleware.ts`
+  (`isStagingReadOnly()`/`isProtectedAdminApi()`) — once set to
+  `"true"`, every non-GET/HEAD/OPTIONS `/api/admin/*` request from the
+  staging Worker is refused with a 403, *regardless of the caller's
+  role* — checked after, and independently of, the normal
+  authentication/authorization gate, so it can't be bypassed by having
+  a higher role. GET requests still succeed, so the staging dashboard
+  stays browsable (noindexed, public-page visual QA) without being
+  writable. Deliberately still `"false"` today — flipping it is an
+  explicit, late step in production-cutover-checklist.md, only once
+  production is actually live, not before.
+  - Verified two ways: `tests/unit/site-env.test.ts` (12/12, pure
+    logic — fails safe to `false`/writable for anything but the exact
+    string `"true"`) and
+    `scripts/migration/verify-staging-read-only.mjs`
+    (`npm run db:verify-staging-read-only`) — real HTTP requests
+    against a locally-built-and-previewed copy of the app with
+    `STAGING_READ_ONLY=true` injected, proving a fully-authorized
+    editor **cannot** publish a compound (via either the dedicated
+    status route or the generic content route) and a fully-authorized
+    admin **cannot** create a user or change a role — while
+    `/admin` browsing, login, and unauthenticated 401s are unaffected.
+    **10/10 passed** this run.
+  - Future schema/migration testing is policy-required to use a local
+    Supabase instance (`supabase start`) rather than the live hosted
+    project, now that the live project is real production data with
+    no staging buffer in front of it (production-cutover-plan.md §1).
 - `SUPABASE_SERVICE_ROLE_KEY` is **not** in any committed file or
   `wrangler*.jsonc` (confirmed by inspection — it's never a build-time
   var, only ever a runtime Worker secret) and is **not** referenced by
@@ -331,7 +392,10 @@ Legend: ✅ Ready — 🟡 Deferred/needs a decision or production-only step —
   `docs/planning/production-cutover-checklist.md`/`production-cutover-plan.md`
   previously claimed the opposite ("must not exist on any Worker") and
   were corrected 2026-08-08 to match this reality. Production will
-  need the same secret set the same way at cutover.
+  need the **identical value** set as a Worker secret at cutover — not
+  a newly generated one, since staging and production now share the
+  one Supabase project that key belongs to (production-cutover-plan.md
+  §4).
 
 ---
 
@@ -360,6 +424,21 @@ Legend: ✅ Ready — 🟡 Deferred/needs a decision or production-only step —
   explicitly (via `PolicyLayout.astro`'s shared footer note), not just
   Privacy/Terms as before.
 
+## Decisions recorded 2026-08-08, second pass (zero-cost production database)
+
+- **No separate production Supabase project, no Pro tier.** The
+  existing CloudPeptides project (`riuxojncmnhogclrhoys`) becomes
+  production directly (production-cutover-plan.md §1) — this closes
+  what was previously an open deferred decision (below) rather than
+  answering it the way originally assumed.
+- **Jess Bakes stays completely untouched** — a different Supabase
+  organization/project, unrelated to and unaffected by anything in
+  this document.
+- **Staging/production isolation moves from the database layer to the
+  application layer** — the `STAGING_READ_ONLY` mechanism (§16) is the
+  new safety boundary, since two Workers sharing one project can no
+  longer be separated by RLS alone.
+
 ## Deferred decisions still requiring your input (not blockers for continued staging work)
 
 1. **Registered business entity / physical mailing address / governing
@@ -371,10 +450,7 @@ Legend: ✅ Ready — 🟡 Deferred/needs a decision or production-only step —
    existed — the "honest operational draft" framing above is exactly
    how that requirement is being honored in the meantime, not a way
    around it).
-2. **Production Supabase tier/cost approval** — Pro tier, ~$25/month,
-   requires your explicit approval to activate a paid service
-   (CLAUDE.md §9).
-3. Every remaining item in production-cutover-plan.md §6 (DNS/domain
+2. Every remaining item in production-cutover-plan.md §6 (DNS/domain
    attachment) and §4 (production secrets) — all require your explicit
    per-CLAUDE.md-§9 approval and are not, and should not be, done
    automatically by any future session either.
