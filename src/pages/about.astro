@@ -1,0 +1,163 @@
+---
+/**
+ * About page — the legacy site (legacy-site/about.html) had one; the
+ * rebuilt site never did (docs/planning/legacy-redirect-map.md
+ * explicitly listed /about.html as "not yet migrated — no rebuilt
+ * equivalent exists"). This is that page, finally rebuilt.
+ *
+ * Content is the legacy page's own established mission language,
+ * carried forward and lightly adapted for the new design system and
+ * current product state (commerce disabled) — not reinvented. No
+ * company history, credentials, staff, licenses, or legal/registration
+ * status are stated anywhere on this page, because none of that exists
+ * in this project's records (see docs/planning/
+ * production-readiness-audit.md's deferred-decisions list) and
+ * CLAUDE.md forbids inventing it.
+ */
+export const prerender = false;
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Card from '../components/ui/Card.astro';
+import Button from '../components/ui/Button.astro';
+import { COMMERCE_ENABLED } from '../lib/launch-config';
+---
+
+<BaseLayout
+  title="About"
+  description="Why Cloud Peptides exists: a research peptide catalog built around transparent testing, clear pricing, and an educational community."
+>
+  <section class="cp-about-container">
+    <header class="cp-about-header">
+      <p class="cp-eyebrow">About</p>
+      <h1>About Cloud Peptides</h1>
+      <p class="cp-about-header__intro">
+        A clean catalog for research peptides, transparent testing, and an educational community.
+      </p>
+    </header>
+
+    <Card class="cp-about-card">
+      <h2>Research peptides. Transparent testing. Educational community.</h2>
+
+      <p>
+        Cloud Peptides was created after spending countless hours searching through overpriced
+        websites, inconsistent vendors, and suppliers that seemed to change pricing, quality, and
+        availability overnight.
+      </p>
+
+      <p>
+        Finding reliable products with transparent testing and fair pricing often felt more
+        difficult than it should have been. Too many websites were cluttered with unnecessary
+        information, confusing product listings, or pricing that made it difficult to compare
+        options.
+      </p>
+
+      <p>That experience inspired the creation of Cloud Peptides.</p>
+
+      <p>
+        The goal is simple: provide a clean, straightforward place where researchers can browse
+        products, view clear pricing, and know that transparency comes first.
+      </p>
+
+      <p>
+        We prioritize independent batch testing, straightforward product listings, and a growing
+        educational community where people can discuss current research, ask questions, share
+        experiences, and learn from one another.
+      </p>
+
+      <p>
+        Whether you're completely new to the space or have been following peptide research for
+        years, Cloud Peptides was built to make the process simpler, more transparent, and more
+        accessible.
+      </p>
+
+      {
+        !COMMERCE_ENABLED && (
+          <p class="cp-about-notice">
+            <strong>Ordering is not currently open.</strong> The shop catalog is visible as a
+            preview only — see our <a href="/shop-terms">Shop Terms</a> for the current status.
+          </p>
+        )
+      }
+
+      <p class="cp-about-disclaimer">
+        All listings are provided strictly for research and educational purposes only. Cloud
+        Peptides does not provide medical advice, treatment recommendations, or health claims. Read
+        our full <a href="/disclaimer">Research and Medical Disclaimer</a>.
+      </p>
+    </Card>
+
+    <div class="cp-about-actions">
+      <Button href="/research/compounds" variant="primary">Browse the research library</Button>
+      <Button href="/shop" variant="secondary">Visit the shop</Button>
+      <Button href="/contact" variant="tertiary">Get in touch</Button>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .cp-about-container {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 5rem;
+  }
+  .cp-about-header {
+    margin-bottom: 2rem;
+  }
+  .cp-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--primary);
+    margin: 0 0 0.5rem;
+  }
+  .cp-about-header h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: clamp(1.875rem, 4vw, var(--text-h1));
+    margin: 0 0 0.75rem;
+  }
+  .cp-about-header__intro {
+    color: var(--text-secondary);
+    line-height: var(--text-body--line-height);
+    margin: 0;
+  }
+  .cp-about-card :global(h2) {
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: var(--text-h3);
+    margin: 0 0 1rem;
+  }
+  .cp-about-card :global(p) {
+    color: var(--text-secondary);
+    line-height: var(--text-body--line-height);
+    margin: 0 0 1rem;
+  }
+  .cp-about-notice {
+    background: var(--bg-sunken);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-control);
+    padding: 0.875rem 1rem;
+    font-size: var(--text-caption);
+  }
+  .cp-about-notice a,
+  .cp-about-disclaimer a {
+    color: var(--primary);
+    text-decoration: underline;
+  }
+  .cp-about-disclaimer {
+    font-size: var(--text-caption);
+    color: var(--text-muted) !important;
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 1rem;
+    margin-bottom: 0 !important;
+  }
+  .cp-about-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+  }
+</style>

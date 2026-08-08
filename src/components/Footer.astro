@@ -14,6 +14,11 @@ import Logo from './Logo.astro';
 
 const year = new Date().getFullYear();
 
+const siteLinks = [
+  { label: 'About', href: '/about' },
+  { label: 'Contact', href: '/contact' },
+];
+
 const policyLinks = [
   { label: 'Privacy Policy', href: '/privacy' },
   { label: 'Terms of Use', href: '/terms' },
@@ -30,6 +35,17 @@ const policyLinks = [
     <Logo variant="primary" size={160} />
   </div>
   <div class="cp-footer__content">
+    <nav class="cp-footer__policies" aria-label="Site">
+      <ul>
+        {
+          siteLinks.map((link) => (
+            <li>
+              <a href={link.href}>{link.label}</a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
     <nav class="cp-footer__policies" aria-label="Policies">
       <ul>
         {

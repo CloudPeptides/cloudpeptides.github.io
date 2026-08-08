@@ -132,11 +132,18 @@ Legacy `/{file}` → new `/research/compounds/{slug}` — deterministic (slug = 
 | /index.html | / |
 | / | / |
 
+## About page
+
+| Legacy URL | New URL |
+|---|---|
+| /about.html | /about |
+
+Rebuilt 2026-08-08 (`src/pages/about.astro`, content carried forward from `legacy-site/about.html`'s own established mission language, not reinvented) — moved out of "Not yet migrated" below and into `src/lib/legacy-redirects.ts`.
+
 ## Not yet migrated (no rebuilt equivalent exists — do not redirect these until they are)
 
 These pages have real content and traffic value but have not been rebuilt in the Astro app yet (out of scope for the Shop/Resend/SEO batch). Redirecting them now would send visitors to a 404. Leave them served by the legacy static site until each is genuinely rebuilt.
 
-- /about.html
 - /faq.html
 - /research.html
 - /compound-directory.html

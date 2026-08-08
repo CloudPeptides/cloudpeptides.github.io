@@ -31,6 +31,23 @@ test('footer links to every policy page from the homepage', async ({ page }) => 
   }
 });
 
+test('/about renders with an H1, links to /about from nav and footer, and has no detectable accessibility violations', async ({
+  page,
+}) => {
+  await page.goto('/about');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('About Cloud Peptides');
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations).toEqual([]);
+
+  await page.goto('/');
+  await expect(page.getByRole('link', { name: 'About', exact: true }).first()).toHaveAttribute(
+    'href',
+    '/about',
+  );
+  const siteNav = page.locator('nav[aria-label="Site"]');
+  await expect(siteNav.locator('a[href="/about"]')).toBeVisible();
+});
+
 test('a genuinely nonexistent path 404s with the branded not-found page', async ({ page }) => {
   const response = await page.goto('/this-page-does-not-exist-anywhere');
   expect(response?.status()).toBe(404);
@@ -78,7 +95,13 @@ test.describe('legacy URL redirects', () => {
   test('a "not yet migrated" legacy page does not redirect (no rebuilt equivalent exists)', async ({
     request,
   }) => {
-    const response = await request.get('/about.html', { maxRedirects: 0 });
+    const response = await request.get('/faq.html', { maxRedirects: 0 });
     expect(response.status()).not.toBe(301);
+  });
+
+  test('/about.html redirects to the new /about page', async ({ request }) => {
+    const response = await request.get('/about.html', { maxRedirects: 0 });
+    expect(response.status()).toBe(301);
+    expect(locationPathname(response)).toBe('/about');
   });
 });

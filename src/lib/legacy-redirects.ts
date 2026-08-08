@@ -6,17 +6,24 @@
  * of truth (generated from the real migration extraction and the real
  * shop catalog); keep the two in sync if either changes.
  *
- * Deliberately excludes every URL in that document's "Not yet
- * migrated" section (about/faq/research/category-listing pages) — no
+ * Deliberately excludes every URL in that document's remaining "Not
+ * yet migrated" entries (faq/research/category-listing pages) — no
  * rebuilt equivalent exists for those yet, so redirecting them now
  * would send a visitor to a 404 instead of GitHub Pages' still-live
- * original. Add an entry here only once a real replacement page ships.
+ * original. `/about.html` was in that list until src/pages/about.astro
+ * shipped; add further entries here only once each real replacement
+ * page ships.
  *
- * Applied by src/middleware.ts on every request, on every environment
- * (not gated to the production hostname) — a legacy path redirecting
- * to its new equivalent is correct regardless of which host serves it,
- * and running it on staging too means it's already proven working
- * before cutover ever needs it, not something to configure that day.
+ * Consumed by src/pages/product.html.astro and
+ * src/pages/[legacy].html.astro — real, matched Astro routes, not
+ * src/middleware.ts (see product.html.astro's header comment for why:
+ * Cloudflare's Workers Static Assets binding intercepts any path with
+ * no matching static file before the Worker/middleware ever runs,
+ * confirmed live). Runs on every environment, not gated to the
+ * production hostname — a legacy path redirecting to its new
+ * equivalent is correct regardless of which host serves it, and
+ * running it on staging too means it's already proven working before
+ * cutover ever needs it.
  */
 
 export const LEGACY_PATH_REDIRECTS: Record<string, string> = {
@@ -80,11 +87,12 @@ export const LEGACY_PATH_REDIRECTS: Record<string, string> = {
   '/upgraded-glow-stack.html': '/research/compounds/upgraded-glow-stack',
   '/wolverine-stack.html': '/research/compounds/wolverine-stack',
 
-  // Shop / contact / home
+  // Shop / contact / home / about
   '/shop.html': '/shop',
   '/cart.html': '/shop/cart',
   '/contact.html': '/contact',
   '/index.html': '/',
+  '/about.html': '/about',
 };
 
 /**

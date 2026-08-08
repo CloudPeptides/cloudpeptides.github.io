@@ -18,11 +18,12 @@ describe('resolveLegacyRedirect', () => {
     }
   });
 
-  it('redirects the legacy shop/cart/contact/home pages', () => {
+  it('redirects the legacy shop/cart/contact/home/about pages', () => {
     expect(resolveLegacyRedirect('/shop.html', new URLSearchParams())).toBe('/shop');
     expect(resolveLegacyRedirect('/cart.html', new URLSearchParams())).toBe('/shop/cart');
     expect(resolveLegacyRedirect('/contact.html', new URLSearchParams())).toBe('/contact');
     expect(resolveLegacyRedirect('/index.html', new URLSearchParams())).toBe('/');
+    expect(resolveLegacyRedirect('/about.html', new URLSearchParams())).toBe('/about');
   });
 
   it('redirects /product.html?id=X to /shop/X', () => {
@@ -35,8 +36,8 @@ describe('resolveLegacyRedirect', () => {
   });
 
   it('does not redirect a "not yet migrated" legacy page (no rebuilt equivalent exists)', () => {
-    expect(resolveLegacyRedirect('/about.html', new URLSearchParams())).toBeNull();
     expect(resolveLegacyRedirect('/faq.html', new URLSearchParams())).toBeNull();
+    expect(resolveLegacyRedirect('/research.html', new URLSearchParams())).toBeNull();
   });
 
   it('does not redirect an ordinary new-site path', () => {

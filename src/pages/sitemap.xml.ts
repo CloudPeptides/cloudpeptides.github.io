@@ -25,6 +25,7 @@ export const GET: APIRoute = async ({ site }) => {
     urlEntry(`${base}/`, 'weekly', '1.0'),
     urlEntry(`${base}/research/compounds`, 'daily', '0.9'),
     urlEntry(`${base}/shop`, 'weekly', '0.9'),
+    urlEntry(`${base}/about`, 'monthly', '0.6'),
     urlEntry(`${base}/contact`, 'monthly', '0.5'),
     urlEntry(`${base}/privacy`, 'yearly', '0.3'),
     urlEntry(`${base}/terms`, 'yearly', '0.3'),
