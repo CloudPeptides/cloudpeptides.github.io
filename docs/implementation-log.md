@@ -2,6 +2,38 @@
 
 Append-only. One entry per meaningful step, per [CLAUDE.md](../CLAUDE.md) §3/§11/§12.
 
+## Combined Phase — Deployment + First-Admin Bootstrap (2026-08-08)
+
+With your explicit in-chat permission this session (staging Worker
+only): set `SUPABASE_SERVICE_ROLE_KEY` as a Cloudflare secret on
+`cloudpeptides-staging` (`wrangler secret put`, value read from local
+`.env.local` — never printed, logged, or written anywhere else).
+Bootstrapped the first admin account (`jessica.holsopple3@gmail.com`)
+via a one-time local script: generated a strong password in-process
+with `node:crypto`, copied it directly to the Windows clipboard
+(`clip.exe` via stdin, never a shell argument), created the Supabase
+user (`email_confirm: true` — no email sent), assigned the `admin`
+role, verified by a real sign-in that the JWT's `user_role` claim
+actually reads `admin` — then deleted the bootstrap script.
+
+Deployed to `cloudpeptides-staging` via `wrangler deploy` (dropping an
+explicit `--config wrangler.jsonc` flag worked around a Windows-only
+path-resolution quirk in this local wrangler install; the existing
+GitHub Actions `deploy-staging` job — Linux runners — doesn't hit
+this). Live-verified against the real deployed URL with a second,
+disposable test admin account (never your real password): site up,
+`/admin/login` renders, unauthenticated `/admin` redirects,
+unauthenticated `/api/admin/*` returns 401, a real login round-trip
+succeeds, authenticated `/admin` loads, and admin user-creation
+succeeds through the live Worker — the last one specifically proving
+the service-role secret is genuinely wired up in the deployed runtime,
+not just locally. **7/7 live checks passed.** Verification script
+deleted afterward, same as the bootstrap script — nothing temporary
+left in the repo.
+
+No changes to `main`, production, DNS, or checkout (`COMMERCE_ENABLED`
+unchanged).
+
 ## Combined Phase — Supabase Authentication + Editorial/Admin Dashboard (2026-08-08)
 
 **Scope, as approved in chat:** Phase 5 narrowed to authentication
