@@ -33,7 +33,19 @@ describe('validateNewPassword', () => {
 });
 
 describe('isRecoverySession', () => {
-  it('returns true for a token whose amr claim includes method "recovery"', () => {
+  // Regression test for a real production bug (2026-08-08): every
+  // genuine recovery link failed with "invalid or expired" because
+  // this check originally required amr method === 'recovery', but a
+  // real Supabase-issued recovery session (confirmed via
+  // admin.generateLink(), never sent by email) actually carries
+  // method: 'otp'. This is the shape that must be accepted for the
+  // real flow to work at all.
+  it('returns true for a real Supabase recovery session (amr method "otp")', () => {
+    const token = fakeJwt({ amr: [{ method: 'otp', timestamp: 123 }] });
+    expect(isRecoverySession(token)).toBe(true);
+  });
+
+  it('also accepts method "recovery" defensively, for other Supabase versions/configs', () => {
     const token = fakeJwt({ amr: [{ method: 'recovery', timestamp: 123 }] });
     expect(isRecoverySession(token)).toBe(true);
   });

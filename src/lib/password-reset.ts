@@ -35,13 +35,30 @@ export function validateNewPassword(
  * genuine by Supabase itself (exchangeCodeForSession/setSession) —
  * decoding a JWT's payload proves nothing about authenticity by
  * itself, mirroring src/lib/auth.ts's own decodeJwtRole() warning.
+ *
+ * Verified against a real (unconsumed, admin.generateLink()-produced —
+ * never sent by email, so this never touched the project's mailer
+ * quota) Supabase-issued recovery session on 2026-08-08: the amr entry
+ * this app actually receives is `{ method: 'otp', ... }`, not
+ * `{ method: 'recovery', ... }` as originally assumed — that wrong
+ * assumption shipped to production and made every real recovery link
+ * fail with the generic "invalid or expired" message. 'recovery' is
+ * kept alongside 'otp' defensively in case a different Supabase
+ * version/config ever emits it. Matching bare 'otp' is safe in this
+ * app specifically because no other flow here ever produces an
+ * otp-method session (login.ts only ever calls signInWithPassword) —
+ * if a passwordless/magic-link sign-in is ever added, this check must
+ * be revisited, since it would then also satisfy this condition.
  */
 export function isRecoverySession(accessToken: string): boolean {
   try {
     const payload = accessToken.split('.')[1];
     const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
     const claims = JSON.parse(json) as { amr?: Array<{ method?: unknown }> };
-    return Array.isArray(claims.amr) && claims.amr.some((entry) => entry?.method === 'recovery');
+    return (
+      Array.isArray(claims.amr) &&
+      claims.amr.some((entry) => entry?.method === 'otp' || entry?.method === 'recovery')
+    );
   } catch {
     return false;
   }
