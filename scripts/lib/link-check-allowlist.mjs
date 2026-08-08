@@ -44,9 +44,10 @@ export const FLAKY_CITATION_ALLOWLIST = new Set([
  * build) — exact-URL matching only, never a prefix/domain match, so
  * a new dead link on an allowlisted domain still blocks.
  *
- * @param {Array<{url: string, state: string}>} links
+ * @typedef {{ url: string, state: string, status?: number, parent?: string }} LinkResult
+ * @param {Array<LinkResult>} links
  * @param {Set<string>} allowlist
- * @returns {{ allowlistedBroken: Array<object>, realBroken: Array<object> }}
+ * @returns {{ allowlistedBroken: Array<LinkResult>, realBroken: Array<LinkResult> }}
  */
 export function classifyBrokenLinks(links, allowlist = FLAKY_CITATION_ALLOWLIST) {
   const broken = links.filter((link) => link.state === 'BROKEN');
