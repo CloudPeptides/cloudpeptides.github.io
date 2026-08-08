@@ -2,6 +2,90 @@
 
 Append-only. One entry per meaningful step, per [CLAUDE.md](../CLAUDE.md) §3/§11/§12.
 
+## Final Pre-Launch Readiness Phase (2026-08-08)
+
+Scope: 7 policy/trust pages, full production-readiness audit, prepared
+(not executed) production migration/backup scripts and cutover/smoke-
+test checklists, and safe local fixes found along the way. `main`/
+production/DNS untouched throughout; checkout stayed disabled.
+
+**Policy pages:** Privacy Policy, Terms of Use, Research and Medical
+Disclaimer, Accessibility Statement, Shipping Policy, Return and
+Refund Policy, Shop Terms (`src/pages/{privacy,terms,disclaimer,
+accessibility,shipping,returns,shop-terms}.astro`, shared
+`PolicyLayout.astro`) — written strictly against this app's real,
+verified behavior. No invented company registration, physical
+address, jurisdiction, licenses, shipping carriers, or
+processing/return promises; every genuinely unknown item (business
+entity, address, governing law, cookie-consent requirement) is stated
+as such and recorded as a deferred decision in
+`docs/planning/production-readiness-audit.md` rather than guessed at.
+Linked from a new footer "Policies" nav landmark plus contextual links
+on the shop and research-directory pages.
+
+**Production-readiness audit** (`docs/planning/
+production-readiness-audit.md`) covered all 16 requested categories
+with real, checked findings — most were already solid from prior
+phases; two real gaps were found and fixed this phase:
+
+- **No site-wide 404 page existed.** Added `src/pages/404.astro` +
+  shared `NotFoundContent.astro`.
+- **Legacy URL redirects were documented but never implemented.**
+  First attempt lived in `src/middleware.ts`; found live (not assumed)
+  that Cloudflare's Workers Static Assets binding intercepts any path
+  with no matching static file — every legacy `.html` URL — and serves
+  the static 404 directly before the Worker runs, confirmed via both
+  `astro preview` and `wrangler dev`, unaffected by
+  `not_found_handling` in `wrangler.jsonc`. Fixed by making each
+  legacy path a real, matched Astro route instead
+  (`src/pages/product.html.astro`, `src/pages/[legacy].html.astro`,
+  reading `src/lib/legacy-redirects.ts`) — re-verified directly via
+  `wrangler dev` and new Playwright e2e tests (real 301s with correct
+  `Location` headers).
+- A real accessibility regression was caught by axe during this
+  phase's own verification, not missed: a new shop-page disclaimer
+  link used `--terracotta-text` on `--bg-sunken` (4.15:1, below the
+  4.5:1 AA minimum) — the exact pairing already flagged as unverified
+  in `ShopDisclosure.astro`'s own prior comment. Fixed by switching to
+  `--primary`, re-verified clean.
+
+**Prepared, not executed** (no production Supabase project exists
+yet): `scripts/migration/export-published-for-production.mjs`
+(staging → production data migration, published rows only) and
+`scripts/migration/backup-production.mjs` (`pg_dump` wrapper,
+independent of Supabase's own backup system). `docs/planning/
+production-cutover-checklist.md` (ordered steps + exact GitHub Actions
+secrets/variables table) and `docs/planning/
+post-launch-smoke-test-checklist.md` consolidate and operationalize
+the existing narrative `production-cutover-plan.md`, whose Phase 5/6
+readiness table was also corrected here (both were accurately "Not
+started" when first written; both are done as of the two prior
+"Combined Phase" entries below).
+
+**Verification, run once at the end:** `npm run lint` / `typecheck` /
+`format:check` (only files touched this phase) all clean; **103/103**
+unit tests (7 new); **38/38** e2e tests (15 new — policy pages ×7,
+footer-link check, 404 ×2, legacy-redirect HTTP assertions ×3),
+including the axe-regression fix above; `npm run build` clean;
+`npm run check:secrets` clean; `npm run check:links` — 2 pre-existing,
+unrelated external citation URLs found (JAMA DOI 403ing for two
+compounds' claims; the FDA one noted in the prior phase resolved
+itself between runs — exactly the external-source-flakiness category
+Blueprint v2 §18 describes, not a defect); `npm run
+db:verify-security` **14/14**; `npm run db:verify-admin-security`
+**18/18** (re-run specifically because `src/middleware.ts` changed
+substantially this phase — confirms admin auth/RLS still hold).
+
+**Deferred decisions requiring your input** (not blockers for further
+staging work — full detail in the audit doc): `www` behavior
+(direct-serve vs. redirect to apex); registered business entity/
+physical address/governing jurisdiction for the policy pages (all
+three genuinely don't exist anywhere in this project's records, and
+Blueprint v2 §23 already required legal review before treating any
+policy-page language as final); whether a cookie-consent banner is
+needed (the site currently sets only strictly-necessary functional
+cookies); production Supabase Pro-tier cost approval.
+
 ## Combined Phase — Deployment + First-Admin Bootstrap (2026-08-08)
 
 With your explicit in-chat permission this session (staging Worker
