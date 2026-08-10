@@ -62,6 +62,17 @@ export const FLAKY_CITATION_ALLOWLIST = new Set([
   // limited") to automated crawlers, confirmed distinct from a dead
   // link.
   'https://www.federalregister.gov/documents/2013/03/04/2013-04827/determination-that-geref-sermorelin-acetate-injection-05-milligrams-basevial-and-10-milligrams',
+  // Janoshik's own COA-verification page, linked as batch_coas.
+  // verification_url on all 26 imported COAs (/coas) — this is the
+  // exact URL every one of those reports itself prints as its
+  // official verification instruction ("Verify this test at
+  // www.janoshik.com/verify/ with the following unique key"), not a
+  // guessed or malformed link. Confirmed 2026-08-10 via a direct curl
+  // with a real browser User-Agent: Cloudflare returns 403 with a
+  // "Just a moment..." challenge page and a __cf_bm cookie — the same
+  // bot-management signature as the WADA/Federal Register entries
+  // above, not a dead link or wrong URL.
+  'https://www.janoshik.com/verify/',
 ]);
 
 /**
