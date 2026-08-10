@@ -107,6 +107,8 @@ const REQUIRED_TABLES = [
   'public.admin_pricing_catalog',
   'public.shop_products',
   'public.product_categories',
+  // Added for the COA batch-import rollback gate (2026-08-10).
+  'public.batch_coas',
 ];
 
 function psqlQuery(sql) {
