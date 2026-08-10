@@ -126,7 +126,12 @@ const STATUS_TONE: Record<string, 'neutral' | 'info' | 'warning' | 'success'> = 
             {rows.map((c) => (
               <tr>
                 <td>
-                  <a href={`/admin/compounds/${c.id}`}>{c.name}</a>
+                  <a href={`/admin/compounds/${c.id}`}>{c.display_name || c.name}</a>
+                  {c.expert_review_flag_reason && (
+                    <span title={c.expert_review_flag_reason}>
+                      <Badge tone="warning">flagged</Badge>
+                    </span>
+                  )}
                 </td>
                 <td>{c.slug}</td>
                 <td>{c.entity_kind.replace(/_/g, ' ')}</td>

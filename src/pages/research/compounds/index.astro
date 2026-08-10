@@ -87,7 +87,12 @@ const breadcrumbJsonLd = {
             {compounds.map((compound) => (
               <div
                 data-compound-item
-                data-name={compound.name}
+                data-name={compound.display_name || compound.name}
+                data-search-name={
+                  compound.display_name
+                    ? `${compound.name} ${compound.display_name}`
+                    : compound.name
+                }
                 data-aliases={compound.compound_aliases.map((a) => a.alias).join(' | ')}
                 data-entity-kind={compound.entity_kind}
                 data-category={compound.category ?? ''}

@@ -82,10 +82,21 @@ export interface Compound {
   id: string;
   slug: string;
   name: string;
+  /** Optional public-facing display variant of `name` (e.g. a
+   * commonly-used name distinct from the canonical/scientific one).
+   * Null falls back to `name` everywhere it's rendered. Added for the
+   * commerce product wizard (Batch 1, 2026-08-10); adopted here so the
+   * research admin/public pages can use it too. */
+  display_name: string | null;
   entity_kind: EntityKind;
   identity_confidence: IdentityConfidence;
   category: string | null;
   status: EditorialStatus;
+  /** Non-null = flagged for expert/editorial review before content is
+   * taken at face value; rendered as a prominent public warning.
+   * Replaces the previous hardcoded src/lib/expert-review-flags.ts list
+   * (Research CMS gap-fill, 2026-08-10). */
+  expert_review_flag_reason: string | null;
   legacy_source_path: string | null;
   raw_import_metadata: Record<string, unknown> | null;
   last_reviewed_at: string | null;

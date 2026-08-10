@@ -40,7 +40,7 @@ function getClient() {
 // Phase 1's version (which had no way to power evidence-based filters/
 // sorting) but still bounded: 56 compounds total, each with a handful of
 // claims/sources — this is a single request, not an N+1 pattern.
-const COMPOUND_LIST_SELECT = `id, slug, name, entity_kind, category, identity_confidence, status, updated_at,
+const COMPOUND_LIST_SELECT = `id, slug, name, display_name, entity_kind, category, identity_confidence, status, expert_review_flag_reason, updated_at,
       compound_aliases ( alias ),
       claims!claims_compound_id_fkey (
         evidence_quality,
@@ -54,10 +54,12 @@ interface RawListRow {
   id: string;
   slug: string;
   name: string;
+  display_name: string | null;
   entity_kind: string;
   category: string | null;
   identity_confidence: string;
   status: string;
+  expert_review_flag_reason: string | null;
   updated_at: string;
   compound_aliases: { alias: string }[];
   claims: {
@@ -73,10 +75,12 @@ export interface CompoundListItem {
   id: string;
   slug: string;
   name: string;
+  display_name: string | null;
   entity_kind: string;
   category: string | null;
   identity_confidence: string;
   status: string;
+  expert_review_flag_reason: string | null;
   updated_at: string;
   compound_aliases: { alias: string }[];
   /** Distinct sources cited across every claim — used as the directory's "study count." */
@@ -107,10 +111,12 @@ function deriveListItem(row: RawListRow): CompoundListItem {
     id: row.id,
     slug: row.slug,
     name: row.name,
+    display_name: row.display_name,
     entity_kind: row.entity_kind,
     category: row.category,
     identity_confidence: row.identity_confidence,
     status: row.status,
+    expert_review_flag_reason: row.expert_review_flag_reason,
     updated_at: row.updated_at,
     compound_aliases: row.compound_aliases,
     studyCount: sourceIds.size,

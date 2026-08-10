@@ -29,6 +29,7 @@ const EVIDENCE_QUALITY_RANK: Record<string, number> = {
 interface CardState {
   el: HTMLElement;
   name: string;
+  searchName: string;
   aliases: string;
   entityKind: string;
   category: string;
@@ -82,6 +83,11 @@ function initCompoundSearch(): void {
   ).map((el) => ({
     el,
     name: el.dataset.name ?? '',
+    // Includes the canonical name alongside the display name — a card
+    // shows only the display name, but a search for either should still
+    // find it (data-name stays display-only so A-Z sort matches what's
+    // actually rendered on the card).
+    searchName: (el.dataset.searchName ?? el.dataset.name ?? '').toLowerCase(),
     aliases: (el.dataset.aliases ?? '').toLowerCase(),
     entityKind: el.dataset.entityKind ?? '',
     category: el.dataset.category ?? '',
@@ -109,7 +115,7 @@ function initCompoundSearch(): void {
 
     const matching = cards.filter((card) => {
       const nameOrAliasMatch =
-        !query || card.name.toLowerCase().includes(query) || card.aliases.includes(query);
+        !query || card.searchName.includes(query) || card.aliases.includes(query);
       return (
         nameOrAliasMatch &&
         (!entityKind || card.entityKind === entityKind) &&

@@ -1,0 +1,105 @@
+---
+/**
+ * Admin-only "preview unpublished changes" (Research CMS gap-fill,
+ * 2026-08-10) — renders a draft/in_review/archived compound through
+ * the EXACT same template real publishing uses
+ * (src/components/research/CompoundProfileBody.astro), so what an
+ * editor sees here genuinely matches what would go live, not a
+ * separate approximation that could drift out of sync.
+ *
+ * Never reachable by anon users: this lives under /admin/, gated by
+ * src/middleware.ts's existing contributor+ requirement for every
+ * /admin/* path. Always noindex, always carries a visible "preview,
+ * not live" banner, and the data fetch (getCompoundForEdit) reads
+ * every status via the caller's own JWT + RLS — not the public,
+ * published-only path.
+ */
+export const prerender = false;
+
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import CompoundProfileBody from '../../../../components/research/CompoundProfileBody.astro';
+import { createUserScopedClient } from '../../../../lib/auth';
+import { getCompoundForEdit } from '../../../../lib/admin/queries';
+import { getRelatedCompounds, type RelatedCompound } from '../../../../lib/supabase';
+import { buildCompoundProfileMeta } from '../../../../lib/compound-profile-meta';
+
+const session = Astro.locals.session!;
+const client = createUserScopedClient(session.accessToken);
+const id = Astro.params.id!;
+
+let compound: Awaited<ReturnType<typeof getCompoundForEdit>> = null;
+let loadError: string | null = null;
+let related: RelatedCompound[] = [];
+try {
+  compound = await getCompoundForEdit(client, id);
+  if (compound) {
+    // Reuses the same anon-scoped query the real public page uses —
+    // the sidebar's "Related" list should preview exactly what would
+    // show once published (only already-published related compounds),
+    // not draft relationships that don't exist publicly yet either.
+    related = await getRelatedCompounds(compound.id);
+  }
+} catch {
+  loadError = 'Could not load this compound preview right now.';
+}
+if (!loadError && !compound) {
+  Astro.response.status = 404;
+}
+
+const meta = compound
+  ? buildCompoundProfileMeta(compound, Astro.site, '/research/compounds/')
+  : null;
+
+const STATUS_LABELS: Record<string, string> = {
+  draft: 'Draft',
+  in_review: 'In review',
+  published: 'Published',
+  archived: 'Archived',
+};
+---
+
+<BaseLayout
+  title={meta ? `Preview — ${meta.displayName}` : 'Preview not found'}
+  description={meta?.description ?? 'Compound preview not found.'}
+  noindex
+>
+  {
+    compound && (
+      <div class="cp-preview-banner" role="status">
+        <strong>Preview mode</strong> — this is how {meta?.displayName} would look once published.
+        Current status: <strong>{STATUS_LABELS[compound.status] ?? compound.status}</strong>. This
+        page is never visible to site visitors and is excluded from search indexing.
+        <a href={`/admin/compounds/${compound.id}`}>&larr; Back to editing</a>
+      </div>
+    )
+  }
+  <CompoundProfileBody
+    compound={compound}
+    loadError={loadError}
+    related={related}
+    emptyStateMessage="This compound doesn't exist, or you don't have permission to view it."
+  />
+</BaseLayout>
+
+<style>
+  /* Same visual language as the site's other "informational, not an
+     error" banners (e.g. shop's coming-soon notice) — bg-sunken +
+     colored left border + colored text, already verified for AA
+     contrast, rather than a solid warning-color background that would
+     need its own separate contrast check against white text. */
+  .cp-preview-banner {
+    font-size: var(--text-caption);
+    font-weight: 500;
+    color: var(--warning-text);
+    background: var(--bg-sunken);
+    border-left: 3px solid var(--warning-text);
+    padding: 0.75rem 1.5rem;
+    text-align: center;
+  }
+  .cp-preview-banner a {
+    color: inherit;
+    text-decoration: underline;
+    margin-left: 0.75rem;
+    white-space: nowrap;
+  }
+</style>

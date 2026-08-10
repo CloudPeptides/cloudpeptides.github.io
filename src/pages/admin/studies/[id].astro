@@ -19,7 +19,15 @@ if (!study) return new Response(null, { status: 404 });
       <p class="cp-admin-eyebrow">Editorial</p>
       <h1>Edit study</h1>
     </div>
-    <a href="/admin/studies" class="cp-admin-btn cp-admin-btn--secondary">&larr; Back to studies</a>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+      <a
+        href={`/admin/audit-log?target_table=studies&target_id=${study.id}`}
+        class="cp-admin-btn cp-admin-btn--secondary">View history</a
+      >
+      <a href="/admin/studies" class="cp-admin-btn cp-admin-btn--secondary"
+        >&larr; Back to studies</a
+      >
+    </div>
   </div>
 
   <div class="cp-admin-section">

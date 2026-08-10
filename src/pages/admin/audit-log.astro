@@ -12,6 +12,8 @@ const isAdmin = hasMinRole(session.role, 'admin');
 if (!isAdmin) Astro.response.status = 403;
 
 const page = Math.max(1, Number(Astro.url.searchParams.get('page') ?? '1') || 1);
+const targetTable = Astro.url.searchParams.get('target_table') ?? '';
+const targetId = Astro.url.searchParams.get('target_id') ?? '';
 const PAGE_SIZE = 30;
 
 let loadError: string | null = null;
@@ -20,7 +22,12 @@ let total = 0;
 if (isAdmin) {
   try {
     const client = createUserScopedClient(session.accessToken);
-    const result = await listAuditLog(client, { page, pageSize: PAGE_SIZE });
+    const result = await listAuditLog(client, {
+      page,
+      pageSize: PAGE_SIZE,
+      targetTable: targetTable || undefined,
+      targetId: targetId || undefined,
+    });
     rows = result.rows;
     total = result.total;
   } catch {
@@ -35,9 +42,21 @@ const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
     <div>
       <p class="cp-admin-eyebrow">Admin</p>
       <h1>Audit log</h1>
-      <p>Append-only record of every service-role action (user creation, role changes).</p>
+      <p>
+        Append-only record of every service-role action — user/role management, and every editorial
+        write to compounds, claims, sources, studies, and regulatory records.
+      </p>
     </div>
   </div>
+
+  {
+    isAdmin && (targetTable || targetId) && (
+      <p class="cp-admin-form-message" data-tone="info">
+        Filtered to {targetTable || 'any table'}
+        {targetId ? ` · ${targetId}` : ''} — <a href="/admin/audit-log">clear filter</a>
+      </p>
+    )
+  }
 
   {
     !isAdmin && (

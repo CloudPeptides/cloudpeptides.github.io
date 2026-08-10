@@ -20,7 +20,15 @@ const studyOptions = await listStudyOptions(client);
       <p class="cp-admin-eyebrow">Editorial</p>
       <h1>Edit source</h1>
     </div>
-    <a href="/admin/sources" class="cp-admin-btn cp-admin-btn--secondary">&larr; Back to sources</a>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+      <a
+        href={`/admin/audit-log?target_table=sources&target_id=${source.id}`}
+        class="cp-admin-btn cp-admin-btn--secondary">View history</a
+      >
+      <a href="/admin/sources" class="cp-admin-btn cp-admin-btn--secondary"
+        >&larr; Back to sources</a
+      >
+    </div>
   </div>
 
   <div class="cp-admin-section">
@@ -155,16 +163,18 @@ const studyOptions = await listStudyOptions(client);
       <input type="hidden" name="source_id" value={source.id} />
       <div class="cp-admin-field">
         <label for="identifier_type">Type</label>
-        <select id="identifier_type" name="identifier_type" required>
+        <select id="identifier_type" name="identifier_type" required data-identifier-type-input>
           {IDENTIFIER_TYPES.map((t) => <option value={t}>{t.replace(/_/g, ' ')}</option>)}
         </select>
       </div>
       <div class="cp-admin-field">
         <label for="identifier_value">Value</label>
-        <input id="identifier_value" name="identifier_value" required />
+        <input id="identifier_value" name="identifier_value" required data-identifier-value-input />
       </div>
       <div class="cp-admin-field" style="align-self:end;">
         <button type="submit" class="cp-admin-btn cp-admin-btn--secondary">Add identifier</button>
+      </div>
+      <div id="duplicateIdentifierWarning" class="cp-admin-form-message" data-tone="warning" hidden>
       </div>
       <p class="cp-admin-form-message" data-tone="error" data-form-error hidden></p>
     </form>
@@ -173,4 +183,5 @@ const studyOptions = await listStudyOptions(client);
 
 <script>
   import '../../../scripts/admin-form.ts';
+  import '../../../scripts/admin-source-duplicate-check.ts';
 </script>
