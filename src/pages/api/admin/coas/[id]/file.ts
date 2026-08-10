@@ -61,7 +61,9 @@ export const POST: APIRoute = async ({ params, request, url, locals }) => {
   const client = createUserScopedClient(session.accessToken);
   const { data: current, error: fetchError } = await client
     .from('batch_coas')
-    .select('id, file_path, original_filename, file_mime_type, file_size_bytes, peptide_name, product_id')
+    .select(
+      'id, file_path, original_filename, file_mime_type, file_size_bytes, peptide_name, product_id',
+    )
     .eq('id', id)
     .maybeSingle();
   if (fetchError || !current) {

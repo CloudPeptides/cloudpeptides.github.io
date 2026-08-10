@@ -270,10 +270,7 @@ async function main() {
       // --- audit: create ---
       const createAudit = await getAuditEntry(coaId, 'coa_created');
       record('coa_created audit_log entry exists', Boolean(createAudit));
-      record(
-        'coa_created records the correct actor',
-        createAudit?.actor_user_id === userIds.admin,
-      );
+      record('coa_created records the correct actor', createAudit?.actor_user_id === userIds.admin);
       record(
         'coa_created detail has no secret-like values',
         createAudit && !containsSecretLikeValue(createAudit.detail),
@@ -371,7 +368,11 @@ async function main() {
         headers: { ...origin, Cookie: adminLogin.cookie },
         body: replaceForm,
       });
-      record('admin can replace the COA file', replaceRes.status === 200, `status ${replaceRes.status}`);
+      record(
+        'admin can replace the COA file',
+        replaceRes.status === 200,
+        `status ${replaceRes.status}`,
+      );
       const replaceAudit = await getAuditEntry(coaId, 'coa_file_replaced');
       record('coa_file_replaced audit_log entry exists', Boolean(replaceAudit));
       record(
