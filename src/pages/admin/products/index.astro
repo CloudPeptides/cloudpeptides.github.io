@@ -1,0 +1,289 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Badge from '../../../components/ui/Badge.astro';
+import ErrorState from '../../../components/ui/ErrorState.astro';
+import { createUserScopedClient, hasMinRole } from '../../../lib/auth';
+import {
+  ENTITY_KINDS,
+  INTERNAL_STATUSES,
+  PUBLIC_STATUSES,
+  listCategories,
+  listShopProducts,
+} from '../../../lib/admin/products';
+
+const session = Astro.locals.session!;
+if (!hasMinRole(session.role, 'admin')) {
+  return new Response('Admin access required.', { status: 403 });
+}
+
+const client = createUserScopedClient(session.accessToken);
+const params = Astro.url.searchParams;
+const q = params.get('q') ?? '';
+const categoryId = params.get('category') ?? '';
+const internalStatus = params.get('internal_status') ?? '';
+const publicStatus = params.get('public_status') ?? '';
+const entityKind = params.get('entity_kind') ?? '';
+const researchStatus = params.get('research_status') ?? '';
+
+let loadError: string | null = null;
+let products: Awaited<ReturnType<typeof listShopProducts>> = [];
+let categories: Awaited<ReturnType<typeof listCategories>> = [];
+try {
+  [products, categories] = await Promise.all([
+    listShopProducts(client, {
+      q,
+      categoryId,
+      internalStatus,
+      publicStatus,
+      entityKind,
+      researchStatus,
+    }),
+    listCategories(client),
+  ]);
+} catch {
+  loadError = 'Could not load products right now.';
+}
+
+const RESEARCH_STATUSES = ['draft', 'in_review', 'published', 'archived'];
+
+const PUBLIC_STATUS_TONE: Record<string, 'neutral' | 'warning' | 'success'> = {
+  private: 'neutral',
+  compliance_hold: 'warning',
+  published: 'success',
+};
+const INTERNAL_STATUS_TONE: Record<string, 'neutral' | 'warning' | 'success'> = {
+  draft: 'neutral',
+  active: 'success',
+  archived: 'warning',
+};
+---
+
+<AdminLayout title="Products">
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">Admin only</p>
+      <h1>Products</h1>
+      <p>Shop products/SKUs, optionally linked to a research compound.</p>
+    </div>
+    <a href="/admin/products/new" class="cp-admin-btn cp-admin-btn--primary"
+      >+ Add Product / Peptide</a
+    >
+  </div>
+
+  <details class="cp-pw-category-manager">
+    <summary>Manage categories ({categories.length})</summary>
+    <ul>
+      {categories.map((c) => <li>{c.name}</li>)}
+    </ul>
+    <form id="addCategoryForm" class="cp-admin-toolbar">
+      <input
+        type="text"
+        id="newCategoryName"
+        placeholder="New category name…"
+        maxlength="80"
+        required
+      />
+      <button type="submit" class="cp-admin-btn cp-admin-btn--secondary">+ Add category</button>
+    </form>
+    <p class="cp-admin-form-message" data-tone="error" id="categoryError" role="alert" hidden></p>
+  </details>
+
+  <form method="get" class="cp-admin-toolbar">
+    <input
+      type="search"
+      name="q"
+      placeholder="Search by code or name…"
+      value={q}
+      aria-label="Search products"
+    />
+    <select name="category" aria-label="Filter by category">
+      <option value="">All categories</option>
+      {
+        categories.map((c) => (
+          <option value={c.id} selected={categoryId === c.id}>
+            {c.name}
+          </option>
+        ))
+      }
+    </select>
+    <select name="entity_kind" aria-label="Filter by entity type">
+      <option value="">All entity types</option>
+      {
+        ENTITY_KINDS.map((k) => (
+          <option value={k.value} selected={entityKind === k.value}>
+            {k.label}
+          </option>
+        ))
+      }
+    </select>
+    <select name="research_status" aria-label="Filter by research status">
+      <option value="">All research statuses</option>
+      {
+        RESEARCH_STATUSES.map((s) => (
+          <option value={s} selected={researchStatus === s}>
+            {s.replace(/_/g, ' ')}
+          </option>
+        ))
+      }
+    </select>
+    <select name="internal_status" aria-label="Filter by internal status">
+      <option value="">All internal statuses</option>
+      {
+        INTERNAL_STATUSES.map((s) => (
+          <option value={s} selected={internalStatus === s}>
+            {s}
+          </option>
+        ))
+      }
+    </select>
+    <select name="public_status" aria-label="Filter by public-listing status">
+      <option value="">All public-listing statuses</option>
+      {
+        PUBLIC_STATUSES.map((s) => (
+          <option value={s} selected={publicStatus === s}>
+            {s.replace(/_/g, ' ')}
+          </option>
+        ))
+      }
+    </select>
+    <button type="submit" class="cp-admin-btn cp-admin-btn--secondary">Apply</button>
+    <span class="cp-admin-toolbar__spacer"></span>
+    <span class="cp-admin-toolbar__count"
+      >{products.length} product{products.length === 1 ? '' : 's'}</span
+    >
+  </form>
+
+  {loadError && <ErrorState message={loadError} retryHref="/admin/products" />}
+
+  {
+    !loadError && products.length === 0 && (
+      <div class="cp-admin-section">
+        <p class="cp-admin-empty-row">No products match those filters.</p>
+      </div>
+    )
+  }
+
+  {
+    !loadError && products.length > 0 && (
+      <div class="cp-admin-table-wrap">
+        <table class="cp-admin-table">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Product</th>
+              <th>Spec</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Research</th>
+              <th>Internal</th>
+              <th>Public</th>
+              <th>COAs</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {products.map((p) => (
+              <tr>
+                <td>
+                  <code>{p.code}</code>
+                </td>
+                <td>
+                  <a href={`/admin/products/${p.id}`}>{p.name}</a>
+                </td>
+                <td>
+                  {p.spec} ({p.count === 10 ? '10-vial kit' : `${p.count} vial`})
+                </td>
+                <td>{p.category_name}</td>
+                <td>${p.price.toFixed(2)}</td>
+                <td>{p.compound_name ? `${p.compound_name} (${p.compound_status})` : '—'}</td>
+                <td>
+                  <Badge tone={INTERNAL_STATUS_TONE[p.internal_status] ?? 'neutral'}>
+                    {p.internal_status}
+                  </Badge>
+                </td>
+                <td>
+                  <Badge tone={PUBLIC_STATUS_TONE[p.public_status] ?? 'neutral'}>
+                    {p.public_status.replace(/_/g, ' ')}
+                  </Badge>
+                </td>
+                <td>{p.coa_count}</td>
+                <td>
+                  <div class="cp-pw-row-actions">
+                    <a
+                      href={`/admin/products/${p.id}`}
+                      class="cp-admin-btn cp-admin-btn--secondary cp-admin-btn--sm"
+                    >
+                      Edit
+                    </a>
+                    <button
+                      type="button"
+                      class="cp-admin-btn cp-admin-btn--secondary cp-admin-btn--sm"
+                      data-duplicate-product
+                      data-product-id={p.id}
+                    >
+                      Duplicate
+                    </button>
+                    {p.internal_status === 'archived' ? (
+                      <button
+                        type="button"
+                        class="cp-admin-btn cp-admin-btn--secondary cp-admin-btn--sm"
+                        data-unarchive-product
+                        data-product-id={p.id}
+                      >
+                        Unarchive
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        class="cp-admin-btn cp-admin-btn--danger cp-admin-btn--sm"
+                        data-archive-product
+                        data-product-id={p.id}
+                      >
+                        Archive
+                      </button>
+                    )}
+                  </div>
+                  <p
+                    class="cp-admin-form-message"
+                    data-tone="error"
+                    data-row-message={p.id}
+                    hidden
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+</AdminLayout>
+
+<script>
+  import '../../../scripts/admin-products-list.ts';
+</script>
+
+<style>
+  .cp-pw-row-actions {
+    display: flex;
+    gap: 0.375rem;
+    flex-wrap: wrap;
+  }
+  .cp-pw-category-manager {
+    margin: 0 0 1.5rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-control);
+    background: var(--bg-elevated);
+  }
+  .cp-pw-category-manager summary {
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .cp-pw-category-manager ul {
+    margin: 0.75rem 0;
+    padding-left: 1.25rem;
+  }
+</style>

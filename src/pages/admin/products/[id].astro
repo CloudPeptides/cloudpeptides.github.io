@@ -1,0 +1,205 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Badge from '../../../components/ui/Badge.astro';
+import ErrorState from '../../../components/ui/ErrorState.astro';
+import { createUserScopedClient, hasMinRole } from '../../../lib/auth';
+import {
+  ENTITY_KINDS,
+  INTERNAL_STATUSES,
+  PUBLIC_STATUSES,
+  getCompound,
+  getShopProduct,
+  listCategories,
+  listLinkedCoas,
+  listUnlinkedCoas,
+} from '../../../lib/admin/products';
+
+const session = Astro.locals.session!;
+if (!hasMinRole(session.role, 'admin')) {
+  return new Response('Admin access required.', { status: 403 });
+}
+
+const id = Astro.params.id!;
+const client = createUserScopedClient(session.accessToken);
+
+let loadError: string | null = null;
+let product: Awaited<ReturnType<typeof getShopProduct>> = null;
+let categories: Awaited<ReturnType<typeof listCategories>> = [];
+let compound: Awaited<ReturnType<typeof getCompound>> = null;
+let linkedCoas: Awaited<ReturnType<typeof listLinkedCoas>> = [];
+let unlinkedCoas: Awaited<ReturnType<typeof listUnlinkedCoas>> = [];
+
+try {
+  product = await getShopProduct(client, id);
+  if (product) {
+    [categories, linkedCoas, unlinkedCoas] = await Promise.all([
+      listCategories(client),
+      listLinkedCoas(client, id),
+      listUnlinkedCoas(client),
+    ]);
+    if (product.compound_id) compound = await getCompound(client, product.compound_id);
+  }
+} catch {
+  loadError = 'Could not load this product right now.';
+}
+
+const entityLabel = (kind: string) => ENTITY_KINDS.find((k) => k.value === kind)?.label ?? kind;
+---
+
+<AdminLayout title={product ? product.name : 'Product'}>
+  {loadError && <ErrorState message={loadError} retryHref="/admin/products" />}
+  {
+    !loadError && !product && (
+      <ErrorState message="Product not found." retryHref="/admin/products" />
+    )
+  }
+
+  {
+    !loadError && product && (
+      <>
+        <div class="cp-admin-page-header">
+          <div>
+            <p class="cp-admin-eyebrow">
+              <code>{product.code}</code> &middot; <a href="/admin/products">&larr; All products</a>
+            </p>
+            <h1>{product.name}</h1>
+          </div>
+        </div>
+
+        <section class="cp-admin-section">
+          <h2>Research record</h2>
+          {compound ? (
+            <p>
+              Linked to{' '}
+              <a href={`/admin/compounds/${compound.id}`}>
+                {compound.display_name || compound.name}
+              </a>
+              &nbsp;— {entityLabel(compound.entity_kind)}, status:{' '}
+              <Badge tone={compound.status === 'published' ? 'success' : 'neutral'}>
+                {compound.status}
+              </Badge>
+              {compound.status !== 'published' && (
+                <span class="cp-pw-pending">
+                  {' '}
+                  (Research pending — not yet visible on the public research directory)
+                </span>
+              )}
+            </p>
+          ) : (
+            <p>No linked research record — commerce-only product.</p>
+          )}
+        </section>
+
+        <section class="cp-admin-section">
+          <h2>Shop product</h2>
+          <form id="productEditForm" class="cp-admin-form" data-product-id={product.id}>
+            <div class="cp-admin-form-grid">
+              <div class="cp-admin-field">
+                <label for="name">Product name</label>
+                <input id="name" value={product.name} />
+              </div>
+              <div class="cp-admin-field">
+                <label for="spec">Specification</label>
+                <input id="spec" value={product.spec} />
+              </div>
+              <div class="cp-admin-field">
+                <label for="count">Vial / item count</label>
+                <input id="count" type="number" min="1" value={product.count} />
+              </div>
+              <div class="cp-admin-field">
+                <label for="price">Price (USD)</label>
+                <input id="price" value={product.price.toFixed(2)} />
+              </div>
+              <div class="cp-admin-field">
+                <label for="categoryId">Category</label>
+                <select id="categoryId">
+                  {categories.map((c) => (
+                    <option value={c.id} selected={c.id === product!.category_id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div class="cp-admin-field">
+                <label for="internalStatus">Internal status</label>
+                <select id="internalStatus">
+                  {INTERNAL_STATUSES.map((s) => (
+                    <option value={s} selected={s === product!.internal_status}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div class="cp-admin-field">
+                <label for="publicStatus">Public-listing status</label>
+                <select id="publicStatus">
+                  {PUBLIC_STATUSES.map((s) => (
+                    <option value={s} selected={s === product!.public_status}>
+                      {s.replace(/_/g, ' ')}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div class="cp-admin-form-actions">
+              <button type="submit" class="cp-admin-btn cp-admin-btn--primary">
+                Save changes
+              </button>
+            </div>
+            <p class="cp-admin-form-message" data-tone="error" id="editError" role="alert" hidden />
+            <p
+              class="cp-admin-form-message"
+              data-tone="success"
+              id="editSuccess"
+              role="status"
+              hidden
+            />
+          </form>
+        </section>
+
+        <section class="cp-admin-section">
+          <h2>Certificates of Analysis</h2>
+          {linkedCoas.length > 0 ? (
+            <ul>
+              {linkedCoas.map((c) => (
+                <li>
+                  {c.peptide_name} — {c.testing_lab} —{' '}
+                  <Badge tone={c.status === 'published' ? 'success' : 'neutral'}>{c.status}</Badge>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No COAs linked yet.</p>
+          )}
+          {unlinkedCoas.length > 0 && (
+            <form id="linkCoaForm" data-product-id={product.id} class="cp-admin-toolbar">
+              <select id="unlinkedCoaSelect">
+                <option value="">Link an existing unlinked COA…</option>
+                {unlinkedCoas.map((c) => (
+                  <option value={c.id}>
+                    {c.peptide_name} — {c.testing_lab} ({c.status})
+                  </option>
+                ))}
+              </select>
+              <button type="submit" class="cp-admin-btn cp-admin-btn--secondary">
+                Link
+              </button>
+            </form>
+          )}
+        </section>
+      </>
+    )
+  }
+</AdminLayout>
+
+<script>
+  import '../../../scripts/admin-product-detail.ts';
+</script>
+
+<style>
+  .cp-pw-pending {
+    color: var(--warning-text);
+  }
+</style>
