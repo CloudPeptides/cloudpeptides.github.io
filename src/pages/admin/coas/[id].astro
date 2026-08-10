@@ -71,13 +71,15 @@ if (coa.status === 'archived') {
       <h1>{coa.peptide_name}</h1>
       <p>
         <Badge tone={STATUS_TONE[coa.status] ?? 'neutral'}>{coa.status}</Badge>
-        {linkedProduct ? (
-          <span class="cp-admin-sku-badge">
-            SKU: {linkedProduct.code} ({linkedProduct.name})
-          </span>
-        ) : (
-          <span class="cp-admin-sku-badge cp-admin-sku-badge--unlinked">No product linked</span>
-        )}
+        {
+          linkedProduct ? (
+            <span class="cp-admin-sku-badge">
+              SKU: {linkedProduct.code} ({linkedProduct.name})
+            </span>
+          ) : (
+            <span class="cp-admin-sku-badge cp-admin-sku-badge--unlinked">No product linked</span>
+          )
+        }
       </p>
     </div>
   </div>
