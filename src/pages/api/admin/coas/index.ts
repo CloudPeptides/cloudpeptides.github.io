@@ -34,6 +34,7 @@ import {
 import { COA_BUCKET } from '../../../../lib/coas';
 import { isSingleLineSafe, sanitizeText } from '../../../../lib/form-validation';
 import { checkRateLimit } from '../../../../lib/rate-limit';
+import { logCoaAudit } from '../../../../lib/admin/coa-audit';
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -149,6 +150,23 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
       400,
     );
   }
+
+  // No product_id at creation time — this form has no product
+  // selector (linking happens from the product's own admin page), so
+  // there is nothing to resolve yet; logged as null rather than
+  // guessed.
+  await logCoaAudit({
+    actorUserId: session.userId,
+    action: 'coa_created',
+    coaId: data.id as string,
+    productLabel: null,
+    peptideName: peptideName,
+    extra: {
+      original_filename: originalFilename,
+      file_mime_type: file.type,
+      file_size_bytes: file.size,
+    },
+  });
 
   return json({ success: true, data }, 201);
 };

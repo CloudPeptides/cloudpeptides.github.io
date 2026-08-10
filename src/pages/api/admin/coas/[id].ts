@@ -17,6 +17,11 @@ export const prerender = false;
 import type { APIRoute } from 'astro';
 import { createUserScopedClient, hasMinRole, isSameOriginRequest } from '../../../../lib/auth';
 import { isSingleLineSafe, sanitizeText } from '../../../../lib/form-validation';
+import {
+  diffCoaFields,
+  logCoaAudit,
+  resolveCoaProductLabel,
+} from '../../../../lib/admin/coa-audit';
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -37,6 +42,21 @@ const EDITABLE_TEXT_FIELDS = [
 
 const STATUSES = ['draft', 'published', 'archived'] as const;
 type Status = (typeof STATUSES)[number];
+
+/** Human-readable action name for the audit log — the underlying
+ * transition is always just a `status` column write, but "published"
+ * vs. "unpublished" vs. "archived" vs. "restored" are meaningfully
+ * different actions to an auditor even though the code path is
+ * shared. Falls back to a generic name for any combination the admin
+ * UI itself never offers but the API doesn't strictly forbid. */
+function statusTransitionAction(oldStatus: string, newStatus: string): string {
+  if (oldStatus === newStatus) return 'coa_updated';
+  if (newStatus === 'published') return 'coa_published';
+  if (oldStatus === 'published' && newStatus === 'draft') return 'coa_unpublished';
+  if (newStatus === 'archived') return 'coa_archived';
+  if (oldStatus === 'archived' && newStatus === 'draft') return 'coa_restored';
+  return 'coa_status_changed';
+}
 
 export const PATCH: APIRoute = async ({ params, request, url, locals }) => {
   const session = locals.session!;
@@ -128,6 +148,20 @@ export const PATCH: APIRoute = async ({ params, request, url, locals }) => {
       400,
     );
   }
+
+  const changes = diffCoaFields(current, data, [...EDITABLE_TEXT_FIELDS, 'test_date', 'status']);
+  const productLabel = await resolveCoaProductLabel(client, (data.product_id as string) ?? null);
+  const action = statusChanged
+    ? statusTransitionAction(current.status as string, data.status as string)
+    : 'coa_updated';
+  await logCoaAudit({
+    actorUserId: session.userId,
+    action,
+    coaId: id,
+    productLabel,
+    peptideName: data.peptide_name as string,
+    changes,
+  });
 
   return json({ success: true, data, statusChanged }, 200);
 };

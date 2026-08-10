@@ -26,6 +26,7 @@ import {
 } from '../../../../../lib/coa-file-validation';
 import { COA_BUCKET } from '../../../../../lib/coas';
 import { checkRateLimit } from '../../../../../lib/rate-limit';
+import { logCoaAudit, resolveCoaProductLabel } from '../../../../../lib/admin/coa-audit';
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -60,7 +61,7 @@ export const POST: APIRoute = async ({ params, request, url, locals }) => {
   const client = createUserScopedClient(session.accessToken);
   const { data: current, error: fetchError } = await client
     .from('batch_coas')
-    .select('id, file_path')
+    .select('id, file_path, original_filename, file_mime_type, file_size_bytes, peptide_name, product_id')
     .eq('id', id)
     .maybeSingle();
   if (fetchError || !current) {
@@ -117,6 +118,21 @@ export const POST: APIRoute = async ({ params, request, url, locals }) => {
   if (oldPath) {
     await client.storage.from(COA_BUCKET).remove([oldPath]);
   }
+
+  const productLabel = await resolveCoaProductLabel(client, (current.product_id as string) ?? null);
+  await logCoaAudit({
+    actorUserId: session.userId,
+    action: 'coa_file_replaced',
+    coaId: id,
+    productLabel,
+    peptideName: current.peptide_name as string,
+    changes: {
+      file_path: { old: current.file_path, new: newPath },
+      original_filename: { old: current.original_filename, new: originalFilename },
+      file_mime_type: { old: current.file_mime_type, new: file.type },
+      file_size_bytes: { old: current.file_size_bytes, new: file.size },
+    },
+  });
 
   return json({ success: true, data }, 200);
 };
