@@ -5,17 +5,12 @@ import { expect, test } from '@playwright/test';
 // shop.spec.ts's own /admin/coas check below) — that would require
 // real credentials, which no e2e test in this suite fabricates.
 //
-// The page's own indexable-host guard (404s when Astro.locals.
-// indexable is true — i.e. on the real production hostname) can't be
-// exercised end to end here either: locally and on staging, the
-// request hostname never equals the configured production site
-// (astro.config.mjs's `site`), so indexable is always false — which is
-// itself correct and expected (this page must render on staging, not
-// production). The guard's underlying isIndexableHost() logic is
-// already unit-tested against a real 'cloudpeptides.org' hostname in
-// tests/unit/site-env.test.ts; proving the 404 fires for real would
-// require actually deploying this page to production, which defeats
-// the point of the guard.
+// This page was staging-only during development (an explicit
+// indexable-host 404 guard, on top of never being merged past
+// rebuild/astro-platform) — both lifted 2026-08-08 once production
+// promotion was explicitly approved. It's now reachable on production
+// too, gated the same way as every other admin page: authentication +
+// admin role + RLS.
 test.describe('private admin pricing catalog', () => {
   test('requires authentication, same as every other admin route', async ({ page }) => {
     await page.goto('/admin/pricing-catalog');

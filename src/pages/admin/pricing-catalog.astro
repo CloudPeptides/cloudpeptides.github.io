@@ -1,17 +1,21 @@
 ---
 /**
- * Private admin pricing catalog — staging-only, admin-editable.
- * Backed by public.admin_pricing_catalog (supabase/migrations/
+ * Private admin pricing catalog — admin-editable, live on both staging
+ * and production as of 2026-08-08's explicit production-promotion
+ * approval (previously staging-only during development/testing —
+ * that phase used two guards, a procedural one — never merged past
+ * rebuild/astro-platform — and this page's own indexable-host 404
+ * check; both are now lifted for the approved promotion). Backed by
+ * public.admin_pricing_catalog (supabase/migrations/
  * 20260808170000_admin_pricing_catalog.sql), RLS admin-only for every
- * operation. Two independent guards keep this off production: (1)
- * procedural — this feature is never merged past rebuild/astro-platform
- * until explicitly approved; (2) this page's own explicit
- * indexable-host check below, which 404s on the real production
- * hostname regardless of what's deployed there.
+ * operation.
  *
  * AdminLayout's middleware-enforced session already guarantees
  * contributor+; this page additionally requires admin specifically,
- * matching the same bar as /admin/coas and /admin/users.
+ * matching the same bar as /admin/coas and /admin/users. Still never
+ * exposes supplier cost, still not connected to checkout/payment/
+ * public ordering, still has no public API — none of that changed,
+ * only where the admin dashboard itself is reachable from.
  */
 export const prerender = false;
 
@@ -23,10 +27,6 @@ import {
   isTenVialKit,
 } from '../../lib/admin/pricing-catalog';
 import ErrorState from '../../components/ui/ErrorState.astro';
-
-if (Astro.locals.indexable) {
-  return new Response('Not found', { status: 404 });
-}
 
 const session = Astro.locals.session!;
 if (!hasMinRole(session.role, 'admin')) {
@@ -46,19 +46,18 @@ try {
 <AdminLayout title="Pricing Catalog">
   <div class="cp-admin-page-header">
     <div>
-      <p class="cp-admin-eyebrow">Private — Staging only</p>
+      <p class="cp-admin-eyebrow">Private — Admin only</p>
       <h1>Pricing Catalog</h1>
       <p>
         Internal reference and price editor. Not connected to checkout, payment processing, or
-        public ordering — and never deployed to production. Supplier cost is never stored, shown, or
-        editable here.
+        public ordering. Supplier cost is never stored, shown, or editable here.
       </p>
     </div>
   </div>
 
   <p class="cp-pricing-notice" role="note">
-    This catalog is staging-only and admin-only. Editing a price here never affects the live public
-    shop, and nothing here is reachable through any public page or API.
+    This catalog is private and admin-only. Editing a price here never affects the live public shop,
+    and nothing here is reachable through any public page or API.
   </p>
 
   {loadError && <ErrorState message={loadError} retryHref="/admin/pricing-catalog" />}
