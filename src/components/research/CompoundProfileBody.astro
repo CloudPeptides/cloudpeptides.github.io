@@ -151,6 +151,17 @@ const safetyClaims = [
 const reviewFlagReason = compound?.expert_review_flag_reason || undefined;
 const displayName = compound ? compound.display_name || compound.name : undefined;
 
+// No blanket compound-level identity_confidence or research_review_
+// status badge in the identity card below (2026-08-10 correction) —
+// both fields remain in the database and admin dashboard, but a badge
+// reading "unverified" for literally every compound (identity_
+// confidence had never been promoted from its default for any of the
+// 56) was a misleading blanket signal, and "Research reviewed" invited
+// the same misreading the other way. A real, specific concern still
+// surfaces here via reviewFlagReason's ExpertReviewWarning banner
+// below and via UnsupportedClaimsCard further down — never via a
+// generic per-field state badge.
+
 // Real, already-recorded provenance from the enrichment pipeline
 // (scripts/enrichment/run-enrichment.mjs) — surfaced here instead of the
 // Blueprint's human-editorial-review fields (last_reviewed_at/
@@ -239,14 +250,6 @@ const SHOP_URL = '/shop';
               {ENTITY_LABELS[compound.entity_kind] ?? compound.entity_kind}
             </Badge>
             {compound.category && <Badge tone="neutral">{compound.category}</Badge>}
-            {compound.identity_confidence !== 'verified' && (
-              <Badge tone="warning">
-                identity: {compound.identity_confidence.replace(/_/g, ' ')}
-              </Badge>
-            )}
-            {compound.research_review_status === 'research_reviewed' && (
-              <Badge tone="info">Research reviewed</Badge>
-            )}
           </div>
           <h1 class="cp-identity-card__name">{displayName}</h1>
           {compound.compound_aliases.length > 0 && (
