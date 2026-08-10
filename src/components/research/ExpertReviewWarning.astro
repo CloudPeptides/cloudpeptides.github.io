@@ -1,11 +1,14 @@
 ---
 /**
- * Prominent, top-of-profile warning banner for the small set of
- * compounds flagged during the research-enrichment audit (see
- * src/lib/expert-review-flags.ts). Deliberately styled more assertively
- * than the "Unsupported legacy claims" card — this is a whole-compound
- * caution, not a single-claim caveat, and needs to be the first thing a
- * reader sees, not something they have to scroll to find.
+ * Prominent, top-of-profile warning banner for any compound with a real
+ * expert_review_flag_reason set (admin-editable — see
+ * src/pages/admin/compounds/[id].astro's "Expert-review flag" field;
+ * originally a hardcoded list, now a genuine database column). Shown
+ * whenever compound.expert_review_flag_reason is non-empty. Deliberately
+ * styled more assertively than the "Unsupported legacy claims" card —
+ * this is a whole-compound caution, not a single-claim caveat, and needs
+ * to be the first thing a reader sees, not something they have to scroll
+ * to find.
  */
 interface Props {
   reason: string;

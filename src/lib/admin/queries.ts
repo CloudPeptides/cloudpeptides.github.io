@@ -11,7 +11,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CompoundWithRelations, EditorialStatus } from '../database.types';
 import { isHiddenFromNormalFlow } from '../reconciliation';
-import { EXPERT_REVIEW_FLAGS } from '../expert-review-flags';
 
 const STATUSES: EditorialStatus[] = ['draft', 'in_review', 'published', 'archived'];
 
@@ -78,26 +77,29 @@ export interface ExpertReviewRow {
   reason: string;
 }
 
+/** Research CMS gap-fill (2026-08-10): expert_review_flag_reason is now
+ * a real, admin-editable compound column — this queries it directly
+ * rather than reading the previous hardcoded src/lib/expert-review-flags.ts
+ * list. Same ExpertReviewRow shape as before, so the dashboard's own
+ * rendering needed no change. */
 export async function getExpertReviewFlaggedCompounds(
   client: SupabaseClient,
 ): Promise<ExpertReviewRow[]> {
-  const slugs = EXPERT_REVIEW_FLAGS.map((f) => f.slug);
-  const { data } = await client
+  const { data, error } = await client
     .from('compounds')
-    .select('id, slug, name, status')
-    .in('slug', slugs);
-  const bySlug = new Map((data ?? []).map((c) => [c.slug as string, c]));
-  return EXPERT_REVIEW_FLAGS.map((flag) => {
-    const compound = bySlug.get(flag.slug) as
-      { id: string; name: string; status: string } | undefined;
-    return {
-      id: compound?.id ?? null,
-      slug: flag.slug,
-      name: compound?.name ?? flag.slug,
-      status: compound?.status ?? 'not found',
-      reason: flag.reason,
-    };
-  });
+    .select('id, slug, name, display_name, status, expert_review_flag_reason')
+    .not('expert_review_flag_reason', 'is', null)
+    .order('name');
+  if (error) throw error;
+  return (data ?? [])
+    .filter((c) => c.expert_review_flag_reason && c.expert_review_flag_reason.trim().length > 0)
+    .map((c) => ({
+      id: c.id,
+      slug: c.slug,
+      name: c.display_name || c.name,
+      status: c.status,
+      reason: c.expert_review_flag_reason as string,
+    }));
 }
 
 export interface RecentRevision {
@@ -150,9 +152,11 @@ export interface CompoundAdminListRow {
   id: string;
   slug: string;
   name: string;
+  display_name: string | null;
   entity_kind: string;
   status: EditorialStatus;
   identity_confidence: string;
+  expert_review_flag_reason: string | null;
   claimCount: number;
   updated_at: string;
 }
@@ -164,7 +168,7 @@ export async function listCompoundsForAdmin(
   let query = client
     .from('compounds')
     .select(
-      'id, slug, name, entity_kind, status, identity_confidence, updated_at, claims!claims_compound_id_fkey(id)',
+      'id, slug, name, display_name, entity_kind, status, identity_confidence, expert_review_flag_reason, updated_at, claims!claims_compound_id_fkey(id)',
       { count: 'exact' },
     );
 
@@ -187,9 +191,11 @@ export async function listCompoundsForAdmin(
       id: string;
       slug: string;
       name: string;
+      display_name: string | null;
       entity_kind: string;
       status: EditorialStatus;
       identity_confidence: string;
+      expert_review_flag_reason: string | null;
       updated_at: string;
       claims: { id: string }[];
     }>
@@ -197,9 +203,11 @@ export async function listCompoundsForAdmin(
     id: r.id,
     slug: r.slug,
     name: r.name,
+    display_name: r.display_name,
     entity_kind: r.entity_kind,
     status: r.status,
     identity_confidence: r.identity_confidence,
+    expert_review_flag_reason: r.expert_review_flag_reason,
     claimCount: r.claims?.length ?? 0,
     updated_at: r.updated_at,
   }));
@@ -366,13 +374,14 @@ export interface AuditLogRow {
 
 export async function listAuditLog(
   client: SupabaseClient,
-  filters: { page: number; pageSize: number },
+  filters: { page: number; pageSize: number; targetTable?: string; targetId?: string },
 ): Promise<{ rows: AuditLogRow[]; total: number }> {
   const start = (filters.page - 1) * filters.pageSize;
   const end = start + filters.pageSize - 1;
-  const { data, count, error } = await client
-    .from('audit_log')
-    .select('*', { count: 'exact' })
+  let query = client.from('audit_log').select('*', { count: 'exact' });
+  if (filters.targetTable) query = query.eq('target_table', filters.targetTable);
+  if (filters.targetId) query = query.eq('target_id', filters.targetId);
+  const { data, count, error } = await query
     .order('created_at', { ascending: false })
     .range(start, end);
   if (error) throw error;

@@ -77,8 +77,10 @@ const studyOptions = await listStudyOptions(client);
       </div>
       <div class="cp-admin-field">
         <label for="url">URL <span class="cp-admin-required">*</span></label>
-        <input id="url" name="url" type="url" required placeholder="https://…" />
+        <input id="url" name="url" type="url" required placeholder="https://…" data-url-input />
       </div>
+
+      <div id="duplicateUrlWarning" class="cp-admin-form-message" data-tone="warning" hidden></div>
 
       <p class="cp-admin-form-message" data-tone="error" data-form-error hidden></p>
       <div class="cp-admin-form-actions">
@@ -90,4 +92,5 @@ const studyOptions = await listStudyOptions(client);
 
 <script>
   import '../../../scripts/admin-form.ts';
+  import '../../../scripts/admin-source-duplicate-check.ts';
 </script>

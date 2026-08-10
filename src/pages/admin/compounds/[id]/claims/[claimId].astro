@@ -34,9 +34,15 @@ const canDelete = hasMinRole(session.role, 'editor');
       <p class="cp-admin-eyebrow">{compound.name}</p>
       <h1>Edit claim</h1>
     </div>
-    <a href={`/admin/compounds/${compound.id}`} class="cp-admin-btn cp-admin-btn--secondary"
-      >&larr; Back to compound</a
-    >
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+      <a
+        href={`/admin/audit-log?target_table=claims&target_id=${claim.id}`}
+        class="cp-admin-btn cp-admin-btn--secondary">View history</a
+      >
+      <a href={`/admin/compounds/${compound.id}`} class="cp-admin-btn cp-admin-btn--secondary"
+        >&larr; Back to compound</a
+      >
+    </div>
   </div>
 
   <div class="cp-admin-section">

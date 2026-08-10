@@ -66,10 +66,12 @@ const STATUS_TONE: Record<string, 'neutral' | 'info' | 'warning' | 'success'> = 
     <div>
       <p class="cp-admin-eyebrow">Editorial &middot; {compound.slug}</p>
       <h1>
-        {compound.name}
+        {compound.display_name || compound.name}
         <Badge tone={STATUS_TONE[compound.status]}>{compound.status.replace('_', ' ')}</Badge>
       </h1>
       <p>
+        <a href={`/admin/compounds/${compound.id}/preview`}>Preview public page &rarr;</a>
+        {' · '}
         <a href={`/admin/compounds/${compound.id}/history`}>View revision history &rarr;</a>
       </p>
     </div>
@@ -130,8 +132,15 @@ const STATUS_TONE: Record<string, 'neutral' | 'info' | 'warning' | 'success'> = 
           />
         </div>
         <div class="cp-admin-field">
-          <label for="name">Name</label>
+          <label for="name">Canonical name</label>
           <input id="name" name="name" required value={compound.name} />
+        </div>
+        <div class="cp-admin-field">
+          <label for="display_name">Display name</label>
+          <input id="display_name" name="display_name" value={compound.display_name ?? ''} />
+          <p class="cp-admin-field__hint">
+            Falls back to the canonical name everywhere if left blank.
+          </p>
         </div>
         <div class="cp-admin-field">
           <label for="entity_kind">Entity kind</label>
@@ -162,6 +171,22 @@ const STATUS_TONE: Record<string, 'neutral' | 'info' | 'warning' | 'success'> = 
           <input id="category" name="category" value={compound.category ?? ''} />
         </div>
       </div>
+
+      <div class="cp-admin-field">
+        <label for="expert_review_flag_reason">Expert-review flag</label>
+        <textarea
+          id="expert_review_flag_reason"
+          name="expert_review_flag_reason"
+          placeholder="Leave blank if not flagged"
+          >{compound.expert_review_flag_reason ?? ''}</textarea
+        >
+        <p class="cp-admin-field__hint">
+          Non-blank shows a prominent warning banner on this compound's public profile, before any
+          content ("flagged for expert/editorial review — take with appropriate caution"). Leave
+          blank to not flag it.
+        </p>
+      </div>
+
       <p class="cp-admin-form-message" data-tone="error" data-form-error hidden></p>
       <div class="cp-admin-form-actions">
         <button type="submit" class="cp-admin-btn cp-admin-btn--primary">Save identity</button>
@@ -310,6 +335,12 @@ const STATUS_TONE: Record<string, 'neutral' | 'info' | 'warning' | 'success'> = 
                 · source: {r.sources?.title ?? r.source_id}
               </span>
             </span>
+            <a
+              href={`/admin/audit-log?target_table=regulatory_records&target_id=${r.id}`}
+              class="cp-admin-btn cp-admin-btn--secondary cp-admin-btn--sm"
+            >
+              History
+            </a>
             <button
               type="button"
               class="cp-admin-btn cp-admin-btn--danger cp-admin-btn--sm"

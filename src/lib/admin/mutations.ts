@@ -54,8 +54,24 @@ export const TABLE_REGISTRY: Record<string, TableConfig> = {
   compounds: {
     table: 'compounds',
     keyColumns: ['id'],
-    insertableColumns: ['slug', 'name', 'entity_kind', 'identity_confidence', 'category'],
-    updatableColumns: ['slug', 'name', 'entity_kind', 'identity_confidence', 'category'],
+    insertableColumns: [
+      'slug',
+      'name',
+      'display_name',
+      'entity_kind',
+      'identity_confidence',
+      'category',
+      'expert_review_flag_reason',
+    ],
+    updatableColumns: [
+      'slug',
+      'name',
+      'display_name',
+      'entity_kind',
+      'identity_confidence',
+      'category',
+      'expert_review_flag_reason',
+    ],
     validate: validateCompoundFields,
     minRoleWrite: 'contributor',
     // No minRoleDelete — deleting a compound entirely is not exposed;

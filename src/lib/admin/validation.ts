@@ -161,6 +161,27 @@ export function validateCompoundFields(input: Record<string, unknown>): FieldVal
   if (typeof name !== 'string' || name.trim().length === 0 || name.length > 300) {
     return { valid: false, error: 'Name is required.' };
   }
+  if (input.display_name !== undefined && input.display_name !== null) {
+    if (typeof input.display_name !== 'string' || input.display_name.length > 300) {
+      return { valid: false, error: 'Invalid display name.' };
+    }
+  }
+  if (
+    input.expert_review_flag_reason !== undefined &&
+    input.expert_review_flag_reason !== null &&
+    input.expert_review_flag_reason !== ''
+  ) {
+    // An empty string is treated the same as null — "not flagged" —
+    // rather than rejected, since a plain HTML form field naturally
+    // submits '' (not null) when left blank; both mean the same thing
+    // here (the column's own semantics: presence of real text = flagged).
+    if (
+      typeof input.expert_review_flag_reason !== 'string' ||
+      input.expert_review_flag_reason.length > 2000
+    ) {
+      return { valid: false, error: 'Invalid expert-review flag reason.' };
+    }
+  }
   if (!oneOf(input.entity_kind, ENTITY_KINDS)) {
     return { valid: false, error: 'Invalid entity kind.' };
   }

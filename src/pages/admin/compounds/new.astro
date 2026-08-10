@@ -35,8 +35,15 @@ import { ENTITY_KINDS, IDENTITY_CONFIDENCES } from '../../../lib/admin/validatio
           <p class="cp-admin-field__hint">Lowercase letters, numbers, and hyphens only.</p>
         </div>
         <div class="cp-admin-field">
-          <label for="name">Name <span class="cp-admin-required">*</span></label>
+          <label for="name">Canonical name <span class="cp-admin-required">*</span></label>
           <input id="name" name="name" required placeholder="e.g. BPC-157" />
+        </div>
+        <div class="cp-admin-field">
+          <label for="display_name">Display name</label>
+          <input id="display_name" name="display_name" placeholder="optional" />
+          <p class="cp-admin-field__hint">
+            Falls back to the canonical name everywhere if left blank.
+          </p>
         </div>
         <div class="cp-admin-field">
           <label for="entity_kind">Entity kind <span class="cp-admin-required">*</span></label>
