@@ -2,7 +2,7 @@
 /**
  * Compound directory result card — design handoff §27, visually matching
  * design-concepts/cloudpeptides_directory_concept.html: content-specific
- * icon, Fraunces name, mono alias line, entity/category/identity badges.
+ * icon, Fraunces name, mono alias line, entity/category badges.
  *
  * Favorite/Compare actions from the concept are intentionally omitted —
  * they're Phase 5 (auth) features with no real persistence yet, and this
@@ -18,6 +18,18 @@
  * satisfying the directory's "evidence and expert-review warnings"
  * requirement without duplicating the full profile-page evidence
  * breakdown.
+ *
+ * No blanket compound-level identity_confidence or research_review_
+ * status badge (2026-08-10 correction) — both fields still exist and
+ * are admin-editable (src/pages/admin/compounds/[id].astro), but a
+ * badge that read "unverified" for literally every compound (nobody
+ * had ever promoted identity_confidence away from its default) was a
+ * misleading blanket signal, and a "Research reviewed" badge invited
+ * the same misreading in the other direction. The public research
+ * stands on its citations and claim-level evidence instead; a real,
+ * specific concern about a compound still surfaces here via
+ * expert_review_flag_reason's "Review flagged" badge above, never via
+ * a generic per-field state badge.
  */
 import type { CompoundListItem } from '../../lib/supabase';
 import Card from '../ui/Card.astro';
@@ -78,18 +90,6 @@ const isReviewFlagged = Boolean(compound.expert_review_flag_reason);
       />
       <div class="cp-compound-card__top-badges">
         {isReviewFlagged && <Badge tone="danger">Review flagged</Badge>}
-        {
-          compound.identity_confidence !== 'verified' && (
-            <Badge tone="warning">
-              identity: {compound.identity_confidence.replace(/_/g, ' ')}
-            </Badge>
-          )
-        }
-        {
-          compound.research_review_status === 'research_reviewed' && (
-            <Badge tone="info">Research reviewed</Badge>
-          )
-        }
       </div>
     </div>
     <h2 class="cp-compound-card__name">{compound.display_name || compound.name}</h2>
