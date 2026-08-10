@@ -62,6 +62,7 @@ export const TABLE_REGISTRY: Record<string, TableConfig> = {
       'identity_confidence',
       'category',
       'expert_review_flag_reason',
+      'research_review_status',
     ],
     updatableColumns: [
       'slug',
@@ -71,6 +72,7 @@ export const TABLE_REGISTRY: Record<string, TableConfig> = {
       'identity_confidence',
       'category',
       'expert_review_flag_reason',
+      'research_review_status',
     ],
     validate: validateCompoundFields,
     minRoleWrite: 'contributor',

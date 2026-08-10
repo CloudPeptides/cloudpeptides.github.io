@@ -80,7 +80,14 @@ const isReviewFlagged = Boolean(compound.expert_review_flag_reason);
         {isReviewFlagged && <Badge tone="danger">Review flagged</Badge>}
         {
           compound.identity_confidence !== 'verified' && (
-            <Badge tone="warning">{compound.identity_confidence.replace(/_/g, ' ')}</Badge>
+            <Badge tone="warning">
+              identity: {compound.identity_confidence.replace(/_/g, ' ')}
+            </Badge>
+          )
+        }
+        {
+          compound.research_review_status === 'research_reviewed' && (
+            <Badge tone="info">Research reviewed</Badge>
           )
         }
       </div>

@@ -40,7 +40,7 @@ function getClient() {
 // Phase 1's version (which had no way to power evidence-based filters/
 // sorting) but still bounded: 56 compounds total, each with a handful of
 // claims/sources — this is a single request, not an N+1 pattern.
-const COMPOUND_LIST_SELECT = `id, slug, name, display_name, entity_kind, category, identity_confidence, status, expert_review_flag_reason, updated_at,
+const COMPOUND_LIST_SELECT = `id, slug, name, display_name, entity_kind, category, identity_confidence, research_review_status, status, expert_review_flag_reason, updated_at,
       compound_aliases ( alias ),
       claims!claims_compound_id_fkey (
         evidence_quality,
@@ -58,6 +58,7 @@ interface RawListRow {
   entity_kind: string;
   category: string | null;
   identity_confidence: string;
+  research_review_status: string;
   status: string;
   expert_review_flag_reason: string | null;
   updated_at: string;
@@ -79,6 +80,7 @@ export interface CompoundListItem {
   entity_kind: string;
   category: string | null;
   identity_confidence: string;
+  research_review_status: string;
   status: string;
   expert_review_flag_reason: string | null;
   updated_at: string;
@@ -115,6 +117,7 @@ function deriveListItem(row: RawListRow): CompoundListItem {
     entity_kind: row.entity_kind,
     category: row.category,
     identity_confidence: row.identity_confidence,
+    research_review_status: row.research_review_status,
     status: row.status,
     expert_review_flag_reason: row.expert_review_flag_reason,
     updated_at: row.updated_at,

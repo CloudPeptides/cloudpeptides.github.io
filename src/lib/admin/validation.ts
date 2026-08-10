@@ -41,6 +41,15 @@ export const IDENTITY_CONFIDENCES = [
   'likely_naming_variant',
 ] as const;
 
+/** Whether this compound's research CONTENT (claims, citations) has
+ * completed the enrichment + legacy-claim-reconciliation pipeline and
+ * had that record reviewed — independent of IDENTITY_CONFIDENCES
+ * (name/identity confidence, Blueprint v2 §12) and
+ * expert_review_flag_reason (content-quality/safety warning). Never
+ * conflate the three; see the 20260810150000 migration's own comment
+ * for the full rationale. */
+export const RESEARCH_REVIEW_STATUSES = ['not_reviewed', 'research_reviewed'] as const;
+
 export const EDITORIAL_STATUSES = ['draft', 'in_review', 'published', 'archived'] as const;
 
 export const ALIAS_TYPES = [
@@ -190,6 +199,12 @@ export function validateCompoundFields(input: Record<string, unknown>): FieldVal
     !oneOf(input.identity_confidence, IDENTITY_CONFIDENCES)
   ) {
     return { valid: false, error: 'Invalid identity confidence.' };
+  }
+  if (
+    input.research_review_status !== undefined &&
+    !oneOf(input.research_review_status, RESEARCH_REVIEW_STATUSES)
+  ) {
+    return { valid: false, error: 'Invalid research review status.' };
   }
   if (input.status !== undefined && !oneOf(input.status, EDITORIAL_STATUSES)) {
     return { valid: false, error: 'Invalid status.' };

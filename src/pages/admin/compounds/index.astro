@@ -118,6 +118,7 @@ const STATUS_TONE: Record<string, 'neutral' | 'info' | 'warning' | 'success'> = 
               <th>Type</th>
               <th>Status</th>
               <th>Identity</th>
+              <th>Research review</th>
               <th>Claims</th>
               <th>Updated</th>
             </tr>
@@ -141,6 +142,13 @@ const STATUS_TONE: Record<string, 'neutral' | 'info' | 'warning' | 'success'> = 
                   </Badge>
                 </td>
                 <td>{c.identity_confidence.replace(/_/g, ' ')}</td>
+                <td>
+                  {c.research_review_status === 'research_reviewed' ? (
+                    <Badge tone="info">reviewed</Badge>
+                  ) : (
+                    'not reviewed'
+                  )}
+                </td>
                 <td>{c.claimCount}</td>
                 <td>{new Date(c.updated_at).toLocaleDateString()}</td>
               </tr>

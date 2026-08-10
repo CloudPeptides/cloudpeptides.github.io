@@ -14,6 +14,7 @@ import {
   ENTITY_KINDS,
   IDENTITY_CONFIDENCES,
   REGULATORY_STATUSES,
+  RESEARCH_REVIEW_STATUSES,
 } from '../../../lib/admin/validation';
 
 const session = Astro.locals.session!;
@@ -165,6 +166,28 @@ const STATUS_TONE: Record<string, 'neutral' | 'info' | 'warning' | 'success'> = 
               ))
             }
           </select>
+          <p class="cp-admin-field__hint">
+            Confidence in this compound's NAME/identity (Blueprint §12) — never affects, and is
+            never affected by, research review status below.
+          </p>
+        </div>
+        <div class="cp-admin-field">
+          <label for="research_review_status">Research review status</label>
+          <select id="research_review_status" name="research_review_status">
+            {
+              RESEARCH_REVIEW_STATUSES.map((s) => (
+                <option value={s} selected={s === compound.research_review_status}>
+                  {s.replace(/_/g, ' ')}
+                </option>
+              ))
+            }
+          </select>
+          <p class="cp-admin-field__hint">
+            Whether this compound's research content (claims, citations) has completed the
+            enrichment + legacy-claim-reconciliation pipeline and been reviewed. Shown publicly as a
+            separate "Research reviewed" badge — never replaces the identity-confidence badge or an
+            expert-review flag, and never implies verified efficacy or safety.
+          </p>
         </div>
         <div class="cp-admin-field">
           <label for="category">Category</label>

@@ -156,6 +156,7 @@ export interface CompoundAdminListRow {
   entity_kind: string;
   status: EditorialStatus;
   identity_confidence: string;
+  research_review_status: string;
   expert_review_flag_reason: string | null;
   claimCount: number;
   updated_at: string;
@@ -168,7 +169,7 @@ export async function listCompoundsForAdmin(
   let query = client
     .from('compounds')
     .select(
-      'id, slug, name, display_name, entity_kind, status, identity_confidence, expert_review_flag_reason, updated_at, claims!claims_compound_id_fkey(id)',
+      'id, slug, name, display_name, entity_kind, status, identity_confidence, research_review_status, expert_review_flag_reason, updated_at, claims!claims_compound_id_fkey(id)',
       { count: 'exact' },
     );
 
@@ -195,6 +196,7 @@ export async function listCompoundsForAdmin(
       entity_kind: string;
       status: EditorialStatus;
       identity_confidence: string;
+      research_review_status: string;
       expert_review_flag_reason: string | null;
       updated_at: string;
       claims: { id: string }[];
@@ -207,6 +209,7 @@ export async function listCompoundsForAdmin(
     entity_kind: r.entity_kind,
     status: r.status,
     identity_confidence: r.identity_confidence,
+    research_review_status: r.research_review_status,
     expert_review_flag_reason: r.expert_review_flag_reason,
     claimCount: r.claims?.length ?? 0,
     updated_at: r.updated_at,
