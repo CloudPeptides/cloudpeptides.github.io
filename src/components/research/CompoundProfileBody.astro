@@ -244,6 +244,9 @@ const SHOP_URL = '/shop';
                 identity: {compound.identity_confidence.replace(/_/g, ' ')}
               </Badge>
             )}
+            {compound.research_review_status === 'research_reviewed' && (
+              <Badge tone="info">Research reviewed</Badge>
+            )}
           </div>
           <h1 class="cp-identity-card__name">{displayName}</h1>
           {compound.compound_aliases.length > 0 && (

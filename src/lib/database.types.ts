@@ -17,6 +17,8 @@ export type EntityKind =
 
 export type IdentityConfidence = 'verified' | 'disputed' | 'unverified' | 'likely_naming_variant';
 
+export type ResearchReviewStatus = 'not_reviewed' | 'research_reviewed';
+
 export type EditorialStatus = 'draft' | 'in_review' | 'published' | 'archived';
 
 export type ContentSection =
@@ -90,6 +92,12 @@ export interface Compound {
   display_name: string | null;
   entity_kind: EntityKind;
   identity_confidence: IdentityConfidence;
+  /** Whether this compound's research content (claims, citations) has
+   * completed the enrichment + legacy-claim-reconciliation pipeline —
+   * independent of identity_confidence (name/identity confidence) and
+   * expert_review_flag_reason (content-quality/safety warning). Never
+   * a claim about scientific efficacy, safety, or identity. */
+  research_review_status: ResearchReviewStatus;
   category: string | null;
   status: EditorialStatus;
   /** Non-null = flagged for expert/editorial review before content is
