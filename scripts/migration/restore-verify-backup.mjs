@@ -102,6 +102,11 @@ const REQUIRED_TABLES = [
   'public.compound_aliases',
   'public.regulatory_records',
   'public.user_roles',
+  // Added for the Batch 4 shop-migration rollback gate (2026-08-10):
+  // the tables this specific migration reads from and writes to.
+  'public.admin_pricing_catalog',
+  'public.shop_products',
+  'public.product_categories',
 ];
 
 function psqlQuery(sql) {

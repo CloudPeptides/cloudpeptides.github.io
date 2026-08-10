@@ -1,28 +1,45 @@
 ---
 /**
  * Product detail — rebuild of legacy-site/product.html + js/product.js.
- * Static: one prerendered page per catalog product (47 total), same
- * approach as the legacy site's own hardcoded catalog, just resolved at
- * build time via getStaticPaths instead of a client-side ?id= query
- * param lookup.
+ * Batch 4 (2026-08-10): resolved on-demand by product_slug against the
+ * canonical Supabase shop_products table (published rows only),
+ * replacing the build-time getStaticPaths lookup against the static
+ * src/lib/shop-products.ts array — so an admin price/detail edit is
+ * live on the very next request, no rebuild/redeploy needed. Every
+ * existing URL (/shop/<product-id>) is preserved exactly: product_slug
+ * was seeded from shop-products.ts's own Product.id for all 87
+ * migrated SKUs (see the Batch 4 migration report).
  */
+export const prerender = false;
+
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { PRODUCTS } from '../../lib/shop-products';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import ErrorState from '../../components/ui/ErrorState.astro';
+import { getPublicShopProduct, hasSupabaseConfig } from '../../lib/public-shop';
 import { formatMoney } from '../../lib/shop';
 import { COMMERCE_ENABLED } from '../../lib/launch-config';
 
-export function getStaticPaths() {
-  return PRODUCTS.map((product) => ({
-    params: { id: product.id },
-    props: { product },
-  }));
+const { id } = Astro.params;
+
+let product: Awaited<ReturnType<typeof getPublicShopProduct>> = null;
+let loadError: string | null = null;
+if (!hasSupabaseConfig()) {
+  loadError = 'Shop is not configured in this environment.';
+} else if (id) {
+  try {
+    product = await getPublicShopProduct(id);
+  } catch {
+    loadError = 'Could not load this product right now.';
+  }
 }
 
-const { product } = Astro.props;
-
-const prices = product.options.map((o) => o.price);
-const lowPrice = Math.min(...prices);
-const highPrice = Math.max(...prices);
+// A slug that doesn't resolve to a *published* row 404s whether it
+// never existed, was never given a product_slug, or is currently
+// private/compliance_hold — same "no signal either way" posture as the
+// research compound profile page.
+if (!loadError && !product) {
+  Astro.response.status = 404;
+}
 
 // Product + (Aggregate)Offer only — truthful fields alone: real name,
 // real price range, no fabricated availability/rating/review (none of
@@ -33,158 +50,213 @@ const highPrice = Math.max(...prices);
 // omitted entirely while commerce is disabled — the Product entity
 // (name/category) stays as plain, honest catalog-preview description,
 // but nothing here asserts an active offer to sell.
-const productJsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'Product',
-  name: product.name,
-  category: product.category,
-  ...(COMMERCE_ENABLED
-    ? product.options.length > 1
-      ? {
-          offers: {
-            '@type': 'AggregateOffer',
-            priceCurrency: 'USD',
-            lowPrice,
-            highPrice,
-            offerCount: product.options.length,
-          },
-        }
-      : {
-          offers: {
-            '@type': 'Offer',
-            priceCurrency: 'USD',
-            price: lowPrice,
-          },
-        }
-    : {}),
-};
-
-const breadcrumbJsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'BreadcrumbList',
-  itemListElement: [
-    { '@type': 'ListItem', position: 1, name: 'Home', item: new URL('/', Astro.site).toString() },
-    {
-      '@type': 'ListItem',
-      position: 2,
-      name: 'Shop',
-      item: new URL('/shop', Astro.site).toString(),
-    },
-    {
-      '@type': 'ListItem',
-      position: 3,
-      name: product.name,
-      item: new URL(`/shop/${product.id}`, Astro.site).toString(),
-    },
-  ],
-};
+const structuredData: Record<string, unknown>[] = [];
+if (product) {
+  const prices = product.options.map((o) => o.price);
+  const lowPrice = Math.min(...prices);
+  const highPrice = Math.max(...prices);
+  structuredData.push({
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    category: product.category,
+    ...(COMMERCE_ENABLED
+      ? product.options.length > 1
+        ? {
+            offers: {
+              '@type': 'AggregateOffer',
+              priceCurrency: 'USD',
+              lowPrice,
+              highPrice,
+              offerCount: product.options.length,
+            },
+          }
+        : {
+            offers: {
+              '@type': 'Offer',
+              priceCurrency: 'USD',
+              price: lowPrice,
+            },
+          }
+      : {}),
+  });
+  structuredData.push({
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: new URL('/', Astro.site).toString(),
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Shop',
+        item: new URL('/shop', Astro.site).toString(),
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: product.name,
+        item: new URL(`/shop/${product.id}`, Astro.site).toString(),
+      },
+    ],
+  });
+}
 ---
 
 <BaseLayout
-  title={product.name}
-  description={`${product.name} — 10 vial research kit, ${product.options.length} mg option${product.options.length === 1 ? '' : 's'} available. For laboratory research use only.`}
+  title={product ? product.name : 'Product not found'}
+  description={product
+    ? `${product.name} — 10 vial research kit, ${product.options.length} mg option${product.options.length === 1 ? '' : 's'} available. For laboratory research use only.`
+    : 'This product could not be found.'}
   ogType="product"
-  structuredData={[productJsonLd, breadcrumbJsonLd]}
+  structuredData={structuredData}
+  noindex={!product}
 >
   <section class="cp-product-page-container">
     <nav class="cp-breadcrumb" aria-label="Breadcrumb">
       <a href="/shop">Shop</a>
       <span aria-hidden="true">/</span>
-      <span aria-current="page">{product.name}</span>
+      <span aria-current="page">{product ? product.name : 'Not found'}</span>
     </nav>
 
-    <div class="cp-product-page">
-      <div class="cp-product-vial" aria-hidden="true">
-        <svg viewBox="0 0 100 180" width="100%" height="100%">
-          <rect
-            x="30"
-            y="20"
-            width="40"
-            height="140"
-            rx="16"
-            fill="none"
-            stroke="var(--border-interactive)"
-            stroke-width="2"></rect>
-          <rect
-            x="38"
-            y="6"
-            width="24"
-            height="20"
-            rx="4"
-            fill="none"
-            stroke="var(--border-interactive)"
-            stroke-width="2"></rect>
-        </svg>
-      </div>
+    {loadError && <ErrorState message={loadError} retryHref="/shop" />}
 
-      <div class="cp-product-info">
-        <h1 id="productName">{product.name}</h1>
-        <p class="cp-product-note">
-          Batch-produced peptides tested by JANOSHIK.<br />
-          Supplied directly from the lab.
-        </p>
+    {
+      !loadError && !product && (
+        <EmptyState
+          title="Product not found"
+          message="This product doesn't exist or isn't currently listed."
+          actionLabel="Back to Shop"
+          actionHref="/shop"
+        />
+      )
+    }
 
-        {
-          !COMMERCE_ENABLED && (
-            <p class="cp-coming-soon-banner">
-              Coming soon — ordering is not yet available. Pricing shown below is informational
-              only.
-            </p>
-          )
-        }
-
-        <div class="cp-selector">
-          <label for="optionSelect">Select MG</label>
-          <select id="optionSelect" data-option-select>
-            {
-              product.options.map((option, i) => (
-                <option value={i}>
-                  {option.spec} • {option.count} vial kit • {formatMoney(option.price)}
-                </option>
-              ))
-            }
-          </select>
-          <div class="cp-detail-price" id="price" data-price>
-            {formatMoney(product.options[0].price)}
+    {
+      product && (
+        <div class="cp-product-page">
+          <div class="cp-product-vial" aria-hidden="true">
+            <svg viewBox="0 0 100 180" width="100%" height="100%">
+              <rect
+                x="30"
+                y="20"
+                width="40"
+                height="140"
+                rx="16"
+                fill="none"
+                stroke="var(--border-interactive)"
+                stroke-width="2"
+              />
+              <rect
+                x="38"
+                y="6"
+                width="24"
+                height="20"
+                rx="4"
+                fill="none"
+                stroke="var(--border-interactive)"
+                stroke-width="2"
+              />
+            </svg>
           </div>
-          <p id="codeLine" class="cp-disclaimer" data-code-line>
-            Code: {product.options[0].code} • {product.category}
-          </p>
-          <button
-            type="button"
-            class="cp-btn-full"
-            id="addToCart"
-            data-add-to-cart
-            disabled={!COMMERCE_ENABLED}
-            aria-disabled={!COMMERCE_ENABLED}
-          >
-            {COMMERCE_ENABLED ? 'Add To Cart' : 'Coming Soon'}
-          </button>
-          {
-            COMMERCE_ENABLED && (
-              <p class="cp-add-feedback" data-add-feedback role="status" aria-live="polite" hidden>
-                Added to cart.
-              </p>
-            )
-          }
-        </div>
 
-        <p class="cp-disclaimer">
-          Research use only. Not for human consumption. No peptide information or medical claims are
-          provided on this page. See our <a href="/shop-terms">Shop Terms</a>.
-        </p>
-      </div>
-    </div>
+          <div class="cp-product-info">
+            <h1 id="productName">{product.name}</h1>
+            <p class="cp-product-note">
+              Batch-produced peptides tested by JANOSHIK.
+              <br />
+              Supplied directly from the lab.
+            </p>
+
+            {!COMMERCE_ENABLED && (
+              <p class="cp-coming-soon-banner">
+                Coming soon — ordering is not yet available. Pricing shown below is informational
+                only.
+              </p>
+            )}
+
+            <div class="cp-selector">
+              <label for="optionSelect">Select MG</label>
+              <select id="optionSelect" data-option-select>
+                {product.options.map((option, i) => (
+                  <option value={i}>
+                    {option.spec} • {option.count} vial kit • {formatMoney(option.price)}
+                  </option>
+                ))}
+              </select>
+              <div class="cp-detail-price" id="price" data-price>
+                {formatMoney(product.options[0].price)}
+              </div>
+              <p id="codeLine" class="cp-disclaimer" data-code-line>
+                Code: {product.options[0].code} • {product.category}
+              </p>
+              <button
+                type="button"
+                class="cp-btn-full"
+                id="addToCart"
+                data-add-to-cart
+                disabled={!COMMERCE_ENABLED}
+                aria-disabled={!COMMERCE_ENABLED}
+              >
+                {COMMERCE_ENABLED ? 'Add To Cart' : 'Coming Soon'}
+              </button>
+              {COMMERCE_ENABLED && (
+                <p
+                  class="cp-add-feedback"
+                  data-add-feedback
+                  role="status"
+                  aria-live="polite"
+                  hidden
+                >
+                  Added to cart.
+                </p>
+              )}
+            </div>
+
+            <p class="cp-disclaimer">
+              Research use only. Not for human consumption. No peptide information or medical claims
+              are provided on this page. See our <a href="/shop-terms">Shop Terms</a>.
+            </p>
+          </div>
+        </div>
+      )
+    }
   </section>
 </BaseLayout>
 
+{
+  /*
+    Pre-existing bug found and fixed here while writing this batch's
+    cart regression tests (not introduced by Batch 4 — reproduced
+    identically on the currently-live staging deployment, pre-cutover):
+    the previous `<script is:inline nonce=... define:vars=...>` bridge
+    for window.__cpProduct got hoisted by Astro's bundler to just after
+    `</html>`, silently dropping the `nonce` attribute in the process —
+    the CSP (src/middleware.ts) then correctly blocked it as an
+    un-nonced inline script, so "Add to Cart" never actually ran.
+    A `type="application/json"` data island sidesteps the whole
+    nonce/hoisting interaction: browsers never execute
+    `application/json` script content, so it isn't subject to the
+    script-src directive at all — no nonce needed, nothing to hoist.
+  */
+}
+
+{
+  /* Defense-in-depth escape of "</" so a product name/spec containing a
+    literal script-closing sequence could never break out of this tag —
+    values here are admin-authored/sanitized already, but this is a
+    zero-cost safeguard regardless. */
+}
 <script
   is:inline
-  nonce={Astro.locals.cspNonce}
-  define:vars={{ productId: product.id, productName: product.name, options: product.options }}
->
-  window.__cpProduct = { id: productId, name: productName, options };
-</script>
+  type="application/json"
+  id="cpProductData"
+  set:html={JSON.stringify(product).replace(/<\//g, '<\\/')}
+/>
 <script>
   import '../../scripts/product-page.ts';
 </script>

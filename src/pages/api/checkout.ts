@@ -32,8 +32,13 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
-import { validateCheckoutSubmission, type CheckoutSubmission } from '../../lib/form-validation';
+import {
+  buildCatalogResolver,
+  validateCheckoutSubmission,
+  type CheckoutSubmission,
+} from '../../lib/form-validation';
 import { COMMERCE_ENABLED } from '../../lib/launch-config';
+import { hasSupabaseConfig, listCheckoutCatalogEntries } from '../../lib/public-shop';
 import { checkRateLimit, cooldownSetCookieHeader, isInCooldown } from '../../lib/rate-limit';
 import { readBodyWithLimit } from '../../lib/request-limits';
 import { sendEmail } from '../../lib/resend';
@@ -197,7 +202,31 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return json({ success: false, error: 'Verification failed. Please try again.' }, 400);
   }
 
-  const { result, data } = validateCheckoutSubmission(input);
+  // Batch 4 (2026-08-10): price/name/spec now come from the canonical
+  // Supabase shop_products table, not the static shop-products.ts
+  // array — queried fresh on every checkout submission (never cached),
+  // published rows only, same "never trust the client, never trust
+  // stale data" posture this route has always had. An honest failure
+  // here, never a silent fallback to any other data source.
+  if (!hasSupabaseConfig()) {
+    return json(
+      { success: false, error: 'Order requests are not configured in this environment yet.' },
+      503,
+    );
+  }
+  let catalogEntries;
+  try {
+    catalogEntries = await listCheckoutCatalogEntries();
+  } catch (err) {
+    console.error('checkout catalog lookup failed:', err instanceof Error ? err.message : err);
+    return json(
+      { success: false, error: 'Could not verify product pricing right now. Please try again.' },
+      502,
+    );
+  }
+  const resolveProduct = buildCatalogResolver(catalogEntries);
+
+  const { result, data } = validateCheckoutSubmission(input, resolveProduct);
   if (!result.valid || !data) {
     return json({ success: false, error: result.error ?? 'Invalid submission.' }, 400);
   }
