@@ -174,6 +174,7 @@ const INTERNAL_STATUS_TONE: Record<string, 'neutral' | 'warning' | 'success'> = 
               <th>Code</th>
               <th>Product</th>
               <th>Spec</th>
+              <th>Public URL</th>
               <th>Category</th>
               <th>Price</th>
               <th>Research</th>
@@ -195,6 +196,7 @@ const INTERNAL_STATUS_TONE: Record<string, 'neutral' | 'warning' | 'success'> = 
                 <td>
                   {p.spec} ({p.count === 10 ? '10-vial kit' : `${p.count} vial`})
                 </td>
+                <td>{p.product_slug ? <code>/shop/{p.product_slug}</code> : '—'}</td>
                 <td>{p.category_name}</td>
                 <td>${p.price.toFixed(2)}</td>
                 <td>{p.compound_name ? `${p.compound_name} (${p.compound_status})` : '—'}</td>

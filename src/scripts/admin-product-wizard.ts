@@ -123,13 +123,24 @@ function init(): void {
   const canonicalNameInput = document.getElementById('canonicalName') as HTMLInputElement;
   const displayNameInput = document.getElementById('displayName') as HTMLInputElement;
   const slugInput = document.getElementById('slug') as HTMLInputElement;
+  const productSlugInput = document.getElementById('productSlug') as HTMLInputElement;
   const entityKindSelect = document.getElementById('entityKind') as HTMLSelectElement;
   let slugManuallyEdited = false;
+  let productSlugManuallyEdited = false;
   slugInput.addEventListener('input', () => {
     slugManuallyEdited = true;
   });
+  productSlugInput.addEventListener('input', () => {
+    productSlugManuallyEdited = true;
+  });
   canonicalNameInput.addEventListener('input', () => {
     if (!slugManuallyEdited) slugInput.value = slugify(canonicalNameInput.value);
+    // Independent field with its own manual-edit flag — a compound's
+    // research slug and its product page URL are different identities
+    // that happen to often start out the same, not the same value kept
+    // in sync (an admin renaming one shouldn't silently rename the
+    // other, e.g. relinking Step 2 to a different existing compound).
+    if (!productSlugManuallyEdited) productSlugInput.value = slugify(canonicalNameInput.value);
     runDuplicateCheck();
   });
 
@@ -280,6 +291,10 @@ function init(): void {
       return false;
     }
     if (step === '3') {
+      if (!productSlugInput.value.trim()) {
+        productSlugInput.reportValidity();
+        return false;
+      }
       const variants = getVariants();
       if (variants.length === 0) return false;
       for (const v of variants) {
@@ -336,7 +351,7 @@ function init(): void {
             .join(', ')}</dd>`
         : '';
 
-    el.innerHTML = `<dl>${researchHtml}<dt>Shop products (${variants.length})</dt><dd><ul>${variantsHtml}</ul></dd>${componentsHtml}</dl>`;
+    el.innerHTML = `<dl>${researchHtml}<dt>Public product page</dt><dd>/shop/${productSlugInput.value.trim()}</dd><dt>Shop products (${variants.length})</dt><dd><ul>${variantsHtml}</ul></dd>${componentsHtml}</dl>`;
   }
 
   saveBtn.addEventListener('click', async () => {
@@ -363,6 +378,7 @@ function init(): void {
           : null,
       stackComponentIds: getStackComponentIds(),
       variants: getVariants(),
+      productSlug: productSlugInput.value.trim(),
     };
 
     try {

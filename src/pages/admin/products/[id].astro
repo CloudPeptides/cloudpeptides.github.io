@@ -105,6 +105,26 @@ const entityLabel = (kind: string) => ENTITY_KINDS.find((k) => k.value === kind)
                 <input id="spec" value={product.spec} />
               </div>
               <div class="cp-admin-field">
+                <label for="productSlug">Public product page URL</label>
+                <input
+                  id="productSlug"
+                  pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                  maxlength="100"
+                  value={product.product_slug ?? ''}
+                />
+                <p class="cp-admin-field__hint">
+                  {product.product_slug ? (
+                    <>
+                      Shown at /shop/{product.product_slug} once at least one variant sharing this
+                      slug is Published. Leave blank to remove this SKU from any public product
+                      page.
+                    </>
+                  ) : (
+                    'Blank — this SKU cannot appear on any public product page until a slug is set.'
+                  )}
+                </p>
+              </div>
+              <div class="cp-admin-field">
                 <label for="count">Vial / item count</label>
                 <input id="count" type="number" min="1" value={product.count} />
               </div>

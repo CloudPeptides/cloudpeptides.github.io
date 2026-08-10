@@ -186,6 +186,10 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
     };
   }
 
+  const productSlugCheck = validateSlug(input.productSlug);
+  if (!productSlugCheck.valid) return json({ success: false, error: productSlugCheck.error }, 400);
+  const productSlug = (input.productSlug as string).trim().toLowerCase();
+
   const stackComponentIdsRaw = Array.isArray(input.stackComponentIds)
     ? input.stackComponentIds
     : [];
@@ -225,6 +229,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
       newCompound,
       stackComponentIds,
       variants,
+      productSlug,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : '';
@@ -246,6 +251,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
         compound_newly_created: !compoundId,
         product_ids: result.productIds,
         codes: variants.map((v) => v.code),
+        product_slug: productSlug,
       },
     });
   } catch (err) {

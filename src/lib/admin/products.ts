@@ -67,6 +67,8 @@ export interface ShopProductRow {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  product_slug: string | null;
+  legacy_source_id: string | null;
 }
 
 const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -204,6 +206,11 @@ export interface CreateProductPayload {
   newCompound: NewCompoundInput | null;
   stackComponentIds: string[];
   variants: VariantInput[];
+  // Groups every variant created in this one save into a single public
+  // product page/URL (/shop/<slug>) — shared across all variants,
+  // never set per-variant. Null is valid: an admin-only SKU that isn't
+  // meant to appear on a standalone public page yet.
+  productSlug: string | null;
 }
 
 /** Calls the transactional create_product_with_research() Postgres
@@ -239,6 +246,7 @@ export async function createProductWithResearch(
       internal_status: v.internalStatus,
       public_status: v.publicStatus,
     })),
+    p_product_slug: payload.productSlug,
   });
   if (error) throw error;
   return { compoundId: data.compound_id, productIds: data.product_ids };
@@ -279,7 +287,7 @@ export async function listShopProducts(
   let query = client
     .from('shop_products')
     .select(
-      `id, compound_id, code, name, spec, count, price, category_id, internal_status, public_status, created_by, created_at, updated_at, ` +
+      `id, compound_id, code, name, spec, count, price, category_id, internal_status, public_status, created_by, created_at, updated_at, product_slug, legacy_source_id, ` +
         `product_categories(name), ${compoundsEmbed}, batch_coas(count)`,
     )
     .order('created_at', { ascending: false });
@@ -331,7 +339,7 @@ export async function getShopProduct(
   const { data, error } = await client
     .from('shop_products')
     .select(
-      'id, compound_id, code, name, spec, count, price, category_id, internal_status, public_status, created_by, created_at, updated_at',
+      'id, compound_id, code, name, spec, count, price, category_id, internal_status, public_status, created_by, created_at, updated_at, product_slug, legacy_source_id',
     )
     .eq('id', id)
     .maybeSingle();
@@ -363,9 +371,14 @@ export async function duplicateShopProductAsVariant(
       internal_status: 'draft',
       public_status: 'private',
       created_by: actorUserId,
+      // Same product page as the source — this is a new mg-option
+      // variant of the same public product, not a new product.
+      // legacy_source_id is deliberately NOT copied: a duplicate is a
+      // new admin-created row, not itself a migrated legacy SKU.
+      product_slug: source.product_slug,
     })
     .select(
-      'id, compound_id, code, name, spec, count, price, category_id, internal_status, public_status, created_by, created_at, updated_at',
+      'id, compound_id, code, name, spec, count, price, category_id, internal_status, public_status, created_by, created_at, updated_at, product_slug, legacy_source_id',
     )
     .single();
   if (error) throw error;

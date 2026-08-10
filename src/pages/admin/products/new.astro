@@ -180,6 +180,19 @@ try {
             Each row is one sellable SKU. Add another row for additional specifications of the same
             compound (e.g. CU50 and CU100 for the same GHK-Cu record).
           </p>
+
+          <div class="cp-admin-field">
+            <label for="productSlug">
+              Public product page URL <span class="cp-admin-required">*</span>
+            </label>
+            <input id="productSlug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" maxlength="100" />
+            <p class="cp-admin-field__hint">
+              Shared by every variant above — one product page (/shop/&lt;this&gt;) shows all of
+              them together, e.g. /shop/ghk-cu with both CU50 and CU100 selectable. Only appears
+              publicly once at least one variant's public-listing status is Published.
+            </p>
+          </div>
+
           <div id="variantsList" />
           <button type="button" class="cp-admin-btn cp-admin-btn--secondary" id="addVariantBtn">
             + Add another variant

@@ -1,23 +1,42 @@
 ---
 /**
  * Shop index — rebuild of legacy-site/shop.html + js/shop.js, same
- * category cards / filter buttons / search / product grid, same 47
- * products (src/lib/shop-products.ts, ported verbatim). Static:
- * products are a hardcoded catalog (matching the legacy site's own
- * approach), not queried from anywhere, so there's no reason to opt out
- * of prerendering here.
+ * category cards / filter buttons / search / product grid. Batch 4
+ * (2026-08-10): products now come from the canonical Supabase
+ * shop_products table (published rows only) instead of the static
+ * src/lib/shop-products.ts array — on-demand (not prerendered) so an
+ * admin price/detail edit is reflected on next request, no rebuild
+ * needed. src/lib/shop-products.ts itself is kept in the repo,
+ * unremoved, as the documented rollback source until Supabase parity
+ * stays proven in production.
  *
  * Terracotta accents throughout (design handoff §30/§11-12's shop-mode
  * color swap) to keep Shop visibly distinct from Research's forest/mint
- * — enforced structurally too: this file never imports anything from
- * src/lib/supabase.ts or touches compounds/claims/studies/
+ * — enforced structurally too: this file imports src/lib/public-shop.ts
+ * (commerce-only reads), never src/lib/supabase.ts (research reads),
+ * and neither module ever touches compounds/claims/studies/
  * regulatory_records (CLAUDE.md §7).
  */
+export const prerender = false;
+
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Card from '../../components/ui/Card.astro';
-import { PRODUCTS } from '../../lib/shop-products';
+import ErrorState from '../../components/ui/ErrorState.astro';
+import { hasSupabaseConfig, listPublicShopProducts } from '../../lib/public-shop';
 import { formatMoney, lowestPriceOption } from '../../lib/shop';
 import { COMMERCE_ENABLED } from '../../lib/launch-config';
+
+let PRODUCTS: Awaited<ReturnType<typeof listPublicShopProducts>> = [];
+let loadError: string | null = null;
+if (hasSupabaseConfig()) {
+  try {
+    PRODUCTS = await listPublicShopProducts();
+  } catch {
+    loadError = 'Could not load the shop catalog right now.';
+  }
+} else {
+  loadError = 'Shop is not configured in this environment.';
+}
 
 const CATEGORIES = [
   { name: 'Beauty + Repair', icon: '<circle cx="10" cy="10" r="6"/><path d="M10 7v3l2 2"/>' },
@@ -139,61 +158,70 @@ const breadcrumbJsonLd = {
       />
     </div>
 
-    <p class="cp-shop-count" aria-live="polite">{productCount} products</p>
+    {loadError && <ErrorState message={loadError} retryHref="/shop" />}
+
+    {
+      !loadError && (
+        <p class="cp-shop-count" aria-live="polite">
+          {productCount} products
+        </p>
+      )
+    }
 
     <div class="cp-product-grid" data-shop-grid>
       {
-        PRODUCTS.map((product) => {
-          const low = lowestPriceOption(product);
-          const multi = product.options.length > 1;
-          const codes = product.options.map((o) => o.code.toLowerCase()).join(' ');
-          return (
-            <a
-              href={`/shop/${product.id}`}
-              class="cp-product-card"
-              data-shop-item
-              data-id={product.id}
-              data-name={product.name}
-              data-category={product.category}
-              data-codes={codes}
-            >
-              <Card class="cp-product-card__inner" accent="var(--terracotta-text)">
-                <div class="cp-product-card__image" aria-hidden="true">
-                  <svg viewBox="0 0 40 40" width="100%" height="100%">
-                    <rect
-                      x="14"
-                      y="8"
-                      width="12"
-                      height="26"
-                      rx="4"
-                      fill="none"
-                      stroke="var(--border-interactive)"
-                      stroke-width="1.5"
-                    />
-                    <rect
-                      x="16"
-                      y="4"
-                      width="8"
-                      height="6"
-                      rx="1.5"
-                      fill="none"
-                      stroke="var(--border-interactive)"
-                      stroke-width="1.5"
-                    />
-                  </svg>
-                </div>
-                <h3 class="cp-product-card__name">{product.name}</h3>
-                <p class="cp-product-card__sub">
-                  10 Vial Kit{multi ? ` • ${product.options.length} options` : ''}
-                </p>
-                <p class="cp-product-card__price">
-                  {multi ? 'from ' : ''}
-                  {formatMoney(low.price)}
-                </p>
-              </Card>
-            </a>
-          );
-        })
+        !loadError &&
+          PRODUCTS.map((product) => {
+            const low = lowestPriceOption(product);
+            const multi = product.options.length > 1;
+            const codes = product.options.map((o) => o.code.toLowerCase()).join(' ');
+            return (
+              <a
+                href={`/shop/${product.id}`}
+                class="cp-product-card"
+                data-shop-item
+                data-id={product.id}
+                data-name={product.name}
+                data-category={product.category}
+                data-codes={codes}
+              >
+                <Card class="cp-product-card__inner" accent="var(--terracotta-text)">
+                  <div class="cp-product-card__image" aria-hidden="true">
+                    <svg viewBox="0 0 40 40" width="100%" height="100%">
+                      <rect
+                        x="14"
+                        y="8"
+                        width="12"
+                        height="26"
+                        rx="4"
+                        fill="none"
+                        stroke="var(--border-interactive)"
+                        stroke-width="1.5"
+                      />
+                      <rect
+                        x="16"
+                        y="4"
+                        width="8"
+                        height="6"
+                        rx="1.5"
+                        fill="none"
+                        stroke="var(--border-interactive)"
+                        stroke-width="1.5"
+                      />
+                    </svg>
+                  </div>
+                  <h3 class="cp-product-card__name">{product.name}</h3>
+                  <p class="cp-product-card__sub">
+                    10 Vial Kit{multi ? ` • ${product.options.length} options` : ''}
+                  </p>
+                  <p class="cp-product-card__price">
+                    {multi ? 'from ' : ''}
+                    {formatMoney(low.price)}
+                  </p>
+                </Card>
+              </a>
+            );
+          })
       }
     </div>
 

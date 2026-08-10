@@ -204,6 +204,7 @@ async function main() {
           aliases: ['PWTC', 'PW-Test-Alias'],
         },
         stackComponentIds: [],
+        productSlug: newSlug,
         variants: [
           {
             code: `PW50-${stamp}`,
@@ -281,6 +282,7 @@ async function main() {
         compoundId: preexistingComponentCompoundId,
         newCompound: null,
         stackComponentIds: [],
+        productSlug: `pw-link-${stamp}`,
         variants: [
           {
             code: `PWLINK-${stamp}`,
@@ -319,6 +321,7 @@ async function main() {
           aliases: [],
         },
         stackComponentIds: [preexistingComponentCompoundId],
+        productSlug: blendSlug,
         variants: [
           {
             code: `PWBLEND-${stamp}`,
@@ -369,6 +372,7 @@ async function main() {
           aliases: [],
         },
         stackComponentIds: [],
+        productSlug: `pw-rollback-test-${stamp}`,
         variants: [
           {
             code: `PWROLLBACK-${stamp}`,

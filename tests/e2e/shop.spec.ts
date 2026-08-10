@@ -46,8 +46,11 @@ test.describe('product detail + cart (commerce enabled)', () => {
   });
 
   test('the option selector updates the displayed price', async ({ page }) => {
+    // $105.00 — the current admin-approved price (Batch 4 migrated this
+    // from admin_pricing_catalog, cost+$45), not shop-products.ts's old
+    // $170 static price.
     await page.selectOption('[data-option-select]', '1'); // 100mg option
-    await expect(page.locator('[data-price]')).toHaveText('$170.00');
+    await expect(page.locator('[data-price]')).toHaveText('$105.00');
   });
 
   test('Add to Cart is enabled and adds a real item to the cart', async ({ page }) => {

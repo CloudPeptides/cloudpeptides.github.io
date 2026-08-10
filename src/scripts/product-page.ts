@@ -19,14 +19,26 @@ interface PageProduct {
   options: ProductOption[];
 }
 
-declare global {
-  interface Window {
-    __cpProduct?: PageProduct;
+/** Read from the inert `application/json` data island (Batch 4,
+ * 2026-08-10) rather than a `window.__cpProduct` set by an inline
+ * `<script>` — an application/json script tag is never executed by the
+ * browser, so it's outside the script-src CSP directive entirely (the
+ * previous inline-script bridge got hoisted by Astro's bundler in a way
+ * that silently dropped its nonce, so CSP correctly blocked it and
+ * "Add to Cart" never actually ran — a pre-existing bug found and fixed
+ * alongside this batch's cart regression tests). */
+function readProduct(): PageProduct | null {
+  const el = document.getElementById('cpProductData');
+  if (!el?.textContent) return null;
+  try {
+    return JSON.parse(el.textContent) as PageProduct | null;
+  } catch {
+    return null;
   }
 }
 
 function init(): void {
-  const product = window.__cpProduct;
+  const product = readProduct();
   if (!product) return;
 
   const select = document.querySelector<HTMLSelectElement>('[data-option-select]');

@@ -26,6 +26,7 @@ import {
   getShopProduct,
   validateCount,
   validatePrice,
+  validateSlug,
   INTERNAL_STATUSES,
   PUBLIC_STATUSES,
 } from '../../../../lib/admin/products';
@@ -127,6 +128,25 @@ export const PATCH: APIRoute = async ({ params, request, url, locals }) => {
     if (v !== current.public_status) changed.public_status = { from: current.public_status, to: v };
     update.public_status = v;
   }
+  if ('productSlug' in input) {
+    // Nullable — an empty/null value intentionally clears it (this SKU
+    // stops appearing on any public product page until a slug is set
+    // again), matching this field's "optional grouping/URL key"
+    // meaning in the schema.
+    const raw = input.productSlug;
+    if (raw === null || raw === '') {
+      if (current.product_slug !== null)
+        changed.product_slug = { from: current.product_slug, to: null };
+      update.product_slug = null;
+    } else {
+      const check = validateSlug(raw);
+      if (!check.valid) return json({ success: false, error: check.error }, 400);
+      const slug = (raw as string).trim().toLowerCase();
+      if (slug !== current.product_slug)
+        changed.product_slug = { from: current.product_slug, to: slug };
+      update.product_slug = slug;
+    }
+  }
   // Code is immutable after creation — deliberately never read from
   // the request body at all above, even if present (silently ignored,
   // matching this codebase's allow-list convention elsewhere).
@@ -140,7 +160,7 @@ export const PATCH: APIRoute = async ({ params, request, url, locals }) => {
     .update(update)
     .eq('id', id)
     .select(
-      'id, compound_id, code, name, spec, count, price, category_id, internal_status, public_status, created_by, created_at, updated_at',
+      'id, compound_id, code, name, spec, count, price, category_id, internal_status, public_status, created_by, created_at, updated_at, product_slug, legacy_source_id',
     )
     .maybeSingle();
 

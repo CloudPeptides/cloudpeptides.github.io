@@ -4,7 +4,6 @@
  * no fetch/Request/Resend dependency — unit-testable directly, and kept
  * out of the route handlers so the actual HTTP wiring stays thin.
  */
-import { PRODUCTS } from './shop-products';
 
 const MAX_SHORT_FIELD = 200;
 const MAX_LONG_FIELD = 4000;
@@ -73,13 +72,17 @@ export function validateContactSubmission(input: Record<string, unknown>): {
  *
  * Pricing is never trusted from the client at all — not even the
  * per-item price. Each cart line is looked up by (productId,
- * optionCode) against the real catalog (src/lib/shop-products.ts) and
+ * optionCode) against a caller-supplied catalog resolver (Batch 4,
+ * 2026-08-10: src/pages/api/checkout.ts builds this from a fresh,
+ * published-only Supabase query — see buildCatalogResolver below) and
  * its name/spec/price are read from there; a client sending a
  * fabricated price, name, or spec for a real product id has all of it
  * silently discarded and replaced with the authoritative catalog
- * values, exactly the same "recompute, never trust" posture the
- * previous version of this function already applied to
- * subtotal/shipping/total.
+ * values, exactly the same "recompute, never trust" posture this
+ * function already applies to subtotal/shipping/total. The resolver is
+ * a required parameter, not a default binding to any particular data
+ * source — deliberately, so this module can never silently fall back
+ * to stale/wrong pricing data.
  */
 export interface CheckoutItemInput {
   productId: string;
@@ -117,22 +120,47 @@ export interface CheckoutSubmission {
   total: number;
 }
 
-/** Looks up the real product/option by id+code — the only source of
- * truth for name/spec/price. Returns null for an id/code pair that
- * doesn't exist in the catalog (a stale cart entry, or a tampered
- * request), which the caller treats as a hard validation failure. */
-function resolveProduct(
-  productId: string,
-  optionCode: string,
-): { name: string; spec: string; price: number } | null {
-  const product = PRODUCTS.find((p) => p.id === productId);
-  if (!product) return null;
-  const option = product.options.find((o) => o.code === optionCode);
-  if (!option) return null;
-  return { name: product.name, spec: option.spec, price: option.price };
+export interface ResolvedCatalogEntry {
+  name: string;
+  spec: string;
+  price: number;
 }
 
-export function validateCheckoutSubmission(input: Record<string, unknown>): {
+/** Looks up the real product/option by id+code — the only source of
+ * truth for name/spec/price. Returns null for an id/code pair that
+ * isn't in the catalog (a stale cart entry, or a tampered request),
+ * which the caller treats as a hard validation failure. */
+export type CatalogResolver = (
+  productId: string,
+  optionCode: string,
+) => ResolvedCatalogEntry | null;
+
+/** Builds a resolver from a flat list of catalog entries — the shape
+ * both src/lib/shop-products.ts (flattened) and a Supabase
+ * shop_products query naturally produce. Kept here (not a class/map
+ * built once and reused) because checkout.ts intentionally queries
+ * fresh, published-only rows on every request — never a cached or
+ * stale catalog. */
+export interface CatalogEntry {
+  productId: string;
+  optionCode: string;
+  name: string;
+  spec: string;
+  price: number;
+}
+
+export function buildCatalogResolver(entries: CatalogEntry[]): CatalogResolver {
+  const byKey = new Map<string, ResolvedCatalogEntry>();
+  for (const e of entries) {
+    byKey.set(`${e.productId}::${e.optionCode}`, { name: e.name, spec: e.spec, price: e.price });
+  }
+  return (productId, optionCode) => byKey.get(`${productId}::${optionCode}`) ?? null;
+}
+
+export function validateCheckoutSubmission(
+  input: Record<string, unknown>,
+  resolveProduct: CatalogResolver,
+): {
   result: ValidationResult;
   data?: CheckoutSubmission;
 } {

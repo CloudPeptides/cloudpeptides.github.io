@@ -15,6 +15,7 @@ function init(): void {
       const payload = {
         name: (document.getElementById('name') as HTMLInputElement).value.trim(),
         spec: (document.getElementById('spec') as HTMLInputElement).value.trim(),
+        productSlug: (document.getElementById('productSlug') as HTMLInputElement).value.trim(),
         count: Number((document.getElementById('count') as HTMLInputElement).value),
         price: (document.getElementById('price') as HTMLInputElement).value.trim(),
         categoryId: (document.getElementById('categoryId') as HTMLSelectElement).value,
