@@ -113,7 +113,12 @@ const breadcrumbJsonLd = {
                 data-lab={coa.testing_lab}
               >
                 <Card class="cp-coa-card">
-                  <h2 class="cp-coa-card__name">{coa.peptide_name}</h2>
+                  <h2 class="cp-coa-card__name">
+                    {coa.peptide_name}
+                    {coa.shop_products?.code && (
+                      <span class="cp-coa-card__sku">{coa.shop_products.code}</span>
+                    )}
+                  </h2>
                   <dl class="cp-coa-card__meta">
                     {coa.batch_identifier && (
                       <div>
@@ -129,6 +134,18 @@ const breadcrumbJsonLd = {
                       <div>
                         <dt>Test date</dt>
                         <dd>{new Date(coa.test_date).toLocaleDateString()}</dd>
+                      </div>
+                    )}
+                    {coa.testing_method && (
+                      <div>
+                        <dt>Method</dt>
+                        <dd>{coa.testing_method}</dd>
+                      </div>
+                    )}
+                    {coa.purity_result && (
+                      <div>
+                        <dt>Purity</dt>
+                        <dd>{coa.purity_result}</dd>
                       </div>
                     )}
                   </dl>
@@ -276,6 +293,19 @@ const breadcrumbJsonLd = {
     font-size: 1.0625rem;
     color: var(--text-primary);
     margin: 0 0 0.75rem;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .cp-coa-card__sku {
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: var(--text-caption);
+    color: var(--text-muted);
+    background: var(--bg-sunken);
+    border-radius: var(--radius-control);
+    padding: 0.125rem 0.5rem;
   }
   .cp-coa-card__meta {
     display: grid;

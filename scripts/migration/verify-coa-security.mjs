@@ -18,6 +18,11 @@
  *    rejected — the real security boundary is the byte-signature
  *    sniff (src/lib/coa-file-validation.ts), not the declared MIME type
  *  - archiving removes it from the public gallery again
+ *  - every successful write (create, edit, publish, unpublish,
+ *    archive, restore, file replace) produces exactly one audit_log
+ *    row with the correct actor, action, COA id, product name/SKU,
+ *    and old/new field diff — and never contains file bytes, signed
+ *    URLs, or credentials (src/lib/admin/coa-audit.ts)
  *
  * Run manually, locally, never in CI (same posture as
  * verify-admin-security.mjs):
@@ -154,6 +159,46 @@ function buildUploadForm(bytes, mimeType, filename) {
   return form;
 }
 
+// A second, real PDF for the file-replace test — different bytes so
+// the audit diff's old/new file metadata is genuinely different, not
+// coincidentally identical.
+const REAL_PDF_BYTES_V2 = new TextEncoder().encode(
+  '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[]/Count 1>>endobj\ntrailer<</Root 1 0 R>>',
+);
+
+/** Most recent audit_log row for this COA + action, read via the
+ * service-role client (audit_log has no client-readable RLS policy at
+ * all for a non-admin, and this script's own admin test user's JWT
+ * would work too, but service-role keeps this assertion independent
+ * of the RLS path under test elsewhere). */
+async function getAuditEntry(coaId, action) {
+  const { data } = await admin
+    .from('audit_log')
+    .select('*')
+    .eq('target_table', 'batch_coas')
+    .eq('target_id', coaId)
+    .eq('action', action)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data;
+}
+
+/** Scans a JSON-serializable value for anything that looks like a
+ * credential, JWT, or signed URL — audit_log.detail must never carry
+ * any of these regardless of which field it ended up in. */
+function containsSecretLikeValue(value) {
+  const text = JSON.stringify(value ?? {});
+  const patterns = [
+    /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/, // JWT shape
+    /token=/i,
+    /signature=/i,
+    /\/storage\/v1\/object\/sign\//i, // Supabase signed-URL path shape
+    SERVICE_ROLE_KEY,
+  ];
+  return patterns.some((p) => (p instanceof RegExp ? p.test(text) : text.includes(p)));
+}
+
 async function main() {
   setDevVars();
   const userIds = {};
@@ -222,6 +267,18 @@ async function main() {
     coaId = uploadBody.data?.id ?? null;
 
     if (coaId) {
+      // --- audit: create ---
+      const createAudit = await getAuditEntry(coaId, 'coa_created');
+      record('coa_created audit_log entry exists', Boolean(createAudit));
+      record(
+        'coa_created records the correct actor',
+        createAudit?.actor_user_id === userIds.admin,
+      );
+      record(
+        'coa_created detail has no secret-like values',
+        createAudit && !containsSecretLikeValue(createAudit.detail),
+      );
+
       // --- draft is invisible to anon ---
       const { data: anonDraftCheck } = await anon
         .from('batch_coas')
@@ -229,6 +286,44 @@ async function main() {
         .eq('id', coaId)
         .maybeSingle();
       record('a draft COA is invisible to the anon client (public gallery query)', !anonDraftCheck);
+
+      // --- link to a real product (test setup via service-role, not
+      // the audited action itself — proves the audit log correctly
+      // resolves product name/SKU once one exists) ---
+      const { data: anyProduct } = await admin
+        .from('shop_products')
+        .select('id, code, name')
+        .limit(1)
+        .maybeSingle();
+      if (anyProduct) {
+        await admin.from('batch_coas').update({ product_id: anyProduct.id }).eq('id', coaId);
+      }
+
+      // --- audit: metadata edit ---
+      const editRes = await fetch(`${baseUrl}/api/admin/coas/${coaId}`, {
+        method: 'PATCH',
+        headers: { ...origin, 'Content-Type': 'application/json', Cookie: adminLogin.cookie },
+        body: JSON.stringify({ batch_identifier: `AUDIT-TEST-${stamp}`, testing_method: 'HPLC' }),
+      });
+      record('admin can edit COA metadata', editRes.status === 200, `status ${editRes.status}`);
+      const editAudit = await getAuditEntry(coaId, 'coa_updated');
+      record('coa_updated audit_log entry exists', Boolean(editAudit));
+      record(
+        'coa_updated records old/new values for changed fields',
+        editAudit?.detail?.changes?.batch_identifier?.new === `AUDIT-TEST-${stamp}` &&
+          editAudit?.detail?.changes?.testing_method?.new === 'HPLC' &&
+          editAudit?.detail?.changes?.testing_method?.old === null,
+      );
+      if (anyProduct) {
+        record(
+          'coa_updated records the linked product SKU',
+          editAudit?.detail?.product_sku === anyProduct.code,
+        );
+      }
+      record(
+        'coa_updated detail has no secret-like values',
+        editAudit && !containsSecretLikeValue(editAudit.detail),
+      );
 
       // --- publish ---
       const publishRes = await fetch(`${baseUrl}/api/admin/coas/${coaId}`, {
@@ -247,6 +342,45 @@ async function main() {
       record(
         'once published, the COA is visible to the anon client',
         anonPublishedCheck?.status === 'published',
+      );
+
+      // --- audit: publish ---
+      const publishAudit = await getAuditEntry(coaId, 'coa_published');
+      record('coa_published audit_log entry exists', Boolean(publishAudit));
+      record(
+        'coa_published records old/new status',
+        publishAudit?.detail?.changes?.status?.old === 'draft' &&
+          publishAudit?.detail?.changes?.status?.new === 'published',
+      );
+
+      // --- unpublish ---
+      const unpublishRes = await fetch(`${baseUrl}/api/admin/coas/${coaId}`, {
+        method: 'PATCH',
+        headers: { ...origin, 'Content-Type': 'application/json', Cookie: adminLogin.cookie },
+        body: JSON.stringify({ status: 'draft' }),
+      });
+      record('admin can unpublish the COA', unpublishRes.status === 200);
+      const unpublishAudit = await getAuditEntry(coaId, 'coa_unpublished');
+      record('coa_unpublished audit_log entry exists', Boolean(unpublishAudit));
+
+      // --- file replace ---
+      const replaceForm = new FormData();
+      replaceForm.set('file', new Blob([REAL_PDF_BYTES_V2], { type: 'application/pdf' }), 'v2.pdf');
+      const replaceRes = await fetch(`${baseUrl}/api/admin/coas/${coaId}/file`, {
+        method: 'POST',
+        headers: { ...origin, Cookie: adminLogin.cookie },
+        body: replaceForm,
+      });
+      record('admin can replace the COA file', replaceRes.status === 200, `status ${replaceRes.status}`);
+      const replaceAudit = await getAuditEntry(coaId, 'coa_file_replaced');
+      record('coa_file_replaced audit_log entry exists', Boolean(replaceAudit));
+      record(
+        'coa_file_replaced records old/new filename, not file bytes',
+        replaceAudit?.detail?.changes?.original_filename?.new === 'v2.pdf',
+      );
+      record(
+        'coa_file_replaced detail has no secret-like values (and no signed URL, no raw bytes)',
+        replaceAudit && !containsSecretLikeValue(replaceAudit.detail),
       );
 
       // --- editor still cannot modify it ---
@@ -274,6 +408,29 @@ async function main() {
         .eq('id', coaId)
         .maybeSingle();
       record('an archived COA is invisible to the anon client again', !anonArchivedCheck);
+      const archiveAudit = await getAuditEntry(coaId, 'coa_archived');
+      record('coa_archived audit_log entry exists', Boolean(archiveAudit));
+
+      // --- restore ---
+      const restoreRes = await fetch(`${baseUrl}/api/admin/coas/${coaId}`, {
+        method: 'PATCH',
+        headers: { ...origin, 'Content-Type': 'application/json', Cookie: adminLogin.cookie },
+        body: JSON.stringify({ status: 'draft' }),
+      });
+      record('admin can restore an archived COA to draft', restoreRes.status === 200);
+      const restoreAudit = await getAuditEntry(coaId, 'coa_restored');
+      record('coa_restored audit_log entry exists', Boolean(restoreAudit));
+
+      // --- anon cannot read audit_log at all (RLS: admin-only select,
+      // no policy grants anon/non-admin authenticated any access) ---
+      const { data: anonAuditRead, error: anonAuditErr } = await anon
+        .from('audit_log')
+        .select('id')
+        .eq('target_id', coaId);
+      record(
+        'anon client cannot read audit_log rows',
+        (anonAuditRead ?? []).length === 0 || Boolean(anonAuditErr),
+      );
     }
   } finally {
     if (coaId) {

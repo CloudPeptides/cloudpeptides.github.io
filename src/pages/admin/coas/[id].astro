@@ -12,13 +12,21 @@ const id = Astro.params.id!;
 
 const { data: coa, error: fetchError } = await client
   .from('batch_coas')
-  .select('*')
+  .select('*, shop_products(code, name)')
   .eq('id', id)
   .maybeSingle();
 
 if (fetchError || !coa) {
   return new Response(null, { status: 404 });
 }
+
+// Canonical SKU display only — sourced live through product_id, never
+// a duplicate column on batch_coas (CLAUDE.md §7). Product linking
+// itself stays on the product's own admin page
+// (/admin/products/[id]'s "Link an existing unlinked COA" control,
+// src/lib/admin/products.ts's linkCoaToProduct) — this page only
+// displays the result. Null for an older COA with no product_id.
+const linkedProduct = coa.shop_products as { code: string; name: string } | null;
 
 // A signed URL, not the public one — this is the ADMIN preview, which
 // must work regardless of the COA's publish status (a plain public
@@ -63,6 +71,13 @@ if (coa.status === 'archived') {
       <h1>{coa.peptide_name}</h1>
       <p>
         <Badge tone={STATUS_TONE[coa.status] ?? 'neutral'}>{coa.status}</Badge>
+        {linkedProduct ? (
+          <span class="cp-admin-sku-badge">
+            SKU: {linkedProduct.code} ({linkedProduct.name})
+          </span>
+        ) : (
+          <span class="cp-admin-sku-badge cp-admin-sku-badge--unlinked">No product linked</span>
+        )}
       </p>
     </div>
   </div>
@@ -180,6 +195,19 @@ if (coa.status === 'archived') {
           maxlength="200"
         />
       </div>
+      <div class="cp-admin-field">
+        <label for="testingMethod">Testing method</label>
+        <input
+          id="testingMethod"
+          name="testing_method"
+          value={coa.testing_method ?? ''}
+          maxlength="200"
+          placeholder="e.g. HPLC, LC-MS"
+        />
+        <p class="cp-admin-field__hint">
+          Only enter this if the report itself states a method. Leave blank rather than guess.
+        </p>
+      </div>
       <div class="cp-admin-field" style="grid-column: 1 / -1;">
         <label for="notes">Notes</label>
         <textarea id="notes" name="notes" maxlength="4000">{coa.notes ?? ''}</textarea>
@@ -217,6 +245,20 @@ if (coa.status === 'archived') {
 </script>
 
 <style>
+  .cp-admin-sku-badge {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-control);
+    background: var(--bg-sunken);
+    color: var(--text-secondary);
+    font-size: var(--text-caption);
+    font-weight: 500;
+  }
+  .cp-admin-sku-badge--unlinked {
+    color: var(--text-muted);
+    font-style: italic;
+  }
   .cp-coa-preview {
     margin-bottom: 1.5rem;
   }
