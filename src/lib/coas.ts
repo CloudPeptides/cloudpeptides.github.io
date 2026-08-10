@@ -49,10 +49,20 @@ export interface PublishedCoa {
   test_date: string | null;
   verification_url: string | null;
   notes: string | null;
+  purity_result: string | null;
+  testing_method: string | null;
   file_path: string;
   file_mime_type: string;
   original_filename: string;
   published_at: string | null;
+  /** The linked shop_products row's code/name — the canonical SKU
+   * display, sourced live through product_id rather than any column on
+   * batch_coas itself (CLAUDE.md §7: no duplicate SKU data). Null for
+   * an older COA with no product_id, or one whose linked product isn't
+   * itself publicly readable — both cases the anon client simply can't
+   * see, so PostgREST returns null for the embed rather than erroring;
+   * render accordingly, never throw on a missing link. */
+  shop_products: { code: string; name: string } | null;
 }
 
 export async function listPublishedCoas(): Promise<PublishedCoa[]> {
@@ -60,10 +70,10 @@ export async function listPublishedCoas(): Promise<PublishedCoa[]> {
   const { data, error } = await supabase
     .from('batch_coas')
     .select(
-      'id, peptide_name, batch_identifier, testing_lab, test_date, verification_url, notes, file_path, file_mime_type, original_filename, published_at',
+      'id, peptide_name, batch_identifier, testing_lab, test_date, verification_url, notes, purity_result, testing_method, file_path, file_mime_type, original_filename, published_at, shop_products(code, name)',
     )
     .eq('status', 'published')
     .order('published_at', { ascending: false });
   if (error) throw error;
-  return (data ?? []) as PublishedCoa[];
+  return (data ?? []) as unknown as PublishedCoa[];
 }

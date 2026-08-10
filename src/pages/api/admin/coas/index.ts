@@ -93,6 +93,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
   const verificationUrl = sanitizeText(form.get('verification_url'), 500);
   const notes = sanitizeText(form.get('notes'), 4000);
   const purityResult = sanitizeText(form.get('purity_result'), 200);
+  const testingMethod = sanitizeText(form.get('testing_method'), 200);
 
   if (!peptideName || !testingLab || !testDate) {
     return json(
@@ -100,7 +101,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
       400,
     );
   }
-  if (![peptideName, batchIdentifier, testingLab, verificationUrl].every(isSingleLineSafe)) {
+  if (![peptideName, batchIdentifier, testingLab, verificationUrl, testingMethod].every(isSingleLineSafe)) {
     return json({ success: false, error: 'Invalid characters in submitted fields.' }, 400);
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(testDate)) {
@@ -128,6 +129,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
       verification_url: verificationUrl || null,
       notes: notes || null,
       purity_result: purityResult || null,
+      testing_method: testingMethod || null,
       file_path: storagePath,
       file_mime_type: file.type,
       file_size_bytes: file.size,

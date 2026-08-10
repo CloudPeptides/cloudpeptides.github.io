@@ -43,6 +43,14 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         <input id="purityResult" name="purity_result" maxlength="200" />
         <p class="cp-admin-field__hint">Optional.</p>
       </div>
+      <div class="cp-admin-field">
+        <label for="testingMethod">Testing method</label>
+        <input id="testingMethod" name="testing_method" maxlength="200" placeholder="e.g. HPLC, LC-MS" />
+        <p class="cp-admin-field__hint">
+          Optional — only enter this if the report itself states a method. Leave blank rather
+          than guess.
+        </p>
+      </div>
       <div class="cp-admin-field" style="grid-column: 1 / -1;">
         <label for="notes">Notes</label>
         <textarea id="notes" name="notes" maxlength="4000"></textarea>

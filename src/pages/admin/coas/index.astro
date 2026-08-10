@@ -27,22 +27,28 @@ let rows: {
   test_date: string | null;
   status: string;
   updated_at: string;
+  shop_products: { code: string } | null;
 }[] = [];
 let total = 0;
 
 try {
   let query = client
     .from('batch_coas')
-    .select('id, peptide_name, batch_identifier, testing_lab, test_date, status, updated_at', {
-      count: 'exact',
-    })
+    .select(
+      'id, peptide_name, batch_identifier, testing_lab, test_date, status, updated_at, shop_products(code)',
+      { count: 'exact' },
+    )
     .order('updated_at', { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   if (status) query = query.eq('status', status);
   if (q) query = query.ilike('peptide_name', `%${q}%`);
   const { data, error, count } = await query;
   if (error) throw error;
-  rows = data ?? [];
+  // supabase-js infers embedded to-one relationships as arrays without
+  // generated Database types (this table isn't in database.types.ts —
+  // see src/lib/coas.ts's own listPublishedCoas for the same cast);
+  // confirmed empirically as a single object at runtime.
+  rows = (data ?? []) as unknown as typeof rows;
   total = count ?? 0;
 } catch {
   loadError = 'Could not load the COA list right now.';
@@ -107,6 +113,7 @@ const STATUS_TONE: Record<string, 'neutral' | 'warning' | 'success'> = {
           <thead>
             <tr>
               <th>Peptide</th>
+              <th>SKU</th>
               <th>Batch</th>
               <th>Lab</th>
               <th>Test date</th>
@@ -120,6 +127,7 @@ const STATUS_TONE: Record<string, 'neutral' | 'warning' | 'success'> = {
                 <td>
                   <a href={`/admin/coas/${c.id}`}>{c.peptide_name}</a>
                 </td>
+                <td>{c.shop_products?.code ?? '—'}</td>
                 <td>{c.batch_identifier ?? '—'}</td>
                 <td>{c.testing_lab}</td>
                 <td>{c.test_date ? new Date(c.test_date).toLocaleDateString() : '—'}</td>

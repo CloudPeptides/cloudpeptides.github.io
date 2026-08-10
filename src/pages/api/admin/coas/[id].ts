@@ -32,6 +32,7 @@ const EDITABLE_TEXT_FIELDS = [
   'verification_url',
   'notes',
   'purity_result',
+  'testing_method',
 ] as const;
 
 const STATUSES = ['draft', 'published', 'archived'] as const;
