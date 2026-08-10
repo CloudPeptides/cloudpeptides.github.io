@@ -87,5 +87,13 @@
       "namespace_id": "1001",
       "simple": { "limit": 5, "period": 60 },
     },
+    // Separate, more generous binding for the pricing catalog's inline
+    // price editing only (src/env.d.ts has the full reasoning) — no
+    // other route uses this.
+    {
+      "name": "ADMIN_RATE_LIMITER",
+      "namespace_id": "1002",
+      "simple": { "limit": 60, "period": 60 },
+    },
   ],
 }
