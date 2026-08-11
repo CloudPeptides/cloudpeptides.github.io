@@ -210,6 +210,67 @@ const STATUS_TONE: Record<string, 'neutral' | 'info' | 'warning' | 'success'> = 
         </p>
       </div>
 
+      <h3 class="cp-admin-subheading">Public overview</h3>
+      <p class="cp-admin-field__hint">
+        Plain-language introduction rendered at the top of the public profile. Leave any field blank
+        to omit that part of the section; leave all four blank to omit the section entirely. Never
+        state a claimed use as an established benefit — write "commonly claimed," "marketed for," or
+        "investigated for" instead.
+      </p>
+      <div class="cp-admin-field">
+        <label for="overview_what_it_is">What it is</label>
+        <textarea id="overview_what_it_is" name="overview_what_it_is" rows="2" maxlength="4000"
+          >{compound.overview_what_it_is ?? ''}</textarea
+        >
+      </div>
+      <div class="cp-admin-field">
+        <label for="overview_why_people_use_it">Why people look it up</label>
+        <textarea
+          id="overview_why_people_use_it"
+          name="overview_why_people_use_it"
+          rows="2"
+          maxlength="4000">{compound.overview_why_people_use_it ?? ''}</textarea
+        >
+      </div>
+      <div class="cp-admin-field">
+        <label for="overview_research_summary">What the research actually shows</label>
+        <textarea
+          id="overview_research_summary"
+          name="overview_research_summary"
+          rows="4"
+          maxlength="4000">{compound.overview_research_summary ?? ''}</textarea
+        >
+        <p class="cp-admin-field__hint">
+          Distinguish established/approved uses, human research, animal/preclinical research,
+          mechanistic/lab research, and unsupported or anecdotal claims. Must stay consistent with
+          this compound's claim-level evidence — never a stronger or weaker signal than the cited
+          claims below actually support.
+        </p>
+      </div>
+      <div class="cp-admin-field">
+        <label for="overview_bottom_line">Bottom line</label>
+        <textarea id="overview_bottom_line" name="overview_bottom_line" rows="2" maxlength="4000"
+          >{compound.overview_bottom_line ?? ''}</textarea
+        >
+        <p class="cp-admin-field__hint">
+          Short, neutral summary of how much reliable evidence currently exists — not a safety or
+          efficacy verdict.
+        </p>
+      </div>
+      <div class="cp-admin-field">
+        <label for="overview_evidence_reviewed_date">Evidence last reviewed</label>
+        <input
+          type="date"
+          id="overview_evidence_reviewed_date"
+          name="overview_evidence_reviewed_date"
+          value={compound.overview_evidence_reviewed_date ?? ''}
+        />
+        <p class="cp-admin-field__hint">
+          Powers "as of [date]" wording above when human evidence is absent. Update whenever the
+          overview text is re-checked against current sources.
+        </p>
+      </div>
+
       <p class="cp-admin-form-message" data-tone="error" data-form-error hidden></p>
       <div class="cp-admin-form-actions">
         <button type="submit" class="cp-admin-btn cp-admin-btn--primary">Save identity</button>

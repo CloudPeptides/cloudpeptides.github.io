@@ -108,3 +108,27 @@ export function maxEvidenceQuality(
   }
   return best;
 }
+
+const LEGACY_SITE_HOSTNAME = 'cloudpeptides.github.io';
+
+/**
+ * True for a source that is the retired Cloud Peptides static site itself
+ * (https://cloudpeptides.github.io/<slug>.html) — carried into the
+ * database during content migration as a `source_type: 'other'`
+ * provenance record attached to most migrated claims. It is real data,
+ * kept in place internally, but per 2026-08-11 editorial policy the old
+ * site is never itself evidence and must never appear as a citation,
+ * "source," or link on any public page (vendor pages, blogs, and the old
+ * Cloud Peptides website are not evidence). Used to filter it out of
+ * every public rendering path (claim citation lists, the sidebar studies
+ * list, and the directory/profile evidence aggregates) without deleting
+ * the underlying `sources`/`claim_sources` rows.
+ */
+export function isLegacySiteSource(url: string | null | undefined): boolean {
+  if (!url) return false;
+  try {
+    return new URL(url).hostname === LEGACY_SITE_HOSTNAME;
+  } catch {
+    return false;
+  }
+}

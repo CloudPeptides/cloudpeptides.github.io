@@ -19,8 +19,20 @@
  * for the full audit this reflects. The content-display rule this
  * exists to enforce: an unsupported/contradicted legacy claim must never
  * appear as if it were an established fact.
+ *
+ * 2026-08-11 addition: partitionClaimsByDisposition also strips the
+ * retired Cloud Peptides site (see evidence.ts's isLegacySiteSource) out
+ * of every claim's citation list before it ever renders, and reroutes
+ * any claim that had a citation ONLY from that non-evidence source into
+ * the same "not independently verified" bucket — a claim can't be shown
+ * as ordinarily supported once its sole "source" is disqualified as not
+ * being evidence at all (CLAUDE.md §6: every substantive claim needs a
+ * traceable citation). Claims that never had any citation to begin with
+ * are left exactly as they were; this only affects claims this specific
+ * change would otherwise have made silently uncited.
  */
 import type { Claim } from './database.types';
+import { isLegacySiteSource } from './evidence';
 
 export type ReconciliationDisposition =
   'supported' | 'revised' | 'unsupported' | 'contradicted' | 'superseded';
@@ -69,17 +81,37 @@ export function isHiddenFromNormalFlow(claim: Pick<Claim, 'quality_rationale'>):
   return parsed !== null && HIDDEN_FROM_NORMAL_FLOW.includes(parsed.disposition);
 }
 
+type WithSources = { claim_sources: { sources: { url: string } }[] };
+
+/** Removes the retired legacy-site "source" from a claim's citation list
+ * — real evidence citations are left untouched. */
+export function sanitizeClaimSources<T extends WithSources['claim_sources'][number]>(
+  claimSources: T[],
+): T[] {
+  return claimSources.filter((cs) => !isLegacySiteSource(cs.sources.url));
+}
+
 /** Splits a compound's claims into what renders in the normal claim
- * sections vs. what must be routed to the dedicated "Unsupported legacy
- * claims" section. Order is preserved within each group. */
-export function partitionClaimsByDisposition<T extends Pick<Claim, 'quality_rationale'>>(
-  claims: T[],
-): { visible: T[]; unsupported: T[] } {
+ * sections vs. what must be routed to the dedicated "not independently
+ * verified" section — either because a reconciliation pass flagged it
+ * unsupported/contradicted, or because stripping the non-evidence legacy
+ * self-citation (see module doc above) left it with no real citation.
+ * Every claim returned has its claim_sources already sanitized. Order is
+ * preserved within each group. */
+export function partitionClaimsByDisposition<
+  T extends Pick<Claim, 'quality_rationale'> & WithSources,
+>(claims: T[]): { visible: T[]; unsupported: T[] } {
   const visible: T[] = [];
   const unsupported: T[] = [];
   for (const claim of claims) {
-    if (isHiddenFromNormalFlow(claim)) unsupported.push(claim);
-    else visible.push(claim);
+    const sanitizedSources = sanitizeClaimSources(claim.claim_sources);
+    const sanitized = { ...claim, claim_sources: sanitizedSources };
+    const orphanedByLegacyStrip = claim.claim_sources.length > 0 && sanitizedSources.length === 0;
+    if (isHiddenFromNormalFlow(claim) || orphanedByLegacyStrip) {
+      unsupported.push(sanitized);
+    } else {
+      visible.push(sanitized);
+    }
   }
   return { visible, unsupported };
 }

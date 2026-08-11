@@ -22,9 +22,9 @@
  *
  * This component never renders an 'unsupported'/'contradicted' claim —
  * the profile page filters those out before they ever reach here (see
- * partitionClaimsByDisposition) and routes them to the dedicated
- * "Unsupported legacy claims" section instead. The guard below is
- * defense-in-depth, not the primary mechanism.
+ * partitionClaimsByDisposition) and routes them to the dedicated "not
+ * independently verified" section instead (UnsupportedClaimsCard.astro).
+ * The guard below is defense-in-depth, not the primary mechanism.
  */
 import type { Claim, ClaimSource, Source } from '../../lib/database.types';
 import EvidenceBadge from './EvidenceBadge.astro';
@@ -68,8 +68,9 @@ const isHidden =
           <p class="cp-claim__correction-text">{reconciliation.rationale}</p>
         </div>
       )}
-      <p class="cp-claim__statement" data-legacy={isRevised ? '' : undefined}>
-        {isRevised && <span class="cp-claim__legacy-label">Legacy wording:</span>} {claim.statement}
+      <p class="cp-claim__statement" data-original-wording={isRevised ? '' : undefined}>
+        {isRevised && <span class="cp-claim__original-label">Original wording:</span>}{' '}
+        {claim.statement}
       </p>
       <div class="cp-claim__meta">
         {claim.interpretation_status && (
@@ -138,11 +139,11 @@ const isHidden =
     color: var(--text-primary);
     line-height: var(--text-body--line-height);
   }
-  .cp-claim__statement[data-legacy] {
+  .cp-claim__statement[data-original-wording] {
     color: var(--text-secondary);
     font-size: 0.9375rem;
   }
-  .cp-claim__legacy-label {
+  .cp-claim__original-label {
     font-size: var(--text-caption);
     font-weight: 600;
     text-transform: uppercase;
