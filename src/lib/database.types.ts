@@ -111,6 +111,15 @@ export interface Compound {
   overview_research_summary: string | null;
   overview_bottom_line: string | null;
   overview_evidence_reviewed_date: string | null;
+  /** Plain-language "Administration context" section (2026-08-11) —
+   * how the compound is given in any approved product, which routes
+   * were actually used in the human/animal studies cited on this page,
+   * and which commonly-marketed routes (e.g. subcutaneous injection)
+   * lack supporting human evidence. Descriptive only — never doses,
+   * reconstitution, needle sizes, schedules, or usage instructions.
+   * Admin-editable, never inferred from "sold as an injectable" alone. */
+  administration_context: string | null;
+  administration_context_reviewed_date: string | null;
   /** Non-null = flagged for expert/editorial review before content is
    * taken at face value; rendered as a prominent public warning.
    * Replaces the previous hardcoded src/lib/expert-review-flags.ts list

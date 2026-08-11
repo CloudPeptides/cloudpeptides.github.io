@@ -68,6 +68,8 @@ export const TABLE_REGISTRY: Record<string, TableConfig> = {
       'overview_research_summary',
       'overview_bottom_line',
       'overview_evidence_reviewed_date',
+      'administration_context',
+      'administration_context_reviewed_date',
     ],
     updatableColumns: [
       'slug',
@@ -83,6 +85,8 @@ export const TABLE_REGISTRY: Record<string, TableConfig> = {
       'overview_research_summary',
       'overview_bottom_line',
       'overview_evidence_reviewed_date',
+      'administration_context',
+      'administration_context_reviewed_date',
     ],
     validate: validateCompoundFields,
     minRoleWrite: 'contributor',

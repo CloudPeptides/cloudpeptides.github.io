@@ -31,6 +31,9 @@ export const fixtureCompound: CompoundWithRelations = {
   overview_bottom_line:
     'Placeholder text demonstrating the "Bottom line" overview block. Not a real scientific statement.',
   overview_evidence_reviewed_date: '2026-01-01',
+  administration_context:
+    'Placeholder text demonstrating the "Administration context" section. Not a real scientific statement.',
+  administration_context_reviewed_date: '2026-01-01',
   legacy_source_path: null,
   raw_import_metadata: null,
   last_reviewed_at: '2026-01-01T00:00:00Z',

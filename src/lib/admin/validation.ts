@@ -241,6 +241,30 @@ export function validateCompoundFields(input: Record<string, unknown>): FieldVal
       return { valid: false, error: 'Invalid evidence-reviewed date.' };
     }
   }
+  if (
+    input.administration_context !== undefined &&
+    input.administration_context !== null &&
+    input.administration_context !== ''
+  ) {
+    if (
+      typeof input.administration_context !== 'string' ||
+      input.administration_context.length > 4000
+    ) {
+      return { valid: false, error: 'Invalid administration context.' };
+    }
+  }
+  if (
+    input.administration_context_reviewed_date !== undefined &&
+    input.administration_context_reviewed_date !== null &&
+    input.administration_context_reviewed_date !== ''
+  ) {
+    if (
+      typeof input.administration_context_reviewed_date !== 'string' ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(input.administration_context_reviewed_date)
+    ) {
+      return { valid: false, error: 'Invalid administration-context-reviewed date.' };
+    }
+  }
   return { valid: true };
 }
 

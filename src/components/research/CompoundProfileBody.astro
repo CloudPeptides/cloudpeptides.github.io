@@ -174,6 +174,14 @@ const hasOverview = Boolean(
 const OVERVIEW_ICON =
   '<path d="M10 3c-3.5 0-6.5 2.7-7.5 7 1 4.3 4 7 7.5 7s6.5-2.7 7.5-7c-1-4.3-4-7-7.5-7Z"/><circle cx="10" cy="10" r="2.3"/>';
 
+// "Administration context" (2026-08-11) — Supabase-backed, admin-
+// editable, descriptive only (never doses/reconstitution/schedules —
+// see the migration comment and the admin field hint). Renders nothing
+// if a compound has no administration-context content written yet.
+const hasAdministrationContext = Boolean(compound && compound.administration_context);
+const ADMIN_CONTEXT_ICON =
+  '<rect x="4" y="7" width="12" height="9" rx="1.5"/><path d="M7 7V5a3 3 0 0 1 6 0v2"/>';
+
 // No blanket compound-level identity_confidence or research_review_
 // status badge in the identity card below (2026-08-10 correction) —
 // both fields remain in the database and admin dashboard, but a badge
@@ -319,6 +327,42 @@ const SHOP_URL = '/shop';
                 <p>{compound.overview_bottom_line}</p>
               </div>
             )}
+          </Card>
+        )}
+
+        {hasAdministrationContext && (
+          <Card class="cp-overview-card cp-admin-context-card">
+            <h2 class="cp-section-heading">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 20 20"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                set:html={ADMIN_CONTEXT_ICON}
+              />
+              Administration Context
+            </h2>
+            <div class="cp-overview-block">
+              <p>{compound.administration_context}</p>
+              {compound.administration_context_reviewed_date && (
+                <p class="cp-overview-block__meta">
+                  Route evidence last reviewed{' '}
+                  {new Date(compound.administration_context_reviewed_date).toLocaleDateString(
+                    'en-US',
+                    { year: 'numeric', month: 'long', day: 'numeric' },
+                  )}
+                </p>
+              )}
+            </div>
+            <p class="cp-admin-context-disclaimer">
+              Descriptive research context only — not usage instructions, dosing, or a
+              recommendation of any kind.
+            </p>
           </Card>
         )}
 
@@ -765,6 +809,18 @@ const SHOP_URL = '/shop';
     font-size: var(--text-caption);
     color: var(--text-muted) !important;
     font-weight: 400 !important;
+  }
+  .cp-admin-context-card .cp-overview-block {
+    padding-top: 0;
+    border-bottom: none;
+  }
+  .cp-admin-context-disclaimer {
+    margin: 0.5rem 0 0;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-subtle);
+    font-size: var(--text-caption);
+    color: var(--text-muted);
+    font-style: italic;
   }
 
   @media (max-width: 900px) {
