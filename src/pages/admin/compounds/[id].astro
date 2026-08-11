@@ -271,6 +271,33 @@ const STATUS_TONE: Record<string, 'neutral' | 'info' | 'warning' | 'success'> = 
         </p>
       </div>
 
+      <h3 class="cp-admin-subheading">Administration context</h3>
+      <p class="cp-admin-field__hint">
+        Descriptive research context only — never doses, reconstitution, needle sizes, schedules, or
+        usage instructions. Cover: how it's given in any approved product; which routes were
+        actually used in the human/animal studies cited below; which commonly-marketed routes (e.g.
+        subcutaneous or intramuscular injection) lack supporting human evidence — say so plainly
+        when that's the case. Never infer a route from "sold as an injectable" alone.
+      </p>
+      <div class="cp-admin-field">
+        <label for="administration_context">Administration context</label>
+        <textarea
+          id="administration_context"
+          name="administration_context"
+          rows="5"
+          maxlength="4000">{compound.administration_context ?? ''}</textarea
+        >
+      </div>
+      <div class="cp-admin-field">
+        <label for="administration_context_reviewed_date">Route evidence last reviewed</label>
+        <input
+          type="date"
+          id="administration_context_reviewed_date"
+          name="administration_context_reviewed_date"
+          value={compound.administration_context_reviewed_date ?? ''}
+        />
+      </div>
+
       <p class="cp-admin-form-message" data-tone="error" data-form-error hidden></p>
       <div class="cp-admin-form-actions">
         <button type="submit" class="cp-admin-btn cp-admin-btn--primary">Save identity</button>
