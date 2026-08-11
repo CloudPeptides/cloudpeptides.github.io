@@ -100,6 +100,17 @@ export interface Compound {
   research_review_status: ResearchReviewStatus;
   category: string | null;
   status: EditorialStatus;
+  /** Plain-language public introduction (2026-08-11) — "What it is /
+   * Why people look it up / What the research actually shows / Bottom
+   * line," rendered at the top of the public profile when present.
+   * Admin-editable (src/pages/admin/compounds/[id].astro), never
+   * hardcoded in the template. All nullable: a compound with nothing
+   * written yet simply renders no overview section. */
+  overview_what_it_is: string | null;
+  overview_why_people_use_it: string | null;
+  overview_research_summary: string | null;
+  overview_bottom_line: string | null;
+  overview_evidence_reviewed_date: string | null;
   /** Non-null = flagged for expert/editorial review before content is
    * taken at face value; rendered as a prominent public warning.
    * Replaces the previous hardcoded src/lib/expert-review-flags.ts list

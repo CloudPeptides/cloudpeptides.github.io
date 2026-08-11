@@ -1,17 +1,20 @@
 ---
 /**
- * Dedicated, clearly-labeled section for legacy claims reconciled as
- * 'unsupported' (or, defensively, 'contradicted' — none currently exist
- * in the database, see docs/enrichment/full-coverage-report.md). This is
- * the ONLY place these claims are ever allowed to appear — the profile
- * page filters them out of every normal content section before this
- * component is reached (src/lib/reconciliation.ts's
- * partitionClaimsByDisposition). No InterpretationBadge is rendered here
- * (that badge implies a scientific interpretation confidence level,
- * which is exactly what these claims lack) and no citation chips are
- * shown as if they "support" the statement — the whole point of this
- * section is to make clear these are historical/provenance records, not
- * established facts.
+ * Dedicated, clearly-labeled section for claims that cannot be shown as
+ * ordinarily supported: either a reconciliation pass classified them
+ * 'unsupported'/'contradicted' (defensively — none currently exist in
+ * the database, see docs/enrichment/full-coverage-report.md), or the
+ * only citation they had turned out to be the retired legacy site,
+ * which isn't evidence (src/lib/evidence.ts's isLegacySiteSource,
+ * 2026-08-11). This is the ONLY place these claims are ever allowed to
+ * appear — the profile page filters them out of every normal content
+ * section before this component is reached
+ * (src/lib/reconciliation.ts's partitionClaimsByDisposition). No
+ * InterpretationBadge is rendered here (that badge implies a scientific
+ * interpretation confidence level, which is exactly what these claims
+ * lack) and no citation chips are shown as if they "support" the
+ * statement — the whole point of this section is to make clear these
+ * are not established, independently-verified facts.
  */
 import type { Claim } from '../../lib/database.types';
 import Card from '../ui/Card.astro';
@@ -41,14 +44,14 @@ const { claims } = Astro.props;
           <path d="M10 3 4 5.5v4c0 4 2.6 7 6 8 3.4-1 6-4 6-8v-4L10 3Z" />
           <path d="M10 8v3.5M10 14v.01" />
         </svg>
-        Unsupported legacy claims
+        Claims not currently independently verified
       </h2>
       <p class="cp-unsupported-card__intro">
-        The statements below appeared on the original site before this research library's editorial
-        review. A dedicated scientific reconciliation pass could not independently verify them
-        against an authoritative source — that does not mean they are known to be false, only that
-        they are not currently established. They are preserved here, clearly labeled, for
-        transparency and provenance — never as confirmed research findings.
+        The statements below could not be independently verified against an authoritative source —
+        either a dedicated scientific reconciliation pass couldn't confirm them, or they have no
+        remaining citation strong enough to count as evidence. That does not mean they are known to
+        be false, only that they are not currently established. They are preserved here, clearly
+        labeled, for transparency — never as confirmed research findings.
       </p>
       <ul class="cp-unsupported-list">
         {claims.map((claim) => {

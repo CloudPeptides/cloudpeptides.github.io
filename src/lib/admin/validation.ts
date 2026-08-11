@@ -214,6 +214,33 @@ export function validateCompoundFields(input: Record<string, unknown>): FieldVal
       return { valid: false, error: 'Invalid category.' };
     }
   }
+  for (const field of [
+    'overview_what_it_is',
+    'overview_why_people_use_it',
+    'overview_research_summary',
+    'overview_bottom_line',
+  ] as const) {
+    // Empty string = "not written yet," same as null (plain form fields
+    // submit '' rather than null when left blank) — normalized to null
+    // by the mutation route, not rejected here.
+    if (input[field] !== undefined && input[field] !== null && input[field] !== '') {
+      if (typeof input[field] !== 'string' || (input[field] as string).length > 4000) {
+        return { valid: false, error: `Invalid ${field.replace(/_/g, ' ')}.` };
+      }
+    }
+  }
+  if (
+    input.overview_evidence_reviewed_date !== undefined &&
+    input.overview_evidence_reviewed_date !== null &&
+    input.overview_evidence_reviewed_date !== ''
+  ) {
+    if (
+      typeof input.overview_evidence_reviewed_date !== 'string' ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(input.overview_evidence_reviewed_date)
+    ) {
+      return { valid: false, error: 'Invalid evidence-reviewed date.' };
+    }
+  }
   return { valid: true };
 }
 

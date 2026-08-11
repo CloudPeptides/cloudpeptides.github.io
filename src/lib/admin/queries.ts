@@ -220,7 +220,7 @@ export async function listCompoundsForAdmin(
 
 const COMPOUND_EDIT_SELECT = `*,
   compound_aliases ( * ),
-  claims!claims_compound_id_fkey ( *, claim_sources ( *, sources ( id, title, source_type ) ) ),
+  claims!claims_compound_id_fkey ( *, claim_sources ( *, sources ( id, title, source_type, url ) ) ),
   regulatory_records ( *, sources ( id, title ) ),
   stack_components!stack_components_stack_id_fkey ( *, compounds!stack_components_component_compound_id_fkey ( id, slug, name, status ) )`;
 

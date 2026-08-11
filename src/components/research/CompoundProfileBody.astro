@@ -90,15 +90,24 @@ const RELATED_ICON =
 
 type Claims = NonNullable<typeof compound>['claims'];
 
-// Phase 3 content-display rule: a legacy claim reconciled as
-// 'unsupported' (or, defensively, 'contradicted' — none currently exist
-// in the database) must never appear in a normal content section as if
-// it were an established fact. It is routed to a dedicated, clearly
-// labeled section instead (rendered near the end of the page) — see
-// src/lib/reconciliation.ts and src/components/research/UnsupportedClaimsCard.astro.
-const { visible: visibleClaims, unsupported: unsupportedClaims } = compound
-  ? partitionClaimsByDisposition(compound.claims)
-  : { visible: [] as Claims, unsupported: [] as Claims };
+// Only ever render published claims — status is not filtered by the
+// nested-select join itself (see src/lib/supabase.ts), so this is the
+// one place both the real public page and the admin "preview unpublished
+// changes" route (which reuses this same component) enforce it, keeping
+// the two in sync. This is also what makes the 2026-08-11 disclaimer/
+// site-policy claim cleanup (status='archived', see audit_log) actually
+// disappear from public view rather than just no longer being counted.
+const publishedClaims = compound ? compound.claims.filter((c) => c.status === 'published') : [];
+
+// Phase 3 content-display rule: a claim reconciled as 'unsupported' (or,
+// defensively, 'contradicted' — none currently exist in the database),
+// or one whose only citation turned out to be the retired legacy site
+// (not evidence — see src/lib/reconciliation.ts), must never appear in a
+// normal content section as if it were an established, cited fact. Both
+// are routed to a dedicated section instead (rendered near the end of
+// the page) — see src/components/research/UnsupportedClaimsCard.astro.
+const { visible: visibleClaims, unsupported: unsupportedClaims } =
+  partitionClaimsByDisposition(publishedClaims);
 
 const claimsBySection = new Map<ContentSection, Claims>();
 for (const claim of visibleClaims) {
@@ -151,6 +160,20 @@ const safetyClaims = [
 const reviewFlagReason = compound?.expert_review_flag_reason || undefined;
 const displayName = compound ? compound.display_name || compound.name : undefined;
 
+// Plain-language public introduction (2026-08-11) — Supabase-backed,
+// admin-editable (src/pages/admin/compounds/[id].astro), never hardcoded
+// here. Renders nothing if a compound has no overview content written
+// yet, rather than empty boxes.
+const hasOverview = Boolean(
+  compound &&
+  (compound.overview_what_it_is ||
+    compound.overview_why_people_use_it ||
+    compound.overview_research_summary ||
+    compound.overview_bottom_line),
+);
+const OVERVIEW_ICON =
+  '<path d="M10 3c-3.5 0-6.5 2.7-7.5 7 1 4.3 4 7 7.5 7s6.5-2.7 7.5-7c-1-4.3-4-7-7.5-7Z"/><circle cx="10" cy="10" r="2.3"/>';
+
 // No blanket compound-level identity_confidence or research_review_
 // status badge in the identity card below (2026-08-10 correction) —
 // both fields remain in the database and admin dashboard, but a badge
@@ -162,41 +185,14 @@ const displayName = compound ? compound.display_name || compound.name : undefine
 // below and via UnsupportedClaimsCard further down — never via a
 // generic per-field state badge.
 
-// Real, already-recorded provenance from the enrichment pipeline
-// (scripts/enrichment/run-enrichment.mjs) — surfaced here instead of the
-// Blueprint's human-editorial-review fields (last_reviewed_at/
-// reviewed_by), which are genuinely null for every compound in this
-// database (that authenticated editorial-review phase was explicitly
-// skipped for this integration, per instruction — see
-// docs/enrichment/full-coverage-report.md). This is real data already
-// written to raw_import_metadata, not fabricated to fill the card.
-interface EnrichmentProvenance {
-  runAt?: string;
-  sourcesAdded?: number;
-  claimsAdded?: number;
-  legacyClaimsReconciled?: number;
-  reconciliationPasses?: number;
-}
-function getProvenance(
-  raw: Record<string, unknown> | null | undefined,
-): EnrichmentProvenance | null {
-  const marker = raw?.enrichment_pilot as Record<string, unknown> | undefined;
-  if (!marker) return null;
-  const passes = Array.isArray(marker.reconciliation_passes)
-    ? marker.reconciliation_passes.length
-    : 0;
-  return {
-    runAt: typeof marker.run_at === 'string' ? marker.run_at : undefined,
-    sourcesAdded: typeof marker.sources_added === 'number' ? marker.sources_added : undefined,
-    claimsAdded: typeof marker.claims_added === 'number' ? marker.claims_added : undefined,
-    legacyClaimsReconciled:
-      typeof marker.legacy_claims_reconciled === 'number'
-        ? marker.legacy_claims_reconciled
-        : undefined,
-    reconciliationPasses: passes,
-  };
-}
-const provenance = compound ? getProvenance(compound.raw_import_metadata) : null;
+// The enrichment pipeline's internal migration provenance
+// (raw_import_metadata.enrichment_pilot — run date, sources/claims
+// added, legacy-claim reconciliation counts) used to be surfaced here in
+// a "Provenance" card. Removed 2026-08-11: it's CMS-migration history,
+// not research content, and its "legacy claims reconciled" language was
+// exactly the kind of public-facing legacy-site reference this page must
+// not carry. The data itself is untouched in raw_import_metadata for
+// internal use; it's simply no longer rendered on the public profile.
 
 // Shop is now rebuilt natively in this app — no per-compound product-id
 // mapping exists between compound slugs (e.g. "bpc-157") and shop
@@ -272,6 +268,59 @@ const SHOP_URL = '/shop';
             <span>Identifier: {compound.slug}</span>
           </div>
         </Card>
+
+        {hasOverview && (
+          <Card class="cp-overview-card">
+            <h2 class="cp-section-heading">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 20 20"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                set:html={OVERVIEW_ICON}
+              />
+              Overview
+            </h2>
+            {compound.overview_what_it_is && (
+              <div class="cp-overview-block">
+                <h3>What it is</h3>
+                <p>{compound.overview_what_it_is}</p>
+              </div>
+            )}
+            {compound.overview_why_people_use_it && (
+              <div class="cp-overview-block">
+                <h3>Why people look it up</h3>
+                <p>{compound.overview_why_people_use_it}</p>
+              </div>
+            )}
+            {compound.overview_research_summary && (
+              <div class="cp-overview-block">
+                <h3>What the research actually shows</h3>
+                <p>{compound.overview_research_summary}</p>
+                {compound.overview_evidence_reviewed_date && (
+                  <p class="cp-overview-block__meta">
+                    Evidence last reviewed{' '}
+                    {new Date(compound.overview_evidence_reviewed_date).toLocaleDateString(
+                      'en-US',
+                      { year: 'numeric', month: 'long', day: 'numeric' },
+                    )}
+                  </p>
+                )}
+              </div>
+            )}
+            {compound.overview_bottom_line && (
+              <div class="cp-overview-block cp-overview-block--bottom-line">
+                <h3>Bottom line</h3>
+                <p>{compound.overview_bottom_line}</p>
+              </div>
+            )}
+          </Card>
+        )}
 
         <div class="cp-profile-layout">
           <div class="cp-profile-main">
@@ -504,48 +553,6 @@ const SHOP_URL = '/shop';
               </Card>
             )}
 
-            {provenance && (
-              <Card class="cp-profile-section cp-provenance-card">
-                <h2 class="cp-section-heading cp-section-heading--small">Provenance</h2>
-                <dl class="cp-provenance-list">
-                  {provenance.runAt && (
-                    <>
-                      <dt>Research enrichment run</dt>
-                      <dd>{new Date(provenance.runAt).toLocaleDateString()}</dd>
-                    </>
-                  )}
-                  {typeof provenance.sourcesAdded === 'number' && (
-                    <>
-                      <dt>Sources added</dt>
-                      <dd>{provenance.sourcesAdded}</dd>
-                    </>
-                  )}
-                  {typeof provenance.claimsAdded === 'number' && (
-                    <>
-                      <dt>Claims added</dt>
-                      <dd>{provenance.claimsAdded}</dd>
-                    </>
-                  )}
-                  {typeof provenance.legacyClaimsReconciled === 'number' &&
-                    provenance.legacyClaimsReconciled > 0 && (
-                      <>
-                        <dt>Legacy claims reconciled</dt>
-                        <dd>{provenance.legacyClaimsReconciled}</dd>
-                      </>
-                    )}
-                  {provenance.reconciliationPasses ? (
-                    <>
-                      <dt>Later reconciliation passes</dt>
-                      <dd>{provenance.reconciliationPasses}</dd>
-                    </>
-                  ) : null}
-                </dl>
-                <p class="cp-provenance-note">
-                  A full revision history is recorded for every editorial change to this compound.
-                </p>
-              </Card>
-            )}
-
             {isFixture && <ShopDisclosure shopUrl={SHOP_URL} />}
           </div>
         </div>
@@ -718,30 +725,46 @@ const SHOP_URL = '/shop';
     color: var(--text-muted);
   }
 
-  .cp-provenance-card {
-    font-size: var(--text-caption);
+  .cp-overview-card {
+    margin-bottom: 1.5rem;
+    border-color: var(--secondary);
+    background: color-mix(in srgb, var(--secondary) 5%, var(--bg-elevated));
   }
-  .cp-provenance-list {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0.25rem 0.75rem;
-    margin: 0 0 0.75rem;
-    font-family: var(--font-mono);
-    font-size: var(--text-data);
+  .cp-overview-block {
+    padding: 0.875rem 0;
+    border-bottom: 1px solid var(--border-subtle);
   }
-  .cp-provenance-list dt {
-    color: var(--text-muted);
+  .cp-overview-block:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
   }
-  .cp-provenance-list dd {
+  .cp-overview-block h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin: 0 0 0.375rem;
+  }
+  .cp-overview-block p {
     margin: 0;
     color: var(--text-secondary);
+    line-height: var(--text-body--line-height);
   }
-  .cp-provenance-note {
-    margin: 0;
-    color: var(--text-muted);
-    font-size: 0.75rem;
-    padding-top: 0.625rem;
-    border-top: 1px solid var(--border-subtle);
+  .cp-overview-block--bottom-line {
+    padding-top: 1rem;
+  }
+  .cp-overview-block--bottom-line h3 {
+    color: var(--primary);
+  }
+  .cp-overview-block--bottom-line p {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+  .cp-overview-block__meta {
+    margin-top: 0.5rem !important;
+    font-size: var(--text-caption);
+    color: var(--text-muted) !important;
+    font-weight: 400 !important;
   }
 
   @media (max-width: 900px) {

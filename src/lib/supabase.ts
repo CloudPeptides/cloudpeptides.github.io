@@ -17,6 +17,7 @@ import type {
   StudyDesign,
 } from './database.types';
 import {
+  isLegacySiteSource,
   maxEvidenceQuality,
   resolveEvidenceDisplayType,
   type EvidenceDisplayType,
@@ -43,9 +44,10 @@ function getClient() {
 const COMPOUND_LIST_SELECT = `id, slug, name, display_name, entity_kind, category, identity_confidence, research_review_status, status, expert_review_flag_reason, updated_at,
       compound_aliases ( alias ),
       claims!claims_compound_id_fkey (
+        status,
         evidence_quality,
         claim_sources (
-          sources ( id, source_type, studies ( study_design ) )
+          sources ( id, source_type, url, studies ( study_design ) )
         )
       ),
       regulatory_records ( regulatory_status )`;
@@ -64,9 +66,15 @@ interface RawListRow {
   updated_at: string;
   compound_aliases: { alias: string }[];
   claims: {
+    status: string;
     evidence_quality: EvidenceQuality | null;
     claim_sources: {
-      sources: { id: string; source_type: string; studies: { study_design: string | null } | null };
+      sources: {
+        id: string;
+        source_type: string;
+        url: string;
+        studies: { study_design: string | null } | null;
+      };
     }[];
   }[];
   regulatory_records: { regulatory_status: string }[];
@@ -94,11 +102,19 @@ export interface CompoundListItem {
 }
 
 function deriveListItem(row: RawListRow): CompoundListItem {
+  // Published claims only (excludes the 2026-08-11 archived disclaimer/
+  // site-policy boilerplate — see supabase/migrations and audit_log
+  // action 'compound_disclaimer_claims_bulk_archive'), and never counts
+  // the retired legacy site as a "source" (see evidence.ts's
+  // isLegacySiteSource) — it isn't evidence, so it must not inflate the
+  // directory card's study count or evidence-type strip either.
+  const publishedClaims = row.claims.filter((c) => c.status === 'published');
   const sourceIds = new Set<string>();
   const evidenceTypes = new Set<EvidenceDisplayType>();
   let hasHumanEvidence = false;
-  for (const claim of row.claims) {
+  for (const claim of publishedClaims) {
     for (const cs of claim.claim_sources) {
+      if (isLegacySiteSource(cs.sources.url)) continue;
       sourceIds.add(cs.sources.id);
       const design = cs.sources.studies?.study_design ?? null;
       const displayType = resolveEvidenceDisplayType(
@@ -124,7 +140,7 @@ function deriveListItem(row: RawListRow): CompoundListItem {
     compound_aliases: row.compound_aliases,
     studyCount: sourceIds.size,
     hasHumanEvidence,
-    maxEvidenceQuality: maxEvidenceQuality(row.claims.map((c) => c.evidence_quality)),
+    maxEvidenceQuality: maxEvidenceQuality(publishedClaims.map((c) => c.evidence_quality)),
     regulatoryStatuses: [...new Set(row.regulatory_records.map((r) => r.regulatory_status))],
     evidenceTypes: [...evidenceTypes],
   };

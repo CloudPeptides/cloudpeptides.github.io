@@ -22,6 +22,15 @@ export const fixtureCompound: CompoundWithRelations = {
   category: 'Example Category',
   status: 'published',
   expert_review_flag_reason: null,
+  overview_what_it_is:
+    'Placeholder text demonstrating the "What it is" overview block. Not a real scientific statement.',
+  overview_why_people_use_it:
+    'Placeholder text demonstrating the "Why people look it up" overview block. Not a real scientific statement.',
+  overview_research_summary:
+    'Placeholder text demonstrating the "What the research actually shows" overview block. Not a real scientific statement.',
+  overview_bottom_line:
+    'Placeholder text demonstrating the "Bottom line" overview block. Not a real scientific statement.',
+  overview_evidence_reviewed_date: '2026-01-01',
   legacy_source_path: null,
   raw_import_metadata: null,
   last_reviewed_at: '2026-01-01T00:00:00Z',
