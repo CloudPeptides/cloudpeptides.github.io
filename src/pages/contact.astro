@@ -1,10 +1,12 @@
 ---
 /**
- * Contact page — rebuild of legacy-site/contact.html. Same contact
- * options (Discord/email/phone) and same form fields (name/email/
- * message + honeypot), posting to src/pages/api/contact.ts (a
- * server-side Worker route calling Resend) instead of the legacy
- * client-side Web3Forms call.
+ * Contact page — rebuild of legacy-site/contact.html, originally with
+ * the same contact options (Discord/email/phone) as the legacy site;
+ * the phone/iMessage/WhatsApp option was removed by explicit request
+ * (2026-08-13) — Discord and email only, going forward. Same form
+ * fields (name/email/message + honeypot), posting to
+ * src/pages/api/contact.ts (a server-side Worker route calling Resend)
+ * instead of the legacy client-side Web3Forms call.
  */
 export const prerender = false;
 
@@ -13,12 +15,12 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
 <BaseLayout
   title="Contact"
-  description="Reach Cloud Peptides through Discord, email, phone, or the contact form below."
+  description="Reach Cloud Peptides through Discord, email, or the contact form below."
 >
   <section class="cp-contact-container">
     <header class="cp-contact-header">
       <h1>Contact</h1>
-      <p>Reach out through Discord, email, iMessage, WhatsApp, or send us a message below.</p>
+      <p>Reach out through Discord, email, or send us a message below.</p>
     </header>
 
     <div class="cp-contact-grid">
@@ -33,10 +35,6 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <div class="cp-contact-row">
           <strong>Email</strong>
           <a href="mailto:info.order.thecloud@proton.me">info.order.thecloud@proton.me</a>
-        </div>
-        <div class="cp-contact-row">
-          <strong>iMessage / WhatsApp</strong>
-          <a href="tel:4434700714">443-470-0714</a>
         </div>
       </div>
 
