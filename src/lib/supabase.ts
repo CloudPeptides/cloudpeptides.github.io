@@ -1,21 +1,25 @@
 /**
- * Client-safe Supabase client — anon key only, never the service-role
- * key. Used from server-rendered Astro pages (runs in the Worker, not
- * shipped to the browser as this module is only imported in page
- * frontmatter) to read published research content. RLS is what actually
- * enforces "anon only sees status='published' (or published-reachable)"
- * rows — the explicit `.eq('status', 'published')` filters below are
- * defense-in-depth, not the real security boundary. See
- * supabase/migrations/20260807120000_anon_read_supporting_tables.sql for
- * the Phase 3 policies that make the joins below possible at all.
+ * Research-content reads for signed-in visitors — used from server-
+ * rendered Astro pages (runs in the Worker, never shipped to the
+ * browser). Mandatory researcher-account gate (2026-08-13): `anon` no
+ * longer has any grant on these tables at all (supabase/migrations/
+ * 20260813121000_gate_revoke_anon_access.sql) — every call here uses
+ * the VISITOR'S OWN verified access token (src/lib/auth.ts's
+ * createUserScopedClient()), never a bare anon-key client, so RLS
+ * evaluates as `authenticated` and the published-reachable policies
+ * (20260813121000's `_select_authenticated` policies) actually apply.
+ * Every caller of this module is a page src/middleware.ts has already
+ * confirmed is signed in before it ever runs — see that file's gate.
+ * The explicit `.eq('status', 'published')` filters below remain
+ * defense-in-depth, not the real security boundary.
  */
-import { createClient } from '@supabase/supabase-js';
 import type {
   CompoundWithRelations,
   EvidenceQuality,
   SourceType,
   StudyDesign,
 } from './database.types';
+import { createUserScopedClient } from './auth';
 import {
   isLegacySiteSource,
   maxEvidenceQuality,
@@ -30,11 +34,11 @@ export function hasSupabaseConfig(): boolean {
   return Boolean(url && anonKey);
 }
 
-function getClient() {
+function getClient(accessToken: string) {
   if (!hasSupabaseConfig()) {
     throw new Error('PUBLIC_SUPABASE_URL / PUBLIC_SUPABASE_ANON_KEY are not configured.');
   }
-  return createClient(url, anonKey, { auth: { persistSession: false } });
+  return createUserScopedClient(accessToken);
 }
 
 // Nested select used for the directory list. Deliberately heavier than
@@ -146,8 +150,8 @@ function deriveListItem(row: RawListRow): CompoundListItem {
   };
 }
 
-export async function listPublishedCompounds(): Promise<CompoundListItem[]> {
-  const supabase = getClient();
+export async function listPublishedCompounds(accessToken: string): Promise<CompoundListItem[]> {
+  const supabase = getClient(accessToken);
   const { data, error } = await supabase
     .from('compounds')
     .select(COMPOUND_LIST_SELECT)
@@ -159,8 +163,9 @@ export async function listPublishedCompounds(): Promise<CompoundListItem[]> {
 
 export async function getPublishedCompoundBySlug(
   slug: string,
+  accessToken: string,
 ): Promise<CompoundWithRelations | null> {
-  const supabase = getClient();
+  const supabase = getClient(accessToken);
   const { data, error } = await supabase
     .from('compounds')
     .select(
@@ -207,8 +212,11 @@ export interface RelatedCompound {
  * stack_components row points back at BPC-157). Never invents a
  * relationship that isn't already represented in the schema.
  */
-export async function getRelatedCompounds(compoundId: string): Promise<RelatedCompound[]> {
-  const supabase = getClient();
+export async function getRelatedCompounds(
+  compoundId: string,
+  accessToken: string,
+): Promise<RelatedCompound[]> {
+  const supabase = getClient(accessToken);
   const { data, error } = await supabase
     .from('stack_components')
     .select('compounds!stack_components_stack_id_fkey ( slug, name, entity_kind, status )')

@@ -1,13 +1,14 @@
 /**
- * Environment-aware robots.txt. Replaces the previous static
- * public/robots.txt (which had no way to differ between the staging
- * Worker and eventual production) — on-demand so it can read the live
- * request's hostname via src/lib/site-env.ts, the same signal
- * middleware.ts uses for the X-Robots-Tag header. Production behavior
- * (Allow: / + sitemap reference) is unchanged from the prior static
- * file; on any non-production host — concretely, right now, the
- * cloudpeptides-staging *.workers.dev Worker — it instead disallows
- * everything, so this stays correct with zero changes at cutover.
+ * Environment-aware robots.txt. Mandatory researcher-account gate
+ * (2026-08-13): the production behavior below changed from "Allow: /"
+ * to an explicit allow-list of only the pages an unauthenticated
+ * crawler can actually reach (src/middleware.ts's PUBLIC_ACCOUNT_PATHS)
+ * — everything else on the site now requires a signed-in, certified
+ * researcher account, and a search engine can never hold one. Listing
+ * protected paths as crawlable would just send bots into a redirect
+ * loop to /login; disallowing them here is the honest, correct
+ * description of what's actually publicly reachable. Non-production
+ * hosts (the staging Worker) are unchanged: fully disallowed either way.
  */
 export const prerender = false;
 
@@ -19,7 +20,7 @@ export const GET: APIRoute = ({ site, url }) => {
   const indexable = isIndexableHost(url.hostname, site);
 
   const body = indexable
-    ? `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /shop/cart\n\nSitemap: ${siteBase}/sitemap.xml\n`
+    ? `User-agent: *\nAllow: /login\nAllow: /register\nAllow: /verify-email\nAllow: /forgot-password\nAllow: /reset-password\nAllow: /terms\nAllow: /privacy\nAllow: /research-use-policy\nDisallow: /\n\nSitemap: ${siteBase}/sitemap.xml\n`
     : `# Staging environment — intentionally excluded from search indexing so it never\n# competes with the production domain (${siteBase}). The sitemap below is left\n# reachable for manual testing only; it is not an invitation to crawl.\nUser-agent: *\nDisallow: /\n\nSitemap: https://${url.hostname}/sitemap.xml\n`;
 
   return new Response(body, {

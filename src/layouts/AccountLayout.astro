@@ -1,0 +1,409 @@
+---
+/**
+ * Shared shell for the public researcher-account gate pages (/login,
+ * /register, /verify-email, /forgot-password, /reset-password,
+ * /certify) — mandatory researcher-account gate, 2026-08-13.
+ *
+ * Deliberately its own layout, not BaseLayout with hideChrome: these
+ * pages must render *before* any protected content and must never show
+ * product marketing, prices, therapeutic claims, or links into gated
+ * areas (the whole public Nav/Footer point at gated pages). Still built
+ * entirely from the same approved design tokens/logo/fonts as the rest
+ * of the site (design handoff) — cream background, forest-green
+ * typography/controls, terracotta accent, same card shape as
+ * admin/login.astro's already-approved pattern.
+ */
+import '../styles/tokens.css';
+import Logo from '../components/Logo.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = 'Cloud Peptides researcher account access.' } = Astro.props;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="icon" type="image/svg+xml" href="/brand/logo-favicon.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{title} | Cloud Peptides</title>
+
+    <!-- Same brand social-preview image as the rest of the site (design
+         handoff-approved mark), no protected product information. -->
+    <meta property="og:site_name" content="Cloud Peptides" />
+    <meta property="og:title" content={`${title} | Cloud Peptides`} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:image"
+      content={new URL('/images/cloudpeptides-social-v2.png', Astro.site).toString()}
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap"
+    />
+    <script is:inline nonce={Astro.locals.cspNonce}>
+      (function () {
+        const stored = localStorage.getItem('cp-theme');
+        if (stored === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <a href="#main-content" class="cp-skip-link">Skip to content</a>
+    <div class="cp-account-shell">
+      <header class="cp-account-brand">
+        <a href="/" class="cp-account-brand__link" aria-label="Cloud Peptides home">
+          <Logo variant="primary" size={36} standalone />
+          <span>Cloud Peptides</span>
+        </a>
+      </header>
+      <main id="main-content" class="cp-account-main">
+        <slot />
+      </main>
+      <footer class="cp-account-footer">
+        <nav aria-label="Legal">
+          <a href="/terms">Terms of Service</a>
+          <a href="/privacy">Privacy Policy</a>
+          <a href="/research-use-policy">Research Use Policy</a>
+        </nav>
+        <p>
+          Legal contact: <a href="mailto:info.order.thecloud@proton.me"
+            >info.order.thecloud@proton.me</a
+          >
+        </p>
+        <p>&copy; {new Date().getFullYear()} Cloud Peptides. For research purposes only.</p>
+      </footer>
+    </div>
+    <script>
+      import '../scripts/theme-toggle.ts';
+    </script>
+  </body>
+</html>
+
+<style is:global>
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+  }
+  .cp-skip-link {
+    position: absolute;
+    top: -100%;
+    left: 0;
+    z-index: 100;
+    background: var(--primary);
+    color: var(--text-on-primary);
+    padding: 0.75rem 1.25rem;
+    border-radius: 0 0 var(--radius-control) 0;
+    text-decoration: none;
+  }
+  .cp-skip-link:focus {
+    top: 0;
+  }
+
+  /* Shared card/form styling for every account-gate page (login,
+     register, verify-email, forgot/reset-password, certify) — kept
+     here, global, rather than duplicated per page, so the look stays
+     identical everywhere and a change only needs to happen once. */
+  .cp-account-card {
+    width: 100%;
+    max-width: 26rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    padding: 2rem;
+    box-shadow: var(--shadow-resting);
+  }
+  .cp-account-card--wide {
+    max-width: 34rem;
+  }
+  .cp-account-card h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: var(--text-h3, 1.375rem);
+    color: var(--primary);
+    margin: 0 0 0.625rem;
+  }
+  .cp-account-intro {
+    color: var(--text-secondary);
+    font-size: var(--text-caption);
+    line-height: 1.5;
+    margin: 0 0 1.5rem;
+  }
+  .cp-account-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+  .cp-account-form label {
+    font-size: var(--text-caption);
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-top: 0.625rem;
+  }
+  .cp-account-form label:first-child {
+    margin-top: 0;
+  }
+  .cp-account-form fieldset {
+    border: none;
+    padding: 0;
+    margin: 0.875rem 0 0;
+  }
+  .cp-account-form legend {
+    font-size: var(--text-caption);
+    font-weight: 600;
+    color: var(--text-primary);
+    padding: 0;
+    margin-bottom: 0.375rem;
+  }
+  .cp-account-form input[type='text'],
+  .cp-account-form input[type='email'],
+  .cp-account-form input[type='password'],
+  .cp-account-form select {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    border-radius: var(--radius-control);
+    border: 1.5px solid var(--border-interactive);
+    background: var(--bg-sunken);
+    color: var(--text-primary);
+    font-size: var(--text-body);
+    font-family: var(--font-body);
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+  .cp-account-form-row {
+    display: flex;
+    gap: 0.75rem;
+  }
+  .cp-account-form-row > div {
+    flex: 1;
+    min-width: 0;
+  }
+  .cp-checkbox-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    margin: 1rem 0 0;
+  }
+  .cp-checkbox-row input[type='checkbox'] {
+    margin-top: 0.1875rem;
+    width: 1.125rem;
+    height: 1.125rem;
+    flex-shrink: 0;
+    accent-color: var(--primary);
+  }
+  .cp-checkbox-row label {
+    margin: 0;
+    font-size: var(--text-caption);
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .cp-certification-block {
+    background: var(--bg-sunken);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-control);
+    padding: 1rem;
+    margin: 1rem 0;
+    max-height: 14rem;
+    overflow-y: auto;
+  }
+  .cp-certification-block h2 {
+    font-family: var(--font-display);
+    font-size: var(--text-body);
+    color: var(--text-primary);
+    margin: 0 0 0.625rem;
+  }
+  .cp-certification-block p {
+    font-size: var(--text-caption);
+    color: var(--text-secondary);
+    line-height: 1.55;
+    margin: 0 0 0.75rem;
+  }
+  .cp-certification-block p:last-child {
+    margin-bottom: 0;
+  }
+  .cp-certification-notice {
+    font-size: var(--text-caption);
+    color: var(--warning-text);
+    font-style: italic;
+    margin: 0.75rem 0 0;
+  }
+  .cp-password-field {
+    position: relative;
+    display: flex;
+  }
+  .cp-password-field input {
+    padding-right: 4rem;
+  }
+  .cp-password-field [data-password-toggle] {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--primary);
+    font-size: var(--text-caption);
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.375rem 0.5rem;
+  }
+  .cp-form-message {
+    font-size: var(--text-caption);
+    padding: 0.625rem 0.875rem;
+    border-radius: var(--radius-control);
+    margin: 0 0 0.875rem;
+  }
+  .cp-form-message[data-tone='error'] {
+    background: var(--bg-sunken);
+    color: var(--danger-text);
+    border: 1px solid var(--danger-text);
+  }
+  .cp-form-message[data-tone='success'] {
+    background: var(--bg-sunken);
+    color: var(--success-text);
+    border: 1px solid var(--success-text);
+  }
+  .cp-btn-full {
+    display: block;
+    width: 100%;
+    min-height: 48px;
+    margin-top: 1.25rem;
+    background: var(--primary);
+    color: var(--text-on-primary);
+    border: none;
+    border-radius: var(--radius-control);
+    font-weight: 600;
+    font-size: var(--text-body);
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    line-height: 48px;
+    box-sizing: border-box;
+  }
+  .cp-btn-full:hover {
+    background: var(--primary-hover);
+  }
+  .cp-btn-full:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .cp-btn-secondary {
+    background: var(--bg-elevated);
+    color: var(--terracotta-text);
+    border: 1.5px solid var(--terracotta-text);
+    margin-top: 0;
+  }
+  .cp-btn-secondary:hover {
+    background: var(--bg-sunken);
+  }
+  .cp-account-link {
+    margin: 1rem 0 0;
+    text-align: center;
+    font-size: var(--text-caption);
+  }
+  .cp-account-link a {
+    color: var(--text-secondary);
+    text-decoration: underline;
+  }
+  .cp-account-divider {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--text-caption);
+    margin: 1.25rem 0;
+    position: relative;
+  }
+  .cp-account-divider::before,
+  .cp-account-divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 40%;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .cp-account-divider::before {
+    left: 0;
+  }
+  .cp-account-divider::after {
+    right: 0;
+  }
+
+  @media (max-width: 480px) {
+    .cp-account-form-row {
+      flex-direction: column;
+      gap: 0;
+    }
+  }
+</style>
+
+<style>
+  .cp-account-shell {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .cp-account-brand {
+    padding: 1.5rem;
+  }
+  .cp-account-brand__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    text-decoration: none;
+    color: var(--primary);
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: var(--text-h3, 1.375rem);
+  }
+  .cp-account-main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 1.5rem 3rem;
+  }
+  .cp-account-footer {
+    padding: 1.5rem;
+    text-align: center;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .cp-account-footer nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+  .cp-account-footer a {
+    color: var(--text-muted);
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    font-size: var(--text-caption);
+  }
+  .cp-account-footer a:hover,
+  .cp-account-footer a:focus-visible {
+    color: var(--text-primary);
+    text-decoration-color: currentColor;
+  }
+  .cp-account-footer p {
+    margin: 0.25rem 0 0;
+    color: var(--text-muted);
+    font-size: var(--text-caption);
+  }
+</style>

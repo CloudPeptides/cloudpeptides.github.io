@@ -37,7 +37,7 @@ try {
     // the sidebar's "Related" list should preview exactly what would
     // show once published (only already-published related compounds),
     // not draft relationships that don't exist publicly yet either.
-    related = await getRelatedCompounds(compound.id);
+    related = await getRelatedCompounds(compound.id, session.accessToken);
   }
 } catch {
   loadError = 'Could not load this compound preview right now.';

@@ -1,0 +1,67 @@
+---
+// Public — reachable without a session (src/middleware.ts's
+// PUBLIC_ACCOUNT_PATHS). Left statically prerendered like terms.astro/
+// privacy.astro, its two companion documents: no per-request data, and
+// a visitor deciding whether to register needs to be able to read it
+// before creating an account.
+import PolicyLayout from '../layouts/PolicyLayout.astro';
+---
+
+<PolicyLayout
+  title="Research Use Policy"
+  description="What Cloud Peptides is for, who it's for, and the research-only terms every account agrees to."
+  lastUpdated="August 13, 2026"
+>
+  <h2>Who this site is for</h2>
+  <p>
+    Cloud Peptides is restricted to independent researchers and authorized representatives of
+    legitimate research organizations accessing this site for lawful educational or non-clinical
+    laboratory research purposes. Every account is reviewed against this standard at registration
+    through the Researcher Certification, and every account holder agrees to it again whenever the
+    certification is materially updated.
+  </p>
+
+  <h2>Educational and scientific research purpose only</h2>
+  <p>
+    The information available through this website — compound research profiles, evidence summaries,
+    citations, regulatory records, and administration-route context — is provided solely for
+    educational and scientific research purposes. It is not medical advice, prescribing information,
+    treatment guidance, or a substitute for consultation with a qualified healthcare professional.
+    See our <a href="/disclaimer">Research and Medical Disclaimer</a> for how our published claims are
+    sourced and reviewed.
+  </p>
+
+  <h2>Shop materials are for non-clinical laboratory research only</h2>
+  <p>
+    All materials offered through the Cloud Peptides shop are intended exclusively for legitimate,
+    non-clinical laboratory research. They are not intended for human or veterinary consumption,
+    administration, therapeutic use, diagnostic use, food use, cosmetic use, or household use. By
+    creating an account, a researcher agrees not to ingest, inject, inhale, apply, implant, or
+    otherwise administer any Cloud Peptides research material to a human or animal, and not to use
+    or represent these materials for the diagnosis, treatment, mitigation, cure, or prevention of
+    any disease or medical condition.
+  </p>
+
+  <h2>Your responsibility as a researcher</h2>
+  <p>
+    You are responsible for confirming that you are legally permitted to access and handle the
+    relevant research materials in your jurisdiction, and for complying with all applicable laws,
+    regulations, institutional requirements, and safety procedures that apply to you or your
+    organization. Laws governing research chemicals and peptides vary by location and change over
+    time — see also our <a href="/terms">Terms of Use</a> and <a href="/privacy">Privacy Policy</a>.
+  </p>
+
+  <h2>What happens if this policy is violated</h2>
+  <p>
+    Providing false information during registration, or using Cloud Peptides materials contrary to
+    this policy or the Researcher Certification, may result in immediate account suspension or
+    termination.
+  </p>
+
+  <h2>Questions</h2>
+  <p>
+    Existing account holders can reach us through the contact options available after sign-in. For a
+    question that must reach us before creating an account, email
+    <a href="mailto:info.order.thecloud@proton.me">info.order.thecloud@proton.me</a>.
+  </p>
+</PolicyLayout>

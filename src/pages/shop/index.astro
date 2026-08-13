@@ -28,9 +28,9 @@ import { COMMERCE_ENABLED } from '../../lib/launch-config';
 
 let PRODUCTS: Awaited<ReturnType<typeof listPublicShopProducts>> = [];
 let loadError: string | null = null;
-if (hasSupabaseConfig()) {
+if (hasSupabaseConfig() && Astro.locals.session) {
   try {
-    PRODUCTS = await listPublicShopProducts();
+    PRODUCTS = await listPublicShopProducts(Astro.locals.session.accessToken);
   } catch {
     loadError = 'Could not load the shop catalog right now.';
   }

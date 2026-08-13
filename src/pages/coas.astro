@@ -8,14 +8,27 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Card from '../components/ui/Card.astro';
 import EmptyState from '../components/ui/EmptyState.astro';
 import ErrorState from '../components/ui/ErrorState.astro';
-import { getCoaFileUrl, hasSupabaseConfig, listPublishedCoas } from '../lib/coas';
+import { getCoaSignedUrl, hasSupabaseConfig, listPublishedCoas } from '../lib/coas';
 
 let coas: Awaited<ReturnType<typeof listPublishedCoas>> = [];
 let loadError: string | null = null;
+// file_path -> a short-lived signed URL (the coa-documents bucket is
+// private — see src/lib/coas.ts's own header comment). Resolved once,
+// up front, so the template below can stay plain synchronous JSX
+// rather than awaiting per-card.
+const fileUrlByPath = new Map<string, string>();
 
-if (hasSupabaseConfig()) {
+if (hasSupabaseConfig() && Astro.locals.session) {
+  const accessToken = Astro.locals.session.accessToken;
   try {
-    coas = await listPublishedCoas();
+    coas = await listPublishedCoas(accessToken);
+    const signedUrls = await Promise.all(
+      coas.map((c) => getCoaSignedUrl(accessToken, c.file_path)),
+    );
+    coas.forEach((c, i) => {
+      const signedUrl = signedUrls[i];
+      if (signedUrl) fileUrlByPath.set(c.file_path, signedUrl);
+    });
   } catch {
     loadError = 'Could not load the COA gallery right now.';
   }
@@ -105,81 +118,88 @@ const breadcrumbJsonLd = {
           </div>
 
           <div class="cp-coa-grid" data-coa-grid>
-            {coas.map((coa) => (
-              <div
-                data-coa-item
-                data-peptide={coa.peptide_name}
-                data-batch={coa.batch_identifier ?? ''}
-                data-lab={coa.testing_lab}
-              >
-                <Card class="cp-coa-card">
-                  <h2 class="cp-coa-card__name">
-                    {coa.peptide_name}
-                    {coa.shop_products?.code && (
-                      <span class="cp-coa-card__sku">{coa.shop_products.code}</span>
-                    )}
-                  </h2>
-                  <dl class="cp-coa-card__meta">
-                    {coa.batch_identifier && (
+            {coas.map((coa) => {
+              const fileUrl = fileUrlByPath.get(coa.file_path) ?? null;
+              return (
+                <div
+                  data-coa-item
+                  data-peptide={coa.peptide_name}
+                  data-batch={coa.batch_identifier ?? ''}
+                  data-lab={coa.testing_lab}
+                >
+                  <Card class="cp-coa-card">
+                    <h2 class="cp-coa-card__name">
+                      {coa.peptide_name}
+                      {coa.shop_products?.code && (
+                        <span class="cp-coa-card__sku">{coa.shop_products.code}</span>
+                      )}
+                    </h2>
+                    <dl class="cp-coa-card__meta">
+                      {coa.batch_identifier && (
+                        <div>
+                          <dt>Batch</dt>
+                          <dd>{coa.batch_identifier}</dd>
+                        </div>
+                      )}
                       <div>
-                        <dt>Batch</dt>
-                        <dd>{coa.batch_identifier}</dd>
+                        <dt>Lab</dt>
+                        <dd>{coa.testing_lab}</dd>
                       </div>
-                    )}
-                    <div>
-                      <dt>Lab</dt>
-                      <dd>{coa.testing_lab}</dd>
+                      {coa.test_date && (
+                        <div>
+                          <dt>Test date</dt>
+                          <dd>{new Date(coa.test_date).toLocaleDateString()}</dd>
+                        </div>
+                      )}
+                      {coa.testing_method && (
+                        <div>
+                          <dt>Method</dt>
+                          <dd>{coa.testing_method}</dd>
+                        </div>
+                      )}
+                      {coa.purity_result && (
+                        <div>
+                          <dt>Purity</dt>
+                          <dd>{coa.purity_result}</dd>
+                        </div>
+                      )}
+                    </dl>
+                    {coa.notes && <p class="cp-coa-card__notes">{coa.notes}</p>}
+                    <div class="cp-coa-card__actions">
+                      {fileUrl && (
+                        <a
+                          href={fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="cp-btn-outline"
+                        >
+                          View {fileKind(coa.file_mime_type) === 'pdf' ? 'PDF' : 'image'}
+                        </a>
+                      )}
+                      {fileUrl && (
+                        <a
+                          href={fileUrl}
+                          download={coa.original_filename}
+                          class="cp-coa-card__download"
+                        >
+                          Download
+                        </a>
+                      )}
+                      {coa.verification_url && (
+                        <a
+                          href={coa.verification_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="cp-coa-card__verify"
+                        >
+                          Verify independently
+                        </a>
+                      )}
                     </div>
-                    {coa.test_date && (
-                      <div>
-                        <dt>Test date</dt>
-                        <dd>{new Date(coa.test_date).toLocaleDateString()}</dd>
-                      </div>
-                    )}
-                    {coa.testing_method && (
-                      <div>
-                        <dt>Method</dt>
-                        <dd>{coa.testing_method}</dd>
-                      </div>
-                    )}
-                    {coa.purity_result && (
-                      <div>
-                        <dt>Purity</dt>
-                        <dd>{coa.purity_result}</dd>
-                      </div>
-                    )}
-                  </dl>
-                  {coa.notes && <p class="cp-coa-card__notes">{coa.notes}</p>}
-                  <div class="cp-coa-card__actions">
-                    <a
-                      href={getCoaFileUrl(coa.file_path)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="cp-btn-outline"
-                    >
-                      View {fileKind(coa.file_mime_type) === 'pdf' ? 'PDF' : 'image'}
-                    </a>
-                    <a
-                      href={getCoaFileUrl(coa.file_path)}
-                      download={coa.original_filename}
-                      class="cp-coa-card__download"
-                    >
-                      Download
-                    </a>
-                    {coa.verification_url && (
-                      <a
-                        href={coa.verification_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="cp-coa-card__verify"
-                      >
-                        Verify independently
-                      </a>
-                    )}
-                  </div>
-                </Card>
-              </div>
-            ))}
+                  </Card>
+                </div>
+              );
+            })}
           </div>
           <div data-coa-empty-state hidden>
             <EmptyState

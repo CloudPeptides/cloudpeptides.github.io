@@ -25,9 +25,9 @@ let product: Awaited<ReturnType<typeof getPublicShopProduct>> = null;
 let loadError: string | null = null;
 if (!hasSupabaseConfig()) {
   loadError = 'Shop is not configured in this environment.';
-} else if (id) {
+} else if (id && Astro.locals.session) {
   try {
-    product = await getPublicShopProduct(id);
+    product = await getPublicShopProduct(id, Astro.locals.session.accessToken);
   } catch {
     loadError = 'Could not load this product right now.';
   }

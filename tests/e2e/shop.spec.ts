@@ -179,12 +179,22 @@ test.describe('COA gallery', () => {
     await expect(page).toHaveURL(/\/admin\/login/);
   });
 
-  test('unauthenticated writes to the COA admin API are rejected', async ({ request }) => {
-    // Middleware's baseline contributor+ gate runs before this route
-    // ever parses a body — an empty/malformed body is fine here, the
-    // point is proving the request never gets that far unauthenticated.
-    const response = await request.post('/api/admin/coas', { data: {} });
-    expect(response.status()).toBe(401);
+  test.describe('genuinely unauthenticated (no session at all)', () => {
+    // Mandatory researcher-account gate (2026-08-13): every other test
+    // in this file runs with the default authenticated researcher
+    // storageState (playwright.config.ts) — this one deliberately
+    // overrides back to no session at all, since "unauthenticated"
+    // (401) and "authenticated but not contributor+" (403) are two
+    // different, both-correct outcomes this suite needs to tell apart.
+    test.use({ storageState: { cookies: [], origins: [] } });
+
+    test('unauthenticated writes to the COA admin API are rejected', async ({ request }) => {
+      // Middleware's baseline contributor+ gate runs before this route
+      // ever parses a body — an empty/malformed body is fine here, the
+      // point is proving the request never gets that far unauthenticated.
+      const response = await request.post('/api/admin/coas', { data: {} });
+      expect(response.status()).toBe(401);
+    });
   });
 });
 

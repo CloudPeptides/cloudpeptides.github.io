@@ -5,14 +5,26 @@
  * by definition. If a session already resolves here (someone revisits
  * /admin/login while already signed in), bounce straight to /admin or
  * wherever `next` points, rather than showing the form again.
+ *
+ * Mandatory researcher-account gate (2026-08-13): the site-wide session
+ * cookie is now shared with plain researcher ('member') accounts, which
+ * have no admin access at all — bouncing on `Astro.locals.session`
+ * alone would send a signed-in researcher who lands here straight into
+ * an infinite redirect loop (/admin/login → /admin → middleware denies
+ * → /admin/login → …), found live while updating this gate's own e2e
+ * suite. Only bounce through for a session that actually clears the
+ * same contributor+ bar middleware.ts itself enforces for /admin*; a
+ * researcher session sees the ordinary sign-in form instead, exactly as
+ * if they had no session at all.
  */
 export const prerender = false;
 
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { hasMinRole } from '../../lib/auth';
 
 const next = Astro.url.searchParams.get('next');
 const redirectTarget = next && next.startsWith('/admin') ? next : '/admin';
-if (Astro.locals.session) {
+if (Astro.locals.session && hasMinRole(Astro.locals.session.role, 'contributor')) {
   return Astro.redirect(redirectTarget);
 }
 const justReset = Astro.url.searchParams.get('reset') === 'success';

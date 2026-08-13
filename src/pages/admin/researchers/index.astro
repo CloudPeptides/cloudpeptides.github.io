@@ -1,0 +1,180 @@
+---
+/**
+ * Admin researcher-account management (mandatory researcher-account
+ * gate, 2026-08-13). Read path uses the service client (same pattern as
+ * /admin/users — auth.users email/last-sign-in has no client-reachable
+ * table at all, so listing it requires service-role, same as
+ * listUsersWithRoles). Every write (suspend/reinstate/require
+ * recertification) instead uses the acting admin's own JWT via the
+ * dedicated API routes under /api/admin/researchers/[id]/* — RLS +
+ * the protect_researcher_profile_admin_fields trigger are the real
+ * boundary there, not this page.
+ */
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Badge from '../../../components/ui/Badge.astro';
+import ErrorState from '../../../components/ui/ErrorState.astro';
+import { createServiceClient, hasMinRole } from '../../../lib/auth';
+import { listResearchersForAdmin } from '../../../lib/researcher';
+import { CURRENT_CERTIFICATION_VERSION } from '../../../lib/researcher-certification';
+
+const session = Astro.locals.session!;
+const isAdmin = hasMinRole(session.role, 'admin');
+if (!isAdmin) Astro.response.status = 403;
+
+let loadError: string | null = null;
+let researchers: Awaited<ReturnType<typeof listResearchersForAdmin>> = [];
+if (isAdmin) {
+  try {
+    researchers = await listResearchersForAdmin(createServiceClient());
+  } catch {
+    loadError = 'Could not load the researcher list right now.';
+  }
+}
+
+function certificationStatus(r: (typeof researchers)[number]): {
+  label: string;
+  tone: 'success' | 'warning' | 'neutral';
+} {
+  if (!r.latest_certification_version) return { label: 'Never certified', tone: 'warning' };
+  const stale =
+    r.latest_certification_version !== CURRENT_CERTIFICATION_VERSION ||
+    (r.force_recertify_after &&
+      r.latest_certification_accepted_at &&
+      new Date(r.latest_certification_accepted_at) < new Date(r.force_recertify_after));
+  return stale
+    ? { label: `Recertification required (had ${r.latest_certification_version})`, tone: 'warning' }
+    : { label: `Current (${r.latest_certification_version})`, tone: 'success' };
+}
+---
+
+<AdminLayout title="Researcher Accounts">
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">Admin</p>
+      <h1>Researcher accounts</h1>
+      <p>
+        Independent Researcher accounts — status, certification, jurisdiction, and audit history.
+        Every account here defaults to the minimum 'member' role; suspending or requiring
+        recertification here never changes role/permissions.
+      </p>
+    </div>
+  </div>
+
+  {
+    !isAdmin && (
+      <div class="cp-admin-section">
+        <p class="cp-admin-empty-row">Admins only.</p>
+      </div>
+    )
+  }
+
+  {isAdmin && loadError && <ErrorState message={loadError} retryHref="/admin/researchers" />}
+
+  {
+    isAdmin && !loadError && researchers.length === 0 && (
+      <div class="cp-admin-section">
+        <p class="cp-admin-empty-row">No researcher accounts have registered yet.</p>
+      </div>
+    )
+  }
+
+  {
+    isAdmin && !loadError && researchers.length > 0 && (
+      <div class="cp-admin-table-wrap">
+        <table class="cp-admin-table">
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Name</th>
+              <th>Affiliation</th>
+              <th>Location</th>
+              <th>Status</th>
+              <th>Certification</th>
+              <th>Email verified</th>
+              <th>Last sign-in</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {researchers.map((r) => {
+              const cert = certificationStatus(r);
+              return (
+                <tr>
+                  <td>{r.email ?? r.user_id}</td>
+                  <td>{r.full_name}</td>
+                  <td>{r.research_affiliation}</td>
+                  <td>
+                    {r.country}
+                    {r.region ? `, ${r.region}` : ''}
+                  </td>
+                  <td>
+                    <Badge tone={r.account_status === 'active' ? 'success' : 'danger'}>
+                      {r.account_status}
+                    </Badge>
+                    {r.suspended_reason && <p class="cp-admin-field__hint">{r.suspended_reason}</p>}
+                  </td>
+                  <td>
+                    <Badge tone={cert.tone === 'success' ? 'success' : 'warning'}>
+                      {cert.label}
+                    </Badge>
+                  </td>
+                  <td>{r.email_confirmed_at ? 'Yes' : 'No'}</td>
+                  <td>
+                    {r.last_sign_in_at ? new Date(r.last_sign_in_at).toLocaleDateString() : 'never'}
+                  </td>
+                  <td class="cp-admin-researcher-actions">
+                    {r.account_status === 'active' ? (
+                      <button
+                        type="button"
+                        class="cp-admin-btn cp-admin-btn--secondary cp-admin-btn--sm"
+                        data-suspend-user={r.user_id}
+                      >
+                        Suspend
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        class="cp-admin-btn cp-admin-btn--secondary cp-admin-btn--sm"
+                        data-reinstate-user={r.user_id}
+                      >
+                        Reinstate
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      class="cp-admin-btn cp-admin-btn--secondary cp-admin-btn--sm"
+                      data-recertify-user={r.user_id}
+                    >
+                      Require recertification
+                    </button>
+                    <a
+                      class="cp-admin-btn cp-admin-btn--secondary cp-admin-btn--sm"
+                      href={`/admin/audit-log?target_table=researcher_profiles&target_id=${r.user_id}`}
+                    >
+                      Audit history
+                    </a>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+</AdminLayout>
+
+<script>
+  import '../../../scripts/admin-researcher-actions.ts';
+</script>
+
+<style>
+  .cp-admin-researcher-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    align-items: flex-start;
+  }
+</style>

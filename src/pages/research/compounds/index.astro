@@ -28,9 +28,9 @@ if (import.meta.env.PUBLIC_ENABLE_DEV_FIXTURES === 'true') {
   // fixture content leak into what's supposed to be an honest,
   // real-Supabase-backed check. Do not commit this branch.
   compounds = fixtureListItems;
-} else if (hasSupabaseConfig()) {
+} else if (hasSupabaseConfig() && Astro.locals.session) {
   try {
-    compounds = await listPublishedCompounds();
+    compounds = await listPublishedCompounds(Astro.locals.session.accessToken);
   } catch {
     loadError = 'Could not load the compound directory right now.';
   }

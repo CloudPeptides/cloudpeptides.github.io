@@ -1,9 +1,22 @@
 /**
- * Admin sign-out. Best-effort revocation at Supabase (so the refresh
- * token can't be replayed after logout) followed by an unconditional
- * cookie clear — the cookie clear always happens even if the revoke
- * call fails, so a signed-out browser is never left holding a cookie
- * it believes is still valid.
+ * Sign-out (shared by /admin and the public researcher-account gate —
+ * this route is role-agnostic, see src/scripts/account-logout.ts and
+ * admin's own logout button). Best-effort revocation at Supabase (so
+ * the refresh token can't be replayed after logout) followed by an
+ * unconditional cookie clear — the cookie clear always happens even if
+ * the revoke call fails, so a signed-out browser is never left holding
+ * a cookie it believes is still valid.
+ *
+ * `scope: 'local'` is deliberate, not the supabase-js default: plain
+ * signOut() defaults to `scope: 'global'`, which revokes EVERY active
+ * session for that user account — every other device/browser/tab that
+ * happens to be signed in as the same user gets logged out too. Found
+ * live while investigating a real e2e-suite failure cascade: two
+ * concurrent sessions for the same test account, one signing out with
+ * the default global scope, silently invalidated the other mid-test.
+ * 'local' revokes only the session tied to the token pair actually
+ * presented to this request — the correct behavior for an ordinary
+ * "sign out on this device" action either way, not just a test fix.
  */
 export const prerender = false;
 
@@ -32,7 +45,7 @@ export const POST: APIRoute = async ({ request, url }) => {
     try {
       const client = createAnonClient();
       await client.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-      await client.auth.signOut();
+      await client.auth.signOut({ scope: 'local' });
     } catch {
       // Best-effort — cookies are cleared below regardless.
     }

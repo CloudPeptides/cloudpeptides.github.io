@@ -47,10 +47,11 @@ if (import.meta.env.PUBLIC_ENABLE_DEV_FIXTURES === 'true' && slug === fixtureCom
   isFixture = true;
 } else if (!hasSupabaseConfig()) {
   loadError = 'Compound profiles are not configured in this environment.';
-} else if (slug) {
+} else if (slug && Astro.locals.session) {
+  const accessToken = Astro.locals.session.accessToken;
   try {
-    compound = await getPublishedCompoundBySlug(slug);
-    if (compound) related = await getRelatedCompounds(compound.id);
+    compound = await getPublishedCompoundBySlug(slug, accessToken);
+    if (compound) related = await getRelatedCompounds(compound.id, accessToken);
   } catch {
     loadError = 'Could not load this compound profile right now.';
   }

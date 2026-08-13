@@ -9,6 +9,17 @@
  * and isn't part of what was approved here. Research and commerce data
  * stay structurally separate regardless (CLAUDE.md §7): nothing here
  * is ever joined into compounds/claims/studies/regulatory_records.
+ *
+ * Product rebrand (2026-08-13, approved): the three GLP-1/GIP/GCG-family
+ * shop entries formerly ported as 'semaglutide'/'tirz'/'reta' are now
+ * 'cp-s1'/'cp-t2'/'cp-r3' ("CP-S1"/"CP-T2"/"CP-R3") — the live public
+ * shop names, kept deliberately distinct from the Semaglutide/
+ * Tirzepatide/Retatrutide research-profile names so the commerce
+ * catalog is never read as an endorsement of, or identical to, any
+ * specific research profile. The canonical compound identity is
+ * preserved admin-only (shop_products.compound_id in the live Supabase
+ * catalog this file is a rollback snapshot of) — never exposed here or
+ * through any public/researcher-facing query.
  */
 
 export interface ProductOption {
@@ -264,8 +275,8 @@ export const PRODUCTS: Product[] = [
     featured: false,
   },
   {
-    id: 'semaglutide',
-    name: 'Semaglutide',
+    id: 'cp-s1',
+    name: 'CP-S1',
     category: 'Weight Loss + Metabolic',
     options: [
       {
@@ -284,8 +295,8 @@ export const PRODUCTS: Product[] = [
     featured: true,
   },
   {
-    id: 'tirz',
-    name: 'Tirz',
+    id: 'cp-t2',
+    name: 'CP-T2',
     category: 'Weight Loss + Metabolic',
     options: [
       {
@@ -328,8 +339,8 @@ export const PRODUCTS: Product[] = [
     featured: true,
   },
   {
-    id: 'reta',
-    name: 'Reta',
+    id: 'cp-r3',
+    name: 'CP-R3',
     category: 'Weight Loss + Metabolic',
     options: [
       {

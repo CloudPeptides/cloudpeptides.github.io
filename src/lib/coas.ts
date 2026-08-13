@@ -1,19 +1,20 @@
 /**
  * Batch COA (Certificate of Analysis) queries — commerce domain,
  * structurally separate from src/lib/supabase.ts's research-content
- * queries (CLAUDE.md §7: no FK from evidence tables into commerce
- * tables, and this file never imports anything from that one either).
- * COAs are batch-testing documentation, never scientific evidence —
- * see src/pages/disclaimer.astro's own section on this.
+ * queries (CLAUDE.md §7). COAs are batch-testing documentation, never
+ * scientific evidence — see src/pages/disclaimer.astro.
  *
- * Anon-key client only, same pattern as supabase.ts: RLS
- * (batch_coas_select_published, supabase/migrations/
- * 20260808150000_commerce_coa_gallery.sql) is what actually enforces
- * "anon only ever sees status = 'published' rows" — the explicit
- * `.eq('status', 'published')` filter below is defense-in-depth, not
- * the real boundary.
+ * Mandatory researcher-account gate (2026-08-13): `anon` no longer has
+ * any grant on batch_coas, and the coa-documents Storage bucket is no
+ * longer public (supabase/migrations/20260813121000_gate_revoke_anon_
+ * access.sql) — every read here uses the visitor's own verified access
+ * token, and file URLs are short-lived signed URLs
+ * (getCoaSignedUrl(), storage.objects RLS applies to the signing call
+ * itself) rather than the old public object URL. Admin already used
+ * this same createSignedUrl() pattern for this bucket
+ * (src/pages/admin/coas/[id].astro) — unaffected by this change.
  */
-import { createClient } from '@supabase/supabase-js';
+import { createUserScopedClient } from './auth';
 
 const url = import.meta.env.PUBLIC_SUPABASE_URL;
 const anonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
@@ -22,23 +23,33 @@ export function hasSupabaseConfig(): boolean {
   return Boolean(url && anonKey);
 }
 
-function getClient() {
+function getClient(accessToken: string) {
   if (!hasSupabaseConfig()) {
     throw new Error('PUBLIC_SUPABASE_URL / PUBLIC_SUPABASE_ANON_KEY are not configured.');
   }
-  return createClient(url, anonKey, { auth: { persistSession: false } });
+  return createUserScopedClient(accessToken);
 }
 
 export const COA_BUCKET = 'coa-documents';
 
-/** The public Storage URL for a COA file — safe to construct from just
- * the path (no signing needed, the bucket is public), but only ever
- * actually reachable when storage.objects' own RLS policy finds a
- * matching, published batch_coas row (see the migration referenced
- * above) — an unpublished or orphaned path 403s even though this URL
- * shape "looks" public. */
-export function getCoaFileUrl(filePath: string): string {
-  return `${url}/storage/v1/object/public/${COA_BUCKET}/${filePath}`;
+const SIGNED_URL_TTL_SECONDS = 3600;
+
+/** A short-lived signed URL for a COA file — the bucket is private, so
+ * this is the only way to reach the file bytes at all now; the signing
+ * call itself is subject to storage.objects RLS (only succeeds for a
+ * signed-in visitor and a published row, or an admin). Returns null on
+ * any failure rather than throwing — a single broken/missing file must
+ * not take down the whole gallery page. */
+export async function getCoaSignedUrl(
+  accessToken: string,
+  filePath: string,
+): Promise<string | null> {
+  const supabase = getClient(accessToken);
+  const { data, error } = await supabase.storage
+    .from(COA_BUCKET)
+    .createSignedUrl(filePath, SIGNED_URL_TTL_SECONDS);
+  if (error || !data) return null;
+  return data.signedUrl;
 }
 
 export interface PublishedCoa {
@@ -59,14 +70,14 @@ export interface PublishedCoa {
    * display, sourced live through product_id rather than any column on
    * batch_coas itself (CLAUDE.md §7: no duplicate SKU data). Null for
    * an older COA with no product_id, or one whose linked product isn't
-   * itself publicly readable — both cases the anon client simply can't
-   * see, so PostgREST returns null for the embed rather than erroring;
-   * render accordingly, never throw on a missing link. */
+   * itself readable — both cases the client simply can't see, so
+   * PostgREST returns null for the embed rather than erroring; render
+   * accordingly, never throw on a missing link. */
   shop_products: { code: string; name: string } | null;
 }
 
-export async function listPublishedCoas(): Promise<PublishedCoa[]> {
-  const supabase = getClient();
+export async function listPublishedCoas(accessToken: string): Promise<PublishedCoa[]> {
+  const supabase = getClient(accessToken);
   const { data, error } = await supabase
     .from('batch_coas')
     .select(

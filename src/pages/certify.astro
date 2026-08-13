@@ -1,0 +1,118 @@
+---
+/**
+ * Researcher Certification screen — reached whenever src/middleware.ts's
+ * needsCertification() check fails: a brand-new account right after
+ * email verification, an account whose latest attestation predates a
+ * materially updated CURRENT_CERTIFICATION_VERSION, or an account an
+ * admin has explicitly required to recertify (force_recertify_after).
+ * Requires a session (middleware already guarantees one reaches this
+ * page) but is deliberately exempt from the certification check itself
+ * — otherwise a not-yet-certified researcher could never reach the one
+ * page that lets them certify.
+ */
+export const prerender = false;
+
+import AccountLayout from '../layouts/AccountLayout.astro';
+import { createUserScopedClient } from '../lib/auth';
+import { getResearcherProfile } from '../lib/researcher';
+import {
+  AGE_CONFIRMATION_LABEL,
+  RESEARCHER_CERTIFICATION_CHECKBOX_LABEL,
+  RESEARCHER_CERTIFICATION_FALSE_INFO_NOTICE,
+  RESEARCHER_CERTIFICATION_HEADING,
+  RESEARCHER_CERTIFICATION_TEXT,
+} from '../lib/researcher-certification';
+import { COUNTRIES } from '../lib/countries';
+
+const session = Astro.locals.session!;
+const next = Astro.url.searchParams.get('next');
+const redirectTarget = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
+
+const client = createUserScopedClient(session.accessToken);
+let profile: Awaited<ReturnType<typeof getResearcherProfile>> = null;
+try {
+  profile = await getResearcherProfile(client, session.userId);
+} catch {
+  // Rendered without a profile pre-fill below if this fails — the
+  // form itself still works either way.
+}
+const needsProfileFields = !profile;
+---
+
+<AccountLayout title="Researcher Certification">
+  <section class="cp-account-card cp-account-card--wide">
+    <h1>Researcher Certification</h1>
+    <p class="cp-account-intro">
+      {
+        needsProfileFields
+          ? 'Before continuing, please confirm a few details and accept the Researcher Certification below.'
+          : 'This certification has been updated. Please review and accept it again to continue.'
+      }
+    </p>
+
+    <p class="cp-form-message" data-tone="error" id="certifyFormMessage" role="alert" hidden></p>
+
+    <form id="certifyForm" class="cp-account-form" data-redirect={redirectTarget}>
+      {
+        needsProfileFields && (
+          <>
+            <label for="fullName">Full name</label>
+            <input type="text" name="fullName" id="fullName" required maxlength="200" />
+
+            <div class="cp-account-form-row">
+              <div>
+                <label for="country">Country</label>
+                <select name="country" id="country" required>
+                  <option value="" disabled selected>
+                    Select a country
+                  </option>
+                  {COUNTRIES.map((c) => (
+                    <option value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label for="region">State / province / region</label>
+                <input type="text" name="region" id="region" maxlength="100" />
+              </div>
+            </div>
+
+            <label for="researchAffiliation">Research affiliation</label>
+            <input
+              type="text"
+              name="researchAffiliation"
+              id="researchAffiliation"
+              required
+              maxlength="200"
+              placeholder="e.g. Independent researcher"
+            />
+
+            <div class="cp-checkbox-row">
+              <input type="checkbox" name="age18" id="age18" required />
+              <label for="age18">{AGE_CONFIRMATION_LABEL}</label>
+            </div>
+          </>
+        )
+      }
+
+      <fieldset>
+        <legend>{RESEARCHER_CERTIFICATION_HEADING}</legend>
+        <div class="cp-certification-block" tabindex="0">
+          {RESEARCHER_CERTIFICATION_TEXT.map((paragraph) => <p>{paragraph}</p>)}
+        </div>
+
+        <div class="cp-checkbox-row">
+          <input type="checkbox" name="certificationAccepted" id="certificationAccepted" required />
+          <label for="certificationAccepted">{RESEARCHER_CERTIFICATION_CHECKBOX_LABEL}</label>
+        </div>
+        <p class="cp-certification-notice">{RESEARCHER_CERTIFICATION_FALSE_INFO_NOTICE}</p>
+      </fieldset>
+
+      <button class="cp-btn-full" type="submit" id="certifySubmit">I Agree — Continue</button>
+    </form>
+  </section>
+</AccountLayout>
+
+<script>
+  import '../scripts/certify-form.ts';
+</script>

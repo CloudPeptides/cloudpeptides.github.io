@@ -1,29 +1,27 @@
 /**
- * Public, unauthenticated Supabase reads for the shop (Batch 4 of the
- * "Add Product / Peptide" workflow, 2026-08-10) — src/lib/shop_products
- * is now the canonical source for the public shop/product pages and
- * checkout price validation, replacing the static src/lib/shop-products.ts
- * array (kept in the repo, unremoved, as the documented rollback path
- * until Supabase parity + rollback are proven — see the Batch 4
- * migration report).
+ * Shop reads for signed-in visitors (Batch 4 of the "Add Product /
+ * Peptide" workflow, 2026-08-10; token-scoped 2026-08-13 for the
+ * mandatory researcher-account gate) — src/lib/shop_products is the
+ * canonical source for the public shop/product pages and checkout
+ * price validation, replacing the static src/lib/shop-products.ts
+ * array (kept in the repo, unremoved, as the documented rollback path).
  *
  * Deliberately a SEPARATE module from src/lib/supabase.ts (which reads
  * published RESEARCH content: compounds/claims/sources/studies/
  * regulatory_records). Keeping these as two distinct files that are
  * never imported into each other's pages is the actual mechanism that
  * enforces CLAUDE.md §7's "Research and commerce data stay structurally
- * separate" on the shop side — shop/index.astro and shop/[id].astro
- * must never import src/lib/supabase.ts, and this file must never join
- * into compounds/claims/studies/regulatory_records (same rule
- * shop-products.ts's own header comment already documented).
+ * separate" on the shop side.
  *
- * Anon key only, same posture as src/lib/supabase.ts — RLS
- * (shop_products_select_published, supabase/migrations/
- * 20260810090000_shop_products_schema.sql) is the real security
- * boundary; the explicit .eq('public_status', 'published') filters
- * below are defense-in-depth, not the enforcement mechanism.
+ * `anon` no longer has any grant on shop_products/product_categories at
+ * all (supabase/migrations/20260813121000_gate_revoke_anon_access.sql)
+ * — every call here uses the visitor's own verified access token
+ * (src/lib/auth.ts's createUserScopedClient()), never a bare anon-key
+ * client. RLS (shop_products_select_published) is still the real
+ * security boundary; the explicit .eq('public_status', 'published')
+ * filters below are defense-in-depth, not the enforcement mechanism.
  */
-import { createClient } from '@supabase/supabase-js';
+import { createUserScopedClient } from './auth';
 import type { CatalogEntry } from './form-validation';
 import type { Product, ProductOption } from './shop-products';
 
@@ -34,11 +32,11 @@ export function hasSupabaseConfig(): boolean {
   return Boolean(url && anonKey);
 }
 
-function getClient() {
+function getClient(accessToken: string) {
   if (!hasSupabaseConfig()) {
     throw new Error('PUBLIC_SUPABASE_URL / PUBLIC_SUPABASE_ANON_KEY are not configured.');
   }
-  return createClient(url, anonKey, { auth: { persistSession: false } });
+  return createUserScopedClient(accessToken);
 }
 
 interface PublicShopRow {
@@ -98,8 +96,8 @@ export function groupShopProductRows(rows: PublicShopRow[]): Product[] {
 /** The full public shop listing — every published, slugged SKU,
  * grouped into products. Ordered by name so grouping is stable and the
  * grid reads the same way run to run. */
-export async function listPublicShopProducts(): Promise<Product[]> {
-  const supabase = getClient();
+export async function listPublicShopProducts(accessToken: string): Promise<Product[]> {
+  const supabase = getClient(accessToken);
   const { data, error } = await supabase
     .from('shop_products')
     .select(PUBLIC_SHOP_SELECT)
@@ -113,8 +111,11 @@ export async function listPublicShopProducts(): Promise<Product[]> {
 /** One product page's worth of variants by product_slug — returns null
  * if nothing published shares that slug (replaces getStaticPaths's
  * build-time 404 behavior with an on-demand equivalent). */
-export async function getPublicShopProduct(slug: string): Promise<Product | null> {
-  const supabase = getClient();
+export async function getPublicShopProduct(
+  slug: string,
+  accessToken: string,
+): Promise<Product | null> {
+  const supabase = getClient(accessToken);
   const { data, error } = await supabase
     .from('shop_products')
     .select(PUBLIC_SHOP_SELECT)
@@ -132,8 +133,8 @@ export async function getPublicShopProduct(slug: string): Promise<Product | null
  * queried fresh on every checkout request, never cached — the whole
  * point of this function existing is that checkout never trusts a
  * client-supplied price, only what's live in the database right now. */
-export async function listCheckoutCatalogEntries(): Promise<CatalogEntry[]> {
-  const supabase = getClient();
+export async function listCheckoutCatalogEntries(accessToken: string): Promise<CatalogEntry[]> {
+  const supabase = getClient(accessToken);
   const { data, error } = await supabase
     .from('shop_products')
     .select('code, name, spec, price, product_slug')

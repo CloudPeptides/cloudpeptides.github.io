@@ -1,4 +1,10 @@
 ---
+// On-demand, not static: this page is protected by the researcher
+// account gate (src/middleware.ts) — a statically-prerendered page
+// bypasses that middleware entirely (see its own header comment), so
+// every page that must be gated needs this export, not just data pages.
+export const prerender = false;
+
 import PolicyLayout from '../layouts/PolicyLayout.astro';
 ---
 
