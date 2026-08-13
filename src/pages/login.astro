@@ -71,6 +71,12 @@ const justReset = Astro.url.searchParams.get('reset') === 'success';
         </button>
       </div>
 
+      <!-- Cloudflare Turnstile — renders only once PUBLIC_TURNSTILE_SITE_KEY
+           is configured (src/scripts/turnstile-widget.ts); the widget
+           auto-injects a hidden cf-turnstile-response field into this form
+           once solved, read by account-login-form.ts on submit. -->
+      <div class="cf-turnstile" data-turnstile></div>
+
       <p class="cp-form-message" data-tone="error" id="loginFormMessage" role="alert" hidden></p>
 
       <button class="cp-btn-full" type="submit" id="loginSubmit">Sign In</button>
@@ -86,5 +92,6 @@ const justReset = Astro.url.searchParams.get('reset') === 'success';
 
 <script>
   import '../scripts/password-toggle.ts';
+  import '../scripts/turnstile-widget.ts';
   import '../scripts/account-login-form.ts';
 </script>

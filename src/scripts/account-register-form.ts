@@ -29,6 +29,13 @@ function init(): void {
     const certificationAccepted = (
       document.getElementById('certificationAccepted') as HTMLInputElement
     ).checked;
+    // Cloudflare Turnstile auto-injects this hidden field into the form
+    // once the widget is solved (only present at all once
+    // PUBLIC_TURNSTILE_SITE_KEY is configured and the widget rendered) —
+    // sent as-is; the server decides whether it's actually required.
+    const turnstileToken =
+      (form.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement | null)?.value ??
+      '';
 
     if (password !== confirmPassword) {
       if (errorEl) {
@@ -63,6 +70,7 @@ function init(): void {
           researchAffiliation,
           age18,
           certificationAccepted,
+          turnstileToken,
         }),
       });
       const result = (await response.json()) as {

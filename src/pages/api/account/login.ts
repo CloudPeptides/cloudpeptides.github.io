@@ -23,6 +23,7 @@ import { isSingleLineSafe, isValidEmail, sanitizeText } from '../../../lib/form-
 import { getResearcherProfile } from '../../../lib/researcher';
 import { checkRateLimit } from '../../../lib/rate-limit';
 import { readBodyWithLimit } from '../../../lib/request-limits';
+import { verifyTurnstileToken } from '../../../lib/turnstile';
 
 function json(body: unknown, status: number, extraHeaders?: string[]): Response {
   const headers = new Headers({ 'Content-Type': 'application/json' });
@@ -50,6 +51,23 @@ export const POST: APIRoute = async ({ request, url }) => {
   const rate = await checkRateLimit(env.FORM_RATE_LIMITER, `account-login:${ip}`);
   if (!rate.allowed) {
     return json({ success: false, error: 'Too many attempts. Please try again shortly.' }, 429);
+  }
+
+  // Turnstile — required only once TURNSTILE_SECRET_KEY is actually
+  // configured in this environment (unset locally/in CI — this route's
+  // own e2e-suite login fixture, tests/e2e/global-setup.ts, calls this
+  // endpoint directly with no token at all, which only continues to
+  // work because this check is conditional). See register.ts's
+  // identical comment for the full reasoning.
+  if (env.TURNSTILE_SECRET_KEY) {
+    const turnstileToken = typeof input.turnstileToken === 'string' ? input.turnstileToken : '';
+    if (!turnstileToken) {
+      return json({ success: false, error: 'Please complete the verification challenge.' }, 400);
+    }
+    const verification = await verifyTurnstileToken(env.TURNSTILE_SECRET_KEY, turnstileToken, ip);
+    if (!verification.success) {
+      return json({ success: false, error: 'Verification failed. Please try again.' }, 400);
+    }
   }
 
   const email = sanitizeText(input.email, 200);

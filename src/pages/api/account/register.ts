@@ -35,6 +35,7 @@ import { CURRENT_ATTESTATION_VERSIONS } from '../../../lib/researcher-certificat
 import { writeAuditLog } from '../../../lib/admin/users';
 import { checkRateLimit } from '../../../lib/rate-limit';
 import { readBodyWithLimit } from '../../../lib/request-limits';
+import { verifyTurnstileToken } from '../../../lib/turnstile';
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -66,6 +67,21 @@ export const POST: APIRoute = async ({ request, url }) => {
   const rate = await checkRateLimit(env.FORM_RATE_LIMITER, `register:${ip}`);
   if (!rate.allowed) {
     return json({ success: false, error: 'Too many attempts. Please try again shortly.' }, 429);
+  }
+
+  // Turnstile — required only once TURNSTILE_SECRET_KEY is actually
+  // configured in this environment (unset locally/in CI, same as
+  // contact.ts/checkout.ts's own precedent), never a hard site-wide
+  // dependency for the core account-creation path.
+  if (env.TURNSTILE_SECRET_KEY) {
+    const turnstileToken = typeof input.turnstileToken === 'string' ? input.turnstileToken : '';
+    if (!turnstileToken) {
+      return json({ success: false, error: 'Please complete the verification challenge.' }, 400);
+    }
+    const verification = await verifyTurnstileToken(env.TURNSTILE_SECRET_KEY, turnstileToken, ip);
+    if (!verification.success) {
+      return json({ success: false, error: 'Verification failed. Please try again.' }, 400);
+    }
   }
 
   const fullName = sanitizeText(input.fullName, 200);
