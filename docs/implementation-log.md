@@ -21,7 +21,10 @@ gate (previous entry) exposed two real gaps in Supabase Auth's own project setti
   session's app code) — feeds Supabase's own default email-template branding/fallback links. Set to
   `https://cloudpeptides.org`.
 
-**Known limitation:** verified the SMTP credentials authenticate; did not verify actual inbox
+**Update (same day):** confirmed end-to-end by the user — a real registration with a real inbox
+received the verification email and completed successfully. The limitation below is resolved.
+
+**Known limitation (resolved, see above):** verified the SMTP credentials authenticate; did not verify actual inbox
 delivery of a real verification/reset email (no real recipient inbox available in this environment) —
 recommend one real registration end-to-end as a final check.
 
