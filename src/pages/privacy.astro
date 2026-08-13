@@ -5,7 +5,7 @@ import PolicyLayout from '../layouts/PolicyLayout.astro';
 <PolicyLayout
   title="Privacy Policy"
   description="What Cloud Peptides collects, how it's used, and how to contact us about your data."
-  lastUpdated="August 8, 2026"
+  lastUpdated="August 13, 2026"
 >
   <p class="cp-policy-note">
     <strong>Note:</strong> Cloud Peptides is an operating name, not a claim about a specific registered
@@ -16,32 +16,59 @@ import PolicyLayout from '../layouts/PolicyLayout.astro';
   <h2>Who we are</h2>
   <p>
     Cloud Peptides ("we," "us," "our") operates this website, which publishes cited research
-    information about peptides and related compounds and, when enabled, sells research materials.
-    You can reach us at <a href="mailto:info.order.thecloud@proton.me"
+    information about peptides and related compounds and sells research materials to verified
+    researcher accounts. You can reach us at <a href="mailto:info.order.thecloud@proton.me"
       >info.order.thecloud@proton.me</a
-    >, on <a href="https://discord.gg/8pF3AvHgT" target="_blank" rel="noopener noreferrer"
+    >
+    or on <a href="https://discord.gg/8pF3AvHgT" target="_blank" rel="noopener noreferrer"
       >Discord</a
-    >, or at <a href="tel:4434700714">443-470-0714</a>. We do not currently publish a physical
-    mailing address.
+    >. We do not currently publish a physical mailing address.
   </p>
 
   <h2>Information we collect</h2>
   <p>We only collect what's actually involved in operating this site today:</p>
   <ul>
     <li>
+      <strong>Researcher account information</strong> — accessing this site now requires creating a verified
+      Independent Researcher account. Registration collects your full name, email address, password, country,
+      state/province/region (when applicable), and research affiliation. We also record your affirmative
+      acceptance of our Researcher Certification, Research Use Policy, Terms of Service, and Privacy Policy:
+      which version of each you accepted, when, and whether your email was verified at that time. That
+      acceptance record is kept permanently as part of your account's history and is never edited after
+      the fact, even by us — a later re-acceptance (for example, if we materially update the certification)
+      adds a new record rather than changing the old one. See our <a href="/research-use-policy"
+        >Research Use Policy</a
+      > for what the certification itself says.
+    </li>
+    <li>
+      <strong>Account status</strong> — whether your account is active or suspended, and, if suspended,
+      that fact and the reason given. Administrative actions on accounts (registration, email verification,
+      certification acceptance, suspension, reinstatement) are recorded in an internal, admin-only activity
+      log.
+    </li>
+    <li>
       <strong>Contact form submissions</strong> — the name, email address, and message you submit are
       relayed directly to our inbox by email. We do not currently store contact form submissions in a
       database.
     </li>
     <li>
-      <strong>Anti-abuse/verification data</strong> — the contact form (and, once ordering is enabled,
-      the order-request form) is protected by Cloudflare Turnstile, a bot-detection challenge, and a short-lived
-      cooldown cookie that prevents rapid resubmission from the same browser.
+      <strong>Order-request submissions</strong> — placing an order request collects your name, email
+      address, phone number (optional), shipping address, and any notes you add, along with your confirmation
+      that you are 18+ and accept our <a href="/shop-terms">Shop Terms</a>. Like contact
+      submissions, an order request is relayed directly to our inbox by email (with a copy sent back
+      to you as an acknowledgement) — we do not currently store order requests in a database, and
+      submitting one does not take payment or create a binding sale.
+    </li>
+    <li>
+      <strong>Anti-abuse/verification data</strong> — the contact form and the order-request form are
+      protected by Cloudflare Turnstile, a bot-detection challenge, and a short-lived cooldown cookie
+      that prevents rapid resubmission from the same browser. Account registration and sign-in are protected
+      by rate-limiting on our side.
     </li>
     <li>
       <strong>Standard technical data</strong> — like any website, requests to this site pass through
       our hosting/security provider, Cloudflare, which processes technical information (such as IP address)
-      to serve the site and to detect abuse (for example, our rate-limiting on forms).
+      to serve the site and to detect abuse (for example, our rate-limiting on forms and on sign-in).
     </li>
     <li>
       <strong>Theme preference</strong> — if you switch to dark mode, that choice is saved in your browser's
@@ -49,42 +76,47 @@ import PolicyLayout from '../layouts/PolicyLayout.astro';
     </li>
     <li>
       <strong>Shop cart contents</strong> — while browsing the shop, any items you add to a cart are held
-      in your browser's local storage on your device only, not on our servers. Ordering itself is not
-      currently enabled — see our <a href="/shop-terms">Shop Terms</a>.
+      in your browser's local storage on your device only, not on our servers.
     </li>
     <li>
-      <strong>Administrative accounts</strong> — our editorial staff sign in through a separate, password-protected
-      system to manage published research content. This system is internal and is not available for public
-      registration; it is not used to identify or track site visitors.
+      <strong>Administrative accounts</strong> — our editorial staff sign in through the same account
+      system, with elevated internal permissions, to manage published research content and researcher
+      accounts. Staff accounts are internal and are not created through public registration.
     </li>
   </ul>
   <p>
-    We do not currently operate public user accounts, a newsletter, or advertising trackers, and we
-    do not sell your personal information to third parties.
+    We do not currently operate a newsletter or advertising trackers, and we do not sell your
+    personal information to third parties.
   </p>
 
   <h2>How we use information</h2>
   <ul>
+    <li>
+      To create and operate your researcher account, verify your email address, confirm your
+      certification and eligibility to access the site, and — if needed — to suspend or reinstate an
+      account or require you to reaffirm the certification.
+    </li>
     <li>To respond to messages sent through the contact form.</li>
     <li>To operate, secure, and improve the website (for example, blocking spam and abuse).</li>
-    <li>To fulfill orders and communicate about them, once ordering is enabled.</li>
+    <li>To review and respond to order requests and communicate with you about them.</li>
   </ul>
 
   <h2>Cookies and local storage</h2>
   <p>This site sets a small number of cookies and browser-local-storage entries:</p>
   <ul>
-    <li>A short-lived cookie that enforces a brief cooldown between contact-form submissions.</li>
     <li>
-      Session cookies for staff sign-in to the administrative dashboard (not present for ordinary
-      visitors).
+      A session cookie that keeps you signed in once you've logged into your researcher account
+      (this cookie is required — the site does not offer any content to signed-out visitors beyond
+      the account-creation and legal pages).
     </li>
+    <li>A short-lived cookie that enforces a brief cooldown between contact-form submissions.</li>
     <li>Your dark/light theme choice and shop cart contents, both stored only in your browser.</li>
   </ul>
   <p>
     That's the complete list — every one is strictly necessary for a feature you're actively using
-    (spam prevention, staff sign-in, remembering your theme/cart). We do not use analytics cookies,
-    advertising or cross-site tracking cookies, or any other nonessential tracking technology, and
-    have no plans to add any without updating this policy first.
+    (spam prevention, staying signed in, remembering your theme/cart). We do not use analytics
+    cookies, advertising or cross-site tracking cookies, or any other nonessential tracking
+    technology, and have no plans to add any without updating this policy first.
   </p>
   <p>
     Because every cookie here is strictly necessary rather than for tracking or analytics, we don't
@@ -98,10 +130,13 @@ import PolicyLayout from '../layouts/PolicyLayout.astro';
     <li>
       <strong>Cloudflare</strong> — hosting, content delivery, security, and bot/abuse protection (Turnstile).
     </li>
-    <li><strong>Resend</strong> — delivers the emails generated by our contact form.</li>
     <li>
-      <strong>Supabase</strong> — hosts the database that powers our published research content and staff
-      authentication.
+      <strong>Resend</strong> — delivers the emails generated by our contact and order-request forms.
+    </li>
+    <li>
+      <strong>Supabase</strong> — hosts the database and authentication system that power our published
+      research content, shop catalog, and researcher/staff accounts, and sends the email-verification
+      and password-reset emails tied to your account.
     </li>
   </ul>
   <p>
@@ -110,22 +145,32 @@ import PolicyLayout from '../layouts/PolicyLayout.astro';
 
   <h2>Data retention</h2>
   <p>
-    Contact-form messages are retained in our email inbox until we delete them. We don't currently
-    have a fixed automatic deletion schedule for that inbox — if you'd like a message you sent
-    removed, contact us and we will delete it.
+    Contact-form messages and order requests are retained in our email inbox until we delete them.
+    We don't currently have a fixed automatic deletion schedule for that inbox — if you'd like a
+    message you sent removed, contact us and we will delete it.
+  </p>
+  <p>
+    Researcher account information (profile details and account status) is retained for as long as
+    your account exists. Certification-acceptance records are append-only by design — kept
+    permanently as a compliance record even if your account is later suspended, and never edited
+    after the fact — but the profile details tied to your account can still be corrected or deleted
+    on request as described below.
   </p>
 
   <h2>Your choices</h2>
   <p>
-    Because we don't operate public accounts or a personal-data database for visitors today, there
-    isn't a self-service data-access tool to offer yet. If you want to know what we hold about you,
-    or want it corrected or deleted, email us and we'll respond directly.
+    We don't yet offer a self-service page to view, correct, or export your own account profile
+    directly. If you want to know what we hold about you, correct it, or have your account and
+    profile information deleted, email us and we'll respond directly. Deleting your account will end
+    your access to the site; it does not remove the append-only certification-acceptance history
+    described above, which we keep as a compliance record of what was agreed to and when.
   </p>
 
   <h2>Children's privacy</h2>
   <p>
-    This site is not directed to, and we do not knowingly collect personal information from, anyone
-    under 18.
+    This site is not directed to anyone under 18. Registration requires an affirmative confirmation
+    that you are 18 or older, and we do not knowingly create accounts for, or otherwise collect
+    personal information from, anyone under that age.
   </p>
 
   <h2>International visitors</h2>
