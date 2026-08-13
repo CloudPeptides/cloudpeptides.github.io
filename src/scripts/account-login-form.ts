@@ -15,6 +15,13 @@ function init(): void {
 
     const email = (document.getElementById('email') as HTMLInputElement).value.trim();
     const password = (document.getElementById('password') as HTMLInputElement).value;
+    // Cloudflare Turnstile auto-injects this hidden field into the form
+    // once the widget is solved (only present at all once
+    // PUBLIC_TURNSTILE_SITE_KEY is configured and the widget rendered) —
+    // sent as-is; the server decides whether it's actually required.
+    const turnstileToken =
+      (form.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement | null)?.value ??
+      '';
 
     const button = document.getElementById('loginSubmit') as HTMLButtonElement;
     button.disabled = true;
@@ -24,7 +31,7 @@ function init(): void {
       const response = await fetch('/api/account/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, turnstileToken }),
       });
       const result = (await response.json()) as { success: boolean; error?: string };
 

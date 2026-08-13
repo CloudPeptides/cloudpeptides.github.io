@@ -146,6 +146,12 @@ if (Astro.locals.session) {
         <p class="cp-certification-notice">{RESEARCHER_CERTIFICATION_FALSE_INFO_NOTICE}</p>
       </fieldset>
 
+      <!-- Cloudflare Turnstile — renders only once PUBLIC_TURNSTILE_SITE_KEY
+           is configured (src/scripts/turnstile-widget.ts); the widget
+           auto-injects a hidden cf-turnstile-response field into this form
+           once solved, read by account-register-form.ts on submit. -->
+      <div class="cf-turnstile" data-turnstile></div>
+
       <button class="cp-btn-full" type="submit" id="registerSubmit">Create Account</button>
     </form>
 
@@ -155,5 +161,6 @@ if (Astro.locals.session) {
 
 <script>
   import '../scripts/password-toggle.ts';
+  import '../scripts/turnstile-widget.ts';
   import '../scripts/account-register-form.ts';
 </script>

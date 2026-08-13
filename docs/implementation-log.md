@@ -2,6 +2,32 @@
 
 Append-only. One entry per meaningful step, per [CLAUDE.md](../CLAUDE.md) §3/§11/§12.
 
+## Supabase Auth mail delivery + config fixes (2026-08-13)
+
+Config-only change against the live Supabase project (no code/migration) — the researcher-account
+gate (previous entry) exposed two real gaps in Supabase Auth's own project settings, both now fixed:
+
+- **Custom SMTP via Resend.** Supabase's built-in mailer was rate-limited to `rate_limit_email_sent:
+  2` (2 emails/hour, project-wide) — fine for the near-zero volume before real registration existed,
+  a real bottleneck now that verification/reset emails matter. Set `smtp_host=smtp.resend.com`,
+  `smtp_port=465`, `smtp_user=resend`, `smtp_pass=<RESEND_API_KEY>` (same key + domain already
+  verified and live for contact/checkout email — `notifications@updates.cloudpeptides.org`,
+  `smtp_sender_name="Cloud Peptides"`), and raised `rate_limit_email_sent` to 30/hour (matching the
+  project's other existing per-hour Auth rate limits). Verified with a raw SMTP `AUTH PLAIN` handshake
+  directly against `smtp.resend.com:465` (connect + EHLO + AUTH only, no message sent) —
+  `235 Authentication successful`, confirming the exact credentials now configured in Supabase
+  actually authenticate.
+- **`site_url` was still `http://localhost:3000`** (a stale default, unrelated to any of this
+  session's app code) — feeds Supabase's own default email-template branding/fallback links. Set to
+  `https://cloudpeptides.org`.
+
+**Update (same day):** confirmed end-to-end by the user — a real registration with a real inbox
+received the verification email and completed successfully. The limitation below is resolved.
+
+**Known limitation (resolved, see above):** verified the SMTP credentials authenticate; did not verify actual inbox
+delivery of a real verification/reset email (no real recipient inbox available in this environment) —
+recommend one real registration end-to-end as a final check.
+
 ## Product Rebrand + Mandatory Researcher-Account Gate (2026-08-13)
 
 Three approved deliverables, staging-only per explicit instruction; `main`/production untouched pending separate approval.
