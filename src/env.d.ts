@@ -43,12 +43,16 @@ declare namespace App {
      * by a different, documented allowance instead, so an absent nonce
      * attribute there is expected, not a bug. */
     cspNonce: string;
-    /** Resolved, server-verified admin session (src/lib/auth.ts),
-     * populated by src/middleware.ts for every /admin and /api/admin
-     * request so pages/routes don't each re-verify the cookie
-     * themselves. Null for every other route (never resolved there —
-     * no reason to pay the verification round-trip on public pages)
-     * and for /admin/login itself. */
+    /** Resolved, server-verified session (src/lib/auth.ts) — the SAME
+     * cookie/session system serves both staff (role >= contributor,
+     * signed in via /admin/login) and public researcher accounts (role
+     * 'member', signed in via /login). Populated by src/middleware.ts
+     * for EVERY request (2026-08-13: the site-wide researcher-account
+     * gate) so pages/routes never need to re-verify the cookie
+     * themselves. Null only when the visitor genuinely has no valid
+     * session — which, for any path outside the public allow-list
+     * (src/middleware.ts's PUBLIC_* sets), middleware has already
+     * turned into a redirect/401 before the page ever runs. */
     session: import('./lib/auth').Session | null;
     /** Set by src/middleware.ts from env.STAGING_READ_ONLY — true only
      * on the staging Worker after production has launched. Purely

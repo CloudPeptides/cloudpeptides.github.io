@@ -46,6 +46,11 @@ test-results/
 playwright-report/
 coverage/
 
+# e2e authenticated storageState (tests/e2e/global-setup.ts) — real
+# session cookies for the seeded test account, regenerated fresh every
+# run; never meant to be committed.
+tests/e2e/.auth/
+
 # database backups (scripts/migration/backup-production.mjs output) —
 # a raw SQL dump of production data must never be committed.
 backups/

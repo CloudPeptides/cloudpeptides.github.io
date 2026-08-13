@@ -1,0 +1,31 @@
+---
+/**
+ * Email-verification landing page — the emailRedirectTo target
+ * registration passes to supabase.auth.signUp() (src/pages/api/account/
+ * register.ts). Supabase's confirmation link redirects the browser
+ * here carrying either a PKCE `?code=` (readable server-side) or
+ * implicit-flow tokens in the URL *fragment* (`#access_token=...`,
+ * never sent to any server) — src/scripts/verify-email.ts's inline
+ * script reads whichever shape is present client-side and POSTs it to
+ * /api/account/verify-session, which establishes this app's own
+ * session cookies. This page itself renders no server-resolved state;
+ * it's a small status shell the script fills in.
+ */
+export const prerender = false;
+import AccountLayout from '../layouts/AccountLayout.astro';
+---
+
+<AccountLayout title="Verifying Your Email">
+  <section class="cp-account-card">
+    <h1>Verifying your email…</h1>
+    <p class="cp-account-intro" id="verifyStatus">
+      Please wait while we confirm your email address.
+    </p>
+    <p class="cp-form-message" data-tone="error" id="verifyErrorMessage" role="alert" hidden></p>
+    <a class="cp-btn-full" id="verifyContinueLink" href="/certify" hidden>Continue</a>
+  </section>
+</AccountLayout>
+
+<script>
+  import '../scripts/verify-email.ts';
+</script>

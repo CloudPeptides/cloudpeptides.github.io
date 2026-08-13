@@ -139,6 +139,14 @@ function buildCustomerEmail(requestNumber: string, data: CheckoutSubmission): st
 }
 
 export const POST: APIRoute = async ({ request, locals }) => {
+  // src/middleware.ts already refuses any unauthenticated request to
+  // this path before it ever reaches here — locals.session is
+  // guaranteed non-null. The check below is only to satisfy strict
+  // typing without a non-null assertion this far into the handler.
+  const session = locals.session;
+  if (!session) {
+    return json({ success: false, error: 'Authentication required.' }, 401);
+  }
   // Research-platform-first launch: commerce is gated behind this flag
   // (src/lib/launch-config.ts) — checked first, before any parsing/
   // rate-limit/Turnstile work, so no order can ever be submitted or
@@ -216,7 +224,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
   let catalogEntries;
   try {
-    catalogEntries = await listCheckoutCatalogEntries();
+    catalogEntries = await listCheckoutCatalogEntries(session.accessToken);
   } catch (err) {
     console.error('checkout catalog lookup failed:', err instanceof Error ? err.message : err);
     return json(

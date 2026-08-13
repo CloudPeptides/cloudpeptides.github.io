@@ -1,0 +1,90 @@
+---
+/**
+ * Public researcher-account sign-in — src/middleware.ts's PUBLIC_
+ * ACCOUNT_PATHS entry, reachable without a session by definition. If a
+ * valid session already resolves here, bounce straight through to
+ * wherever `next` points (or /) rather than showing the form again —
+ * same pattern as admin/login.astro.
+ */
+export const prerender = false;
+
+import AccountLayout from '../layouts/AccountLayout.astro';
+
+const next = Astro.url.searchParams.get('next');
+const redirectTarget = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
+if (Astro.locals.session) {
+  return Astro.redirect(redirectTarget);
+}
+
+const errorParam = Astro.url.searchParams.get('error');
+const suspendedNotice = errorParam === 'suspended';
+const justRegistered = Astro.url.searchParams.get('registered') === 'success';
+const justReset = Astro.url.searchParams.get('reset') === 'success';
+---
+
+<AccountLayout title="Researcher Access Required">
+  <section class="cp-account-card">
+    <h1>Researcher Access Required</h1>
+    <p class="cp-account-intro">
+      Cloud Peptides provides scientific information and laboratory research materials for qualified
+      independent researchers and research organizations. Create a verified researcher account or
+      sign in to continue.
+    </p>
+
+    {
+      suspendedNotice && (
+        <p class="cp-form-message" data-tone="error" role="alert">
+          This account has been suspended. Contact support if you believe this is an error.
+        </p>
+      )
+    }
+    {
+      justRegistered && (
+        <p class="cp-form-message" data-tone="success" role="status">
+          Check your email to verify your account before signing in.
+        </p>
+      )
+    }
+    {
+      justReset && (
+        <p class="cp-form-message" data-tone="success" role="status">
+          Your password has been updated. Sign in with your new password.
+        </p>
+      )
+    }
+
+    <form id="accountLoginForm" class="cp-account-form" data-redirect={redirectTarget}>
+      <label for="email">Email</label>
+      <input type="email" name="email" id="email" required autocomplete="email" />
+
+      <label for="password">Password</label>
+      <div class="cp-password-field">
+        <input
+          type="password"
+          name="password"
+          id="password"
+          required
+          autocomplete="current-password"
+        />
+        <button type="button" data-password-toggle data-target="password" aria-pressed="false">
+          Show
+        </button>
+      </div>
+
+      <p class="cp-form-message" data-tone="error" id="loginFormMessage" role="alert" hidden></p>
+
+      <button class="cp-btn-full" type="submit" id="loginSubmit">Sign In</button>
+    </form>
+
+    <p class="cp-account-link"><a href="/forgot-password">Forgot password?</a></p>
+
+    <div class="cp-account-divider" role="separator">or</div>
+
+    <a class="cp-btn-full cp-btn-secondary" href="/register">Create a Researcher Account</a>
+  </section>
+</AccountLayout>
+
+<script>
+  import '../scripts/password-toggle.ts';
+  import '../scripts/account-login-form.ts';
+</script>

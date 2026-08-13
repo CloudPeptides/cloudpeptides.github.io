@@ -1,0 +1,159 @@
+---
+/**
+ * Researcher account registration — src/middleware.ts's PUBLIC_
+ * ACCOUNT_PATHS entry. Collects the full mandatory field set (full
+ * name, email, password, country, region, research affiliation, 18+
+ * confirmation, and the combined Researcher Certification/Research Use
+ * Policy/Terms/Privacy acceptance) and posts to src/pages/api/account/
+ * register.ts, which creates the auth user (email confirmation
+ * required — no session exists until that link is clicked) and the
+ * researcher_profiles/researcher_attestations rows.
+ */
+export const prerender = false;
+
+import AccountLayout from '../layouts/AccountLayout.astro';
+import { COUNTRIES } from '../lib/countries';
+import {
+  AGE_CONFIRMATION_LABEL,
+  RESEARCHER_CERTIFICATION_CHECKBOX_LABEL,
+  RESEARCHER_CERTIFICATION_FALSE_INFO_NOTICE,
+  RESEARCHER_CERTIFICATION_HEADING,
+  RESEARCHER_CERTIFICATION_TEXT,
+} from '../lib/researcher-certification';
+
+if (Astro.locals.session) {
+  return Astro.redirect('/');
+}
+---
+
+<AccountLayout title="Create a Researcher Account">
+  <section class="cp-account-card cp-account-card--wide">
+    <h1>Create a Researcher Account</h1>
+    <p class="cp-account-intro">
+      Cloud Peptides provides scientific information and laboratory research materials for qualified
+      independent researchers and research organizations. Registration is restricted to users
+      accessing educational scientific information or conducting legitimate, non-clinical laboratory
+      research.
+    </p>
+
+    <p class="cp-form-message" data-tone="error" id="registerFormMessage" role="alert" hidden></p>
+    <p class="cp-form-message" data-tone="success" id="registerSuccessMessage" role="status" hidden>
+    </p>
+
+    <form id="registerForm" class="cp-account-form">
+      <label for="fullName">Full name</label>
+      <input
+        type="text"
+        name="fullName"
+        id="fullName"
+        required
+        autocomplete="name"
+        maxlength="200"
+      />
+
+      <label for="email">Email address</label>
+      <input type="email" name="email" id="email" required autocomplete="email" maxlength="200" />
+
+      <div class="cp-account-form-row">
+        <div>
+          <label for="password">Password</label>
+          <div class="cp-password-field">
+            <input
+              type="password"
+              name="password"
+              id="password"
+              required
+              minlength="8"
+              autocomplete="new-password"
+            />
+            <button type="button" data-password-toggle data-target="password" aria-pressed="false">
+              Show
+            </button>
+          </div>
+        </div>
+        <div>
+          <label for="confirmPassword">Confirm password</label>
+          <div class="cp-password-field">
+            <input
+              type="password"
+              name="confirmPassword"
+              id="confirmPassword"
+              required
+              minlength="8"
+              autocomplete="new-password"
+            />
+            <button
+              type="button"
+              data-password-toggle
+              data-target="confirmPassword"
+              aria-pressed="false"
+            >
+              Show
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="cp-account-form-row">
+        <div>
+          <label for="country">Country</label>
+          <select name="country" id="country" required autocomplete="country-name">
+            <option value="" disabled selected>Select a country</option>
+            {COUNTRIES.map((c) => <option value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div>
+          <label for="region">State / province / region</label>
+          <input
+            type="text"
+            name="region"
+            id="region"
+            autocomplete="address-level1"
+            maxlength="100"
+          />
+        </div>
+      </div>
+
+      <label for="researchAffiliation">Research affiliation</label>
+      <input
+        type="text"
+        name="researchAffiliation"
+        id="researchAffiliation"
+        required
+        maxlength="200"
+        list="affiliationSuggestions"
+        placeholder="e.g. Independent researcher, university, or organization name"
+      />
+      <datalist id="affiliationSuggestions">
+        <option value="Independent researcher"></option>
+      </datalist>
+
+      <div class="cp-checkbox-row">
+        <input type="checkbox" name="age18" id="age18" required />
+        <label for="age18">{AGE_CONFIRMATION_LABEL}</label>
+      </div>
+
+      <fieldset>
+        <legend>{RESEARCHER_CERTIFICATION_HEADING}</legend>
+        <div class="cp-certification-block" tabindex="0">
+          {RESEARCHER_CERTIFICATION_TEXT.map((paragraph) => <p>{paragraph}</p>)}
+        </div>
+
+        <div class="cp-checkbox-row">
+          <input type="checkbox" name="certificationAccepted" id="certificationAccepted" required />
+          <label for="certificationAccepted">{RESEARCHER_CERTIFICATION_CHECKBOX_LABEL}</label>
+        </div>
+        <p class="cp-certification-notice">{RESEARCHER_CERTIFICATION_FALSE_INFO_NOTICE}</p>
+      </fieldset>
+
+      <button class="cp-btn-full" type="submit" id="registerSubmit">Create Account</button>
+    </form>
+
+    <p class="cp-account-link">Already have an account? <a href="/login">Sign in</a></p>
+  </section>
+</AccountLayout>
+
+<script>
+  import '../scripts/password-toggle.ts';
+  import '../scripts/account-register-form.ts';
+</script>

@@ -87,3 +87,12 @@ export function describePasswordUpdateError(message: string | undefined | null):
 export function buildResetRedirectUrl(origin: string): string {
   return `${origin}/admin/reset-password`;
 }
+
+/** Same as buildResetRedirectUrl, for the public researcher-account
+ * gate's own /reset-password page (src/pages/api/account/
+ * forgot-password.ts) — a separate URL so an admin recovery link and a
+ * researcher recovery link can never be confused for one another, even
+ * though both ultimately call the same exchange/updateUser logic. */
+export function buildAccountResetRedirectUrl(origin: string): string {
+  return `${origin}/reset-password`;
+}

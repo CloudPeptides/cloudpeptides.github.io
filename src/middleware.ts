@@ -6,39 +6,40 @@
  * middleware would otherwise cover.
  *
  * IMPORTANT, verified empirically (not assumed): prerendered/static
- * output (the shop pages, homepage) is still served directly from the
- * Cloudflare assets binding and never actually reaches this file, even
- * with run_worker_first — confirmed via `wrangler dev` that a static
- * route's response carries none of the headers set below. Those routes
- * get their own copy of the same headers via the Cloudflare `_headers`
- * mechanism instead (scripts/postbuild-headers.mjs, appended to
- * dist/client/_headers after build). This file is the source of truth
- * for on-demand routes: the research directory/profiles, sitemap,
- * robots.txt, and the API routes — everywhere real per-request
- * variation (a nonce, a request-specific noindex decision) matters.
+ * output is still served directly from the Cloudflare assets binding
+ * and never actually reaches this file, even with run_worker_first —
+ * confirmed via `wrangler dev` that a static route's response carries
+ * none of the headers set below. This is also why every page this file
+ * is meant to gate (see PUBLIC_PATHS below) MUST declare
+ * `export const prerender = false` — a page left statically prerendered
+ * bypasses this file, and therefore the auth gate, entirely, regardless
+ * of what this file says about it. src/pages/terms.astro, privacy.astro,
+ * and research-use-policy.astro are the deliberate exception: they are
+ * meant to be public, so staying prerendered (faster, simpler) is fine
+ * for them specifically.
+ *
+ * Mandatory researcher-account gate (2026-08-13, approved): every
+ * route in the app now requires a signed-in, non-suspended session by
+ * default — the previous version of this file only gated /admin* and
+ * /api/admin/*. PUBLIC_PATHS below is the complete, explicit allow-list
+ * of what an unauthenticated visitor may still reach; everything else
+ * is protected, including routes added after this comment was written
+ * (deny-by-default, not deny-by-enumeration of what's sensitive).
  */
 import { defineMiddleware } from 'astro:middleware';
 import { env } from 'cloudflare:workers';
 import { isIndexableHost, isStagingReadOnly } from './lib/site-env';
 import { SECURITY_HEADERS_BASE, buildDynamicCsp } from './lib/security-headers';
-import { hasMinRole, resolveSession } from './lib/auth';
+import {
+  clearSessionCookies,
+  createUserScopedClient,
+  hasMinRole,
+  resolveSession,
+} from './lib/auth';
+import { getLatestAttestation, getResearcherProfile } from './lib/researcher';
+import { needsCertification } from './lib/researcher-certification';
 
-// Methods that never write anything — always allowed through, even in
-// staging read-only mode, so browsing the admin dashboard (viewing
-// compounds, sources, the audit log, etc.) still works after cutover.
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
-
-// Legacy GitHub Pages URL redirects (CLAUDE.md §10) are deliberately
-// NOT handled here. Found live, not assumed: a `.html` path with no
-// matching static asset (every legacy URL — this app never had a real
-// file at those paths) is intercepted by Cloudflare's Workers Static
-// Assets binding and served the static 404.html directly, before the
-// Worker — and therefore this file — ever runs, confirmed via both
-// `astro preview` and `wrangler dev` and unaffected by
-// wrangler.jsonc's `not_found_handling` setting. Making each legacy
-// path a real, matched Astro route sidesteps the ambiguity entirely —
-// see src/pages/product.html.astro and src/pages/[legacy].html.astro,
-// which both import src/lib/legacy-redirects.ts directly.
 
 function generateNonce(): string {
   const bytes = new Uint8Array(16);
@@ -46,17 +47,69 @@ function generateNonce(): string {
   return btoa(String.fromCharCode(...bytes));
 }
 
-// /admin/login must stay reachable without a session (it's how you get
-// one); same for the password-recovery pages — a locked-out admin has
-// no session by definition. Every other /admin/* page requires a
-// signed-in, contributor+ account. /api/auth/* (login/logout/
-// forgot-password/reset-password themselves) are deliberately NOT
-// under /api/admin, so they're never gated here either.
+// /admin/login and its own password-recovery pages must stay reachable
+// without a session (a locked-out admin has no session by definition).
 const PUBLIC_ADMIN_PATHS = new Set([
   '/admin/login',
   '/admin/forgot-password',
   '/admin/reset-password',
 ]);
+
+// The public researcher-account gate's own entry points, plus the
+// legal pages a visitor must be able to read before creating an
+// account. /certify is deliberately NOT here — it requires a session
+// (an uncertified researcher is still authenticated), it just skips the
+// *certification* check specifically (see isCertifyPath below).
+const PUBLIC_ACCOUNT_PATHS = new Set([
+  '/login',
+  '/register',
+  '/verify-email',
+  '/forgot-password',
+  '/reset-password',
+  '/terms',
+  '/privacy',
+  '/research-use-policy',
+  '/404',
+  '/robots.txt',
+  '/sitemap.xml',
+]);
+
+// Unauthenticated-callable API routes — the actions that establish or
+// recover a session in the first place. Every other /api/* route
+// requires a session, admin ones additionally requiring contributor+.
+const PUBLIC_API_PATHS = new Set([
+  '/api/auth/login',
+  '/api/auth/logout',
+  '/api/auth/forgot-password',
+  '/api/auth/reset-password',
+  '/api/account/register',
+  '/api/account/login',
+  '/api/account/forgot-password',
+  '/api/account/reset-password',
+  '/api/account/verify-session',
+]);
+
+// Astro's static output serves prerendered pages at their directory-
+// index URL (/privacy/index.html) and redirects the bare, no-slash
+// request to it — found live: that redirect target IS a real request
+// this middleware evaluates, so '/privacy' and '/privacy/' must both be
+// recognized as the same public path, or the second hop (the one that
+// actually renders content) gets wrongly treated as protected. On-
+// demand routes never hit this (Astro doesn't append a trailing slash
+// to those), but normalizing here costs nothing and is correct for
+// both kinds of route either way.
+function normalizePathname(pathname: string): string {
+  return pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
+}
+
+function isPublicPath(pathname: string): boolean {
+  const normalized = normalizePathname(pathname);
+  return (
+    PUBLIC_ADMIN_PATHS.has(normalized) ||
+    PUBLIC_ACCOUNT_PATHS.has(normalized) ||
+    PUBLIC_API_PATHS.has(normalized)
+  );
+}
 
 function isProtectedAdminPage(pathname: string): boolean {
   return pathname.startsWith('/admin') && !PUBLIC_ADMIN_PATHS.has(pathname);
@@ -64,6 +117,23 @@ function isProtectedAdminPage(pathname: string): boolean {
 
 function isProtectedAdminApi(pathname: string): boolean {
   return pathname.startsWith('/api/admin');
+}
+
+function isApiPath(pathname: string): boolean {
+  return pathname.startsWith('/api/');
+}
+
+function jsonResponse(body: unknown, status: number, extraHeaders: string[]): Response {
+  const headers = new Headers({ 'Content-Type': 'application/json' });
+  for (const cookie of extraHeaders) headers.append('Set-Cookie', cookie);
+  return new Response(JSON.stringify(body), { status, headers });
+}
+
+function redirectTo(target: string, url: URL, extraHeaders: string[]): Response {
+  const redirectUrl = new URL(target, url);
+  const headers = new Headers({ Location: redirectUrl.toString() });
+  for (const cookie of extraHeaders) headers.append('Set-Cookie', cookie);
+  return new Response(null, { status: 302, headers });
 }
 
 export const onRequest = defineMiddleware(async (context, next) => {
@@ -75,85 +145,136 @@ export const onRequest = defineMiddleware(async (context, next) => {
   context.locals.stagingReadOnly = isStagingReadOnly(env.STAGING_READ_ONLY);
 
   const pathname = context.url.pathname;
-  // Resolved for every /admin* path, including /admin/login itself —
-  // that page needs to know "is someone already signed in" to redirect
-  // them straight through rather than show the form again. Only
-  // isProtectedAdminPage()/isProtectedAdminApi() paths actually enforce
-  // the redirect-or-401 below.
-  const needsSession = pathname.startsWith('/admin') || isProtectedAdminApi(pathname);
-  let sessionSetCookies: string[] = [];
+  const secureCookies = context.url.protocol === 'https:';
 
-  if (needsSession) {
-    const secureCookies = context.url.protocol === 'https:';
-    const resolved = await resolveSession(context.request.headers.get('cookie'), secureCookies);
-    context.locals.session = resolved.session;
-    sessionSetCookies = resolved.setCookies;
+  // Session is resolved for every request now (not just /admin*) — the
+  // site-wide gate needs to know "who is this" before deciding whether
+  // to let a request through at all.
+  const resolved = await resolveSession(context.request.headers.get('cookie'), secureCookies);
+  context.locals.session = resolved.session;
+  const sessionSetCookies: string[] = resolved.setCookies;
 
-    // Baseline gate only: "signed in, at least contributor." Individual
-    // /api/admin/* routes and /admin/* pages still perform their own
-    // finer-grained role check (editor for publish, admin for user
-    // management) — this is deliberately not the only place authorization
-    // happens (CLAUDE.md §8: never rely on a single client-facing check).
-    // /admin/login itself is exempt from this enforcement (it still
-    // resolves the session above, purely so the login page can bounce an
-    // already-authenticated visitor onward).
-    const enforced = isProtectedAdminPage(pathname) || isProtectedAdminApi(pathname);
-    const authorized = !enforced || hasMinRole(resolved.session?.role, 'contributor');
-    if (!authorized) {
-      if (isProtectedAdminApi(pathname)) {
-        const headers = new Headers({ 'Content-Type': 'application/json' });
-        for (const cookie of sessionSetCookies) headers.append('Set-Cookie', cookie);
-        return new Response(JSON.stringify({ success: false, error: 'Authentication required.' }), {
-          status: resolved.session ? 403 : 401,
-          headers,
+  const publicPath = isPublicPath(pathname);
+
+  if (!publicPath) {
+    const isAdminArea = isProtectedAdminPage(pathname) || isProtectedAdminApi(pathname);
+
+    // Admin-area role check — checked BEFORE the generic "no session"
+    // branch below, and independent of whether a session exists at
+    // all, so both "no session" and "signed in, but not contributor+"
+    // land on /admin/login (never /login — a plain researcher session
+    // hitting /admin/login must see the ordinary sign-in form, not get
+    // sent back into this very check in a loop; see admin/login.astro's
+    // own matching fix).
+    if (isAdminArea) {
+      const authorized = hasMinRole(resolved.session?.role, 'contributor');
+      if (!authorized) {
+        if (isProtectedAdminApi(pathname)) {
+          return jsonResponse(
+            { success: false, error: 'Authentication required.' },
+            resolved.session ? 403 : 401,
+            sessionSetCookies,
+          );
+        }
+        const redirectUrl = new URL('/admin/login', context.url);
+        redirectUrl.searchParams.set('next', pathname);
+        return redirectTo(
+          redirectUrl.pathname + redirectUrl.search,
+          context.url,
+          sessionSetCookies,
+        );
+      }
+
+      // Shared-database staging/production write boundary — unchanged.
+      const STAGING_READ_ONLY_EXEMPT_PREFIX = '/api/admin/pricing-catalog';
+      if (
+        isProtectedAdminApi(pathname) &&
+        !SAFE_METHODS.has(context.request.method) &&
+        isStagingReadOnly(env.STAGING_READ_ONLY) &&
+        !pathname.startsWith(STAGING_READ_ONLY_EXEMPT_PREFIX)
+      ) {
+        return jsonResponse(
+          {
+            success: false,
+            error:
+              'This deployment is read-only. Staging and production share one database; make editorial changes on the production site instead.',
+          },
+          403,
+          sessionSetCookies,
+        );
+      }
+    } else if (!resolved.session) {
+      if (isApiPath(pathname)) {
+        return jsonResponse(
+          { success: false, error: 'Authentication required.' },
+          401,
+          sessionSetCookies,
+        );
+      }
+      const redirectUrl = new URL('/login', context.url);
+      redirectUrl.searchParams.set('next', pathname);
+      return redirectTo(redirectUrl.pathname + redirectUrl.search, context.url, sessionSetCookies);
+    } else if (!hasMinRole(resolved.session.role, 'contributor')) {
+      // Every other protected route, reached by a plain researcher
+      // ('member') account: enforce suspension + certification. Staff
+      // roles (contributor+) skip this entirely — they are not
+      // researcher accounts and carry no researcher_profiles row.
+      const isCertifyPath = pathname === '/certify' || pathname === '/api/account/certify';
+      try {
+        const client = createUserScopedClient(resolved.session.accessToken);
+        const profile = await getResearcherProfile(client, resolved.session.userId);
+
+        if (profile?.account_status === 'suspended') {
+          const clearCookies = clearSessionCookies(secureCookies);
+          if (isApiPath(pathname)) {
+            return jsonResponse(
+              { success: false, error: 'This account has been suspended.' },
+              403,
+              clearCookies,
+            );
+          }
+          const redirectUrl = new URL('/login', context.url);
+          redirectUrl.searchParams.set('error', 'suspended');
+          return redirectTo(redirectUrl.pathname + redirectUrl.search, context.url, clearCookies);
+        }
+
+        if (!isCertifyPath) {
+          const latest = await getLatestAttestation(client, resolved.session.userId);
+          if (needsCertification(latest, profile?.force_recertify_after ?? null)) {
+            if (isApiPath(pathname)) {
+              return jsonResponse(
+                { success: false, error: 'Researcher certification required.' },
+                403,
+                sessionSetCookies,
+              );
+            }
+            const redirectUrl = new URL('/certify', context.url);
+            redirectUrl.searchParams.set('next', pathname);
+            return redirectTo(
+              redirectUrl.pathname + redirectUrl.search,
+              context.url,
+              sessionSetCookies,
+            );
+          }
+        }
+      } catch (err) {
+        // A transient DB/RLS failure here must fail closed (deny), not
+        // silently let an unverified researcher through — this is the
+        // one place in this file where "can't tell" and "not allowed"
+        // are treated the same.
+        console.error('researcher gate check failed:', err instanceof Error ? err.message : err);
+        if (isApiPath(pathname)) {
+          return jsonResponse(
+            { success: false, error: 'Please try again.' },
+            503,
+            sessionSetCookies,
+          );
+        }
+        return new Response('Something went wrong. Please try again.', {
+          status: 503,
+          headers: new Headers({ 'Content-Type': 'text/plain' }),
         });
       }
-      const redirectUrl = new URL('/admin/login', context.url);
-      redirectUrl.searchParams.set('next', pathname);
-      const headers = new Headers({ Location: redirectUrl.toString() });
-      for (const cookie of sessionSetCookies) headers.append('Set-Cookie', cookie);
-      return new Response(null, { status: 302, headers });
-    }
-
-    // Shared-database safety boundary (docs/planning/production-cutover-plan.md
-    // §1): once STAGING_READ_ONLY=true, this Worker refuses to write to
-    // the database at all — regardless of the caller's role, and even
-    // though that role check just passed. Checked centrally, here, not
-    // per-route: any current or future /api/admin/* mutation route
-    // inherits this automatically. GET/HEAD/OPTIONS are exempt so the
-    // dashboard stays browsable.
-    //
-    // One narrow, explicit exemption: /api/admin/pricing-catalog. That
-    // table (supabase/migrations/20260808170000_admin_pricing_catalog.sql)
-    // has no public/production-facing read path at all — it's never
-    // displayed on any public page or API, and the page itself
-    // separately 404s on the real production hostname
-    // (src/pages/admin/pricing-catalog.astro's own indexable-host
-    // check) — so unlike compounds/claims/every other admin-writable
-    // table, a write here through the staging Worker cannot pollute
-    // anything production actually serves; "staging" and "production"
-    // aren't meaningfully different environments for this one private,
-    // internal-only table. This exemption exists specifically so the
-    // pricing-editing feature can be tested live on the deployed
-    // staging Worker, per explicit instruction (2026-08-08) — it does
-    // not weaken the boundary for any research/commerce content table.
-    const STAGING_READ_ONLY_EXEMPT_PREFIX = '/api/admin/pricing-catalog';
-    if (
-      isProtectedAdminApi(pathname) &&
-      !SAFE_METHODS.has(context.request.method) &&
-      isStagingReadOnly(env.STAGING_READ_ONLY) &&
-      !pathname.startsWith(STAGING_READ_ONLY_EXEMPT_PREFIX)
-    ) {
-      const headers = new Headers({ 'Content-Type': 'application/json' });
-      for (const cookie of sessionSetCookies) headers.append('Set-Cookie', cookie);
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error:
-            'This deployment is read-only. Staging and production share one database; make editorial changes on the production site instead.',
-        }),
-        { status: 403, headers },
-      );
     }
   }
 
@@ -165,16 +286,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
     headers.set(name, value);
   }
   headers.set('Content-Security-Policy', buildDynamicCsp(nonce));
-  if (!indexable || pathname.startsWith('/admin')) {
+  // Every protected page is inherently non-indexable regardless of host
+  // (a crawler is never authenticated, so it would only ever see the
+  // login redirect anyway) — noindex is set for anything outside the
+  // small public allow-list, on top of the existing !indexable rule.
+  if (!indexable || !publicPath) {
     headers.set('X-Robots-Tag', 'noindex, nofollow');
   }
-  // HSTS only makes sense — and is only safe — on the actual production
-  // hostname. *.workers.dev is a shared, multi-tenant Cloudflare domain;
-  // sending Strict-Transport-Security there is harmless in isolation but
-  // adds nothing (Cloudflare already enforces HTTPS on it) and this
-  // guard is what keeps it from ever being sent with `includeSubDomains`
-  // against a domain this app doesn't own the whole of. On the real
-  // production host it's fully appropriate.
   if (indexable && context.url.protocol === 'https:') {
     headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
   }

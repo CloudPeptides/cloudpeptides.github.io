@@ -24,6 +24,15 @@ interface Props {
 
 const { links = [{ label: 'Home', href: '/' }] } = Astro.props;
 const currentPath = Astro.url.pathname;
+// Mandatory researcher-account gate (2026-08-13): Nav renders on the
+// small set of pages that stay reachable without a session too
+// (/terms, /privacy, /research-use-policy) — "Sign out" only makes
+// sense, and only appears, when a session actually exists to sign out
+// of. Read directly off Astro.locals rather than a prop: every caller
+// of this component already runs inside the same per-request context
+// middleware.ts populated, so there's nothing a prop would add beyond
+// another thing for every BaseLayout usage to remember to pass through.
+const hasSession = Boolean(Astro.locals.session);
 ---
 
 <header class="cp-nav">
@@ -66,6 +75,13 @@ const currentPath = Astro.url.pathname;
       <button type="button" data-theme-toggle aria-pressed="false" aria-label="Toggle dark theme">
         <span aria-hidden="true">◐</span>
       </button>
+      {
+        hasSession && (
+          <button type="button" data-account-logout class="cp-nav__signout">
+            Sign out
+          </button>
+        )
+      }
       <button
         type="button"
         data-nav-toggle
@@ -115,11 +131,19 @@ const currentPath = Astro.url.pathname;
     <button type="button" data-theme-toggle aria-pressed="false" class="cp-btn-full">
       Toggle dark theme
     </button>
+    {
+      hasSession && (
+        <button type="button" data-account-logout class="cp-btn-full">
+          Sign out
+        </button>
+      )
+    }
   </dialog>
 </header>
 
 <script>
   import '../scripts/nav.ts';
+  import '../scripts/account-logout.ts';
 </script>
 
 <style>
@@ -240,6 +264,14 @@ const currentPath = Astro.url.pathname;
 
   .cp-nav__menu-btn {
     display: inline-flex;
+  }
+
+  .cp-nav__signout {
+    font-family: var(--font-body);
+    font-size: var(--text-caption);
+    font-weight: 500;
+    width: auto;
+    padding: 0 0.75rem;
   }
 
   .cp-nav__dialog {
