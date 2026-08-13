@@ -1,10 +1,12 @@
 ---
 /**
- * Contact page — rebuild of legacy-site/contact.html. Same contact
- * options (Discord/email/phone) and same form fields (name/email/
- * message + honeypot), posting to src/pages/api/contact.ts (a
- * server-side Worker route calling Resend) instead of the legacy
- * client-side Web3Forms call.
+ * Contact page — rebuild of legacy-site/contact.html, originally with
+ * the same contact options (Discord/email/phone) as the legacy site;
+ * the phone/iMessage/WhatsApp option was removed by explicit request
+ * (2026-08-13) — Discord and email only, going forward. Same form
+ * fields (name/email/message + honeypot), posting to
+ * src/pages/api/contact.ts (a server-side Worker route calling Resend)
+ * instead of the legacy client-side Web3Forms call.
  */
 export const prerender = false;
 
@@ -13,7 +15,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
 <BaseLayout
   title="Contact"
-  description="Reach Cloud Peptides through Discord, email, phone, or the contact form below."
+  description="Reach Cloud Peptides through Discord, email, or the contact form below."
 >
   <section class="cp-contact-container">
     <header class="cp-contact-header">
