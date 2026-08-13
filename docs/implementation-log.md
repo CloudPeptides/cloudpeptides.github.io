@@ -2,6 +2,47 @@
 
 Append-only. One entry per meaningful step, per [CLAUDE.md](../CLAUDE.md) §3/§11/§12.
 
+## Product Rebrand + Mandatory Researcher-Account Gate (2026-08-13)
+
+Three approved deliverables, staging-only per explicit instruction; `main`/production untouched pending separate approval.
+
+**1. Shop rebrand (CP-S1/CP-T2/CP-R3), research/shop separation.** Commit `3e11a35`.
+
+- Data-only: 15 `shop_products` rows (2 Semaglutide, 6 Tirzepatide, 7 Retatrutide SKUs) renamed `name`/`product_slug` to CP-S1/CP-T2/CP-R3; `compound_id` (existing column, previously null on every row) set to link each to its real research compound — admin-only, never selected by any public/researcher query. 6 published `batch_coas.peptide_name` rows updated to match. One `audit_log` entry (`product_rebrand_cp_codes`) records the full before/after mapping.
+- `src/lib/shop-products.ts` (the documented static rollback source) updated to match.
+- No shop/cart/checkout/email code changes needed — all already read product name/slug dynamically from the catalog.
+- Confirmed the three research profiles never linked to shop products in the first place (`ShopDisclosure.astro` is dev-fixture-only) — nothing to remove.
+
+**2. Mandatory researcher-account gate.** Commits `b595cc3`, `6b94d20`.
+
+- `src/middleware.ts` rewritten: every route requires a signed-in, non-suspended session by default (previously only `/admin*`/`/api/admin/*`). Explicit small public allow-list (login, register, verify-email, forgot/reset-password, terms, privacy, research-use-policy); deny-by-default otherwise.
+- New tables: `researcher_profiles` (self-service profile + admin-only status/suspension/force-recertify fields, trigger-protected) and `researcher_attestations` (append-only, no update/delete policy for any role including admin) — `supabase/migrations/20260813120000_researcher_accounts.sql`.
+- `supabase/migrations/20260813121000_gate_revoke_anon_access.sql`: revoked every `anon` SELECT grant added since Phase 2/3 across all research + commerce tables; replaced anon-scoped RLS policies with authenticated-scoped equivalents. `coa-documents` Storage bucket flipped private (was `public: true`, which bypasses RLS entirely via its own public object URL — a real hole for a gated gallery); public COA gallery now uses short-lived signed URLs.
+- Full registration/certification/email-verification/password-reset flow (`/register`, `/verify-email`, `/certify`, `/login`, `/forgot-password`, `/reset-password` + matching `/api/account/*` routes), built on the same session-cookie system `/admin` already used.
+- Every research/shop/COA data read switched from a bare anon-key client to the visitor's own verified session (`createUserScopedClient`), required now that anon has no grant.
+- **Two real bugs found and fixed live, not assumed:**
+  - `/admin/login` looped infinitely for a signed-in researcher session (bounced to `/admin`, which middleware then bounced back, forever) — fixed to only bounce through for a session clearing the same contributor+ bar.
+  - `src/pages/api/auth/logout.ts` called `signOut()` with supabase-js's default `scope: 'global'`, which revokes **every** session for that user account, not just the current one — this cascaded into an e2e-suite failure (one test's sign-out silently killed the shared test account's session mid-run, failing unrelated concurrently-running tests). Fixed to `scope: 'local'` — the correct behavior for an ordinary sign-out regardless of the test artifact it surfaced.
+- Supabase Auth redirect allow-list (`uri_allow_list`) updated via the Management API to add the staging `/verify-email` and `/reset-password` URLs — required for those flows to work at all; production URLs deliberately not yet added (staging-only approval).
+
+**3. Admin researcher management.** Commit `6b94d20`.
+
+- `/admin/researchers`: view status/certification/affiliation/jurisdiction/verification/last-sign-in; suspend/reinstate/require-recertification actions; audit history via a filtered link into the existing `/admin/audit-log`. Every write uses the acting admin's own JWT (RLS + trigger enforce it), never the service role.
+
+**Verification, all against the real deployed staging Worker and live shared Supabase project, not assumed:**
+
+- `npm run typecheck` / `lint` / `format:check` (blob-level for pre-existing false-positive CRLF files) — clean.
+- `npx vitest run` — 189/189 unit tests pass.
+- `npx playwright test` — **90/90 e2e tests pass** at default parallelism, no retries, including a new `researcher-gate.spec.ts`/`researcher-access.spec.ts` covering the gate itself. A seeded, already-certified test account (`e2e-researcher-test@cloudpeptides.invalid`) provides the default authenticated `storageState` the whole suite now runs under.
+- `node scripts/check-secrets.mjs` — clean. `node scripts/check-links.mjs` — 94/94 links ok (down from ~1091 pre-gate, since almost nothing is publicly crawlable anymore — expected).
+- Direct `curl` checks against the live staging URL: anonymous `/`, `/shop`, and a direct compound URL all 302 to `/login`; `/login`/`/register`/`/research-use-policy` all 200 unauthenticated; a real login via `/api/account/login` reaches `/` (200), `/shop` (shows CP-S1/CP-T2/CP-R3, zero occurrences of the old scientific names), the Semaglutide research profile (correct name, zero shop-link occurrences), and `/coas` (signed `storage/v1/object/sign/...` URLs, zero raw public-object URLs).
+- Anon-key REST calls directly against the live Supabase project confirmed `401 permission denied` for `compounds`/`shop_products`, and a real previously-public COA file confirmed no longer fetchable via its old public URL.
+- GitHub Actions run `31688437204`: `ci` succeeded, `deploy-staging` succeeded, `deploy-production` correctly skipped (this branch).
+
+**Backup:** full logical JSON export of all 16 public tables + a Storage bucket/object manifest, taken before any migration, stored outside the repo (scratchpad, not committed — contains no secrets but is a full data snapshot).
+
+**Known limitation:** the mandatory per-request live Supabase Auth verification (no shortcut/mock, by design) makes the e2e suite genuinely sensitive to the shared test account's session lifecycle — the global-signOut bug above is exactly that category of issue, now fixed, but any *future* e2e addition that calls the real logout/session-revocation path against the shared seeded account needs to do so via its own independent login (see `researcher-access.spec.ts`'s sign-out test), not the default shared `storageState`.
+
 ## Focused Pre-Launch Correction Pass (2026-08-08)
 
 Four items, each independently resolved, before production cutover:
