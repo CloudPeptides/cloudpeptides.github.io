@@ -13,13 +13,23 @@ test.describe('Add Product / Peptide wizard + management', () => {
     });
   }
 
-  test('unauthenticated writes to the product API are rejected', async ({ request }) => {
-    const createRes = await request.post('/api/admin/products', { data: {} });
-    expect(createRes.status()).toBe(401);
-    const categoryRes = await request.post('/api/admin/products/categories', {
-      data: { name: 'x' },
+  test.describe('genuinely unauthenticated (no session at all)', () => {
+    // Mandatory researcher-account gate (2026-08-13): the rest of this
+    // suite runs with the default authenticated researcher storageState
+    // (playwright.config.ts) — overridden back to no session here, so
+    // this asserts real 401 ("not signed in"), not 403 ("signed in but
+    // not contributor+"), which is what a researcher session would now
+    // otherwise produce against an admin-only route.
+    test.use({ storageState: { cookies: [], origins: [] } });
+
+    test('unauthenticated writes to the product API are rejected', async ({ request }) => {
+      const createRes = await request.post('/api/admin/products', { data: {} });
+      expect(createRes.status()).toBe(401);
+      const categoryRes = await request.post('/api/admin/products/categories', {
+        data: { name: 'x' },
+      });
+      expect(categoryRes.status()).toBe(401);
     });
-    expect(categoryRes.status()).toBe(401);
   });
 
   test('is not linked from any public page', async ({ page }) => {
