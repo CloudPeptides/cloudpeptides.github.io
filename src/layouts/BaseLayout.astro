@@ -51,11 +51,21 @@ interface Props {
   structuredData?: Record<string, unknown> | Record<string, unknown>[];
   /** Skips the public Nav/Footer — used only by the /admin surface,
    * which has its own AdminNav (src/components/admin/AdminNav.astro)
-   * and no public-site footer. Everything else here (theme bootstrap,
+   * and no public-site footer. Everything here (theme bootstrap,
    * meta/OG tags, skip-link, tokens.css, focus/reduced-motion rules)
    * still applies — a single source of truth for the page shell rather
    * than a second, duplicated <html> boilerplate for admin pages. */
   hideChrome?: boolean;
+  /** Installable-PWA head tags (manifest link, Apple mobile-web-app
+   * meta, theme-color, apple-touch-icon) — used only by AdminLayout.astro
+   * (src/pages/admin/*), never the public/researcher site, which is
+   * deliberately NOT an installable app (CLAUDE.md-adjacent task scope:
+   * "do not turn the public/researcher-facing site into the admin
+   * PWA"). The service worker itself is registered separately (src/
+   * scripts/admin-pwa-register.ts, imported only from AdminLayout) —
+   * this prop only controls the <head> tags a browser/iOS needs to
+   * treat the page as installable at all. */
+  pwa?: boolean;
 }
 
 const {
@@ -68,6 +78,7 @@ const {
   noindex = false,
   structuredData,
   hideChrome = false,
+  pwa = false,
 } = Astro.props;
 
 const ORG_WEBSITE_JSONLD = {
@@ -106,6 +117,32 @@ const jsonLdBlocks = [
     <link rel="canonical" href={canonical} />
     {noindex && <meta name="robots" content="noindex, nofollow" />}
     <title>{title} | Cloud Peptides</title>
+
+    {
+      pwa && (
+        <>
+          {/* Android/Chrome installability — src/pages/admin/manifest.webmanifest
+              is a static file (public/admin/manifest.webmanifest) and is
+              deliberately reachable without a session, same as this tag
+              itself: it carries no protected data, only app metadata. */}
+          <link rel="manifest" href="/admin/manifest.webmanifest" />
+          <meta name="theme-color" content="#1f4b3f" />
+          {/* iOS Safari ignores the web manifest for "Add to Home Screen"
+              and instead reads these Apple-specific tags + apple-touch-icon
+              — all three are required for a real standalone iPhone install
+              (Blueprint-adjacent task requirement). apple-touch-icon
+              intentionally has no `sizes` attribute: the source asset is a
+              single 512x512 PNG (public/brand/logo-square.png, the one
+              approved brand mark — no redesign, no duplicate asset) and iOS
+              scales a single largest-available icon down itself; declaring
+              a false exact size would be less honest than omitting it. */}
+          <meta name="apple-mobile-web-app-capable" content="yes" />
+          <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+          <meta name="apple-mobile-web-app-title" content="CP Admin" />
+          <link rel="apple-touch-icon" href="/brand/logo-square.png" />
+        </>
+      )
+    }
 
     <!-- Open Graph / social — design handoff-approved brand mark only.
          width/height/type are fixed to the standard 1200x630 PNG

@@ -1,0 +1,322 @@
+---
+/**
+ * Admin order-request detail — full record, price-snapshot line items,
+ * status-change form (posts to
+ * src/pages/api/admin/order-requests/[id]/status.ts), append-only
+ * status history, and related audit-log entries (reuses the same
+ * audit_log table every other admin action writes to, filtered to this
+ * record — no separate audit system).
+ */
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Badge from '../../../components/ui/Badge.astro';
+import ErrorState from '../../../components/ui/ErrorState.astro';
+import { createServiceClient, createUserScopedClient, hasMinRole } from '../../../lib/auth';
+import { getOrderRequestDetail, ORDER_REQUEST_STATUSES } from '../../../lib/order-requests';
+import { listAuditLog } from '../../../lib/admin/queries';
+
+const session = Astro.locals.session!;
+const isAdmin = hasMinRole(session.role, 'admin');
+if (!isAdmin) Astro.response.status = 403;
+
+const { id } = Astro.params;
+
+let loadError: string | null = null;
+let detail: Awaited<ReturnType<typeof getOrderRequestDetail>> = null;
+let researcherEmail: string | null = null;
+let auditEntries: Awaited<ReturnType<typeof listAuditLog>>['rows'] = [];
+
+if (isAdmin && id) {
+  try {
+    const client = createUserScopedClient(session.accessToken);
+    detail = await getOrderRequestDetail(client, id);
+    if (detail?.order.researcher_user_id) {
+      try {
+        const service = createServiceClient();
+        const { data } = await service.auth.admin.getUserById(detail.order.researcher_user_id);
+        researcherEmail = data.user?.email ?? null;
+      } catch {
+        researcherEmail = null;
+      }
+    }
+    const auditResult = await listAuditLog(client, {
+      page: 1,
+      pageSize: 20,
+      targetTable: 'order_requests',
+      targetId: id,
+    });
+    auditEntries = auditResult.rows;
+  } catch {
+    loadError = 'Could not load this order request right now.';
+  }
+}
+---
+
+<AdminLayout title={detail ? `Order ${detail.order.request_number}` : 'Order Request'}>
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">Admin</p>
+      <h1>{detail ? detail.order.request_number : 'Order request'}</h1>
+      {detail?.order.is_test_order && <Badge tone="neutral">TEST ORDER</Badge>}
+    </div>
+  </div>
+
+  {
+    !isAdmin && (
+      <div class="cp-admin-section">
+        <p class="cp-admin-empty-row">Admins only.</p>
+      </div>
+    )
+  }
+
+  {isAdmin && loadError && <ErrorState message={loadError} retryHref="/admin/order-requests" />}
+
+  {
+    isAdmin && !loadError && !detail && (
+      <div class="cp-admin-section">
+        <p class="cp-admin-empty-row">Order request not found.</p>
+      </div>
+    )
+  }
+
+  {
+    isAdmin && !loadError && detail && (
+      <>
+        <section class="cp-admin-section">
+          <h2>Status</h2>
+          <p>
+            Current: <Badge tone="info">{detail.order.status}</Badge>
+          </p>
+          <form id="statusForm" class="cp-admin-inline-form" data-order-id={detail.order.id}>
+            <label for="newStatus">Change status to</label>
+            <select id="newStatus" name="status">
+              {ORDER_REQUEST_STATUSES.map((s) => (
+                <option value={s} selected={s === detail!.order.status}>
+                  {s}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              id="statusNote"
+              name="note"
+              placeholder="Optional note"
+              maxlength="500"
+            />
+            <button type="submit" class="cp-admin-btn cp-admin-btn--primary cp-admin-btn--sm">
+              Update status
+            </button>
+          </form>
+          <p
+            class="cp-admin-form-message"
+            data-tone="error"
+            id="statusMessage"
+            role="alert"
+            hidden
+          />
+        </section>
+
+        <section class="cp-admin-section">
+          <h2>Customer & shipping</h2>
+          <dl class="cp-order-detail-grid">
+            <div>
+              <dt>Name</dt>
+              <dd>{detail.order.customer_name}</dd>
+            </div>
+            <div>
+              <dt>Email</dt>
+              <dd>{detail.order.customer_email}</dd>
+            </div>
+            <div>
+              <dt>Phone</dt>
+              <dd>{detail.order.customer_phone || '—'}</dd>
+            </div>
+            <div>
+              <dt>Associated researcher account</dt>
+              <dd>
+                {detail.order.researcher_user_id ? (
+                  <a href={`/admin/researchers?highlight=${detail.order.researcher_user_id}`}>
+                    {researcherEmail ?? detail.order.researcher_user_id}
+                  </a>
+                ) : (
+                  '—'
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt>Shipping destination</dt>
+              <dd>
+                {detail.order.shipping_line1}
+                {detail.order.shipping_line2 ? `, ${detail.order.shipping_line2}` : ''}
+                <br />
+                {detail.order.shipping_city}, {detail.order.shipping_region}{' '}
+                {detail.order.shipping_postal_code}
+                <br />
+                {detail.order.shipping_country}
+              </dd>
+            </div>
+            <div>
+              <dt>Submitted</dt>
+              <dd>{new Date(detail.order.submitted_at).toLocaleString()}</dd>
+            </div>
+            <div>
+              <dt>Admin email sent</dt>
+              <dd>{detail.order.admin_email_sent ? 'Yes' : 'No'}</dd>
+            </div>
+            <div>
+              <dt>Customer email sent</dt>
+              <dd>{detail.order.customer_email_sent ? 'Yes' : 'No'}</dd>
+            </div>
+          </dl>
+          {detail.order.customer_notes && (
+            <>
+              <h3>Customer notes</h3>
+              <p>{detail.order.customer_notes}</p>
+            </>
+          )}
+        </section>
+
+        <section class="cp-admin-section">
+          <h2>Requested products</h2>
+          <div class="cp-admin-table-wrap">
+            <table class="cp-admin-table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Option</th>
+                  <th>Quantity</th>
+                  <th>Unit price</th>
+                  <th>Line total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {detail.items.map((item) => (
+                  <tr>
+                    <td>{item.product_name}</td>
+                    <td>{item.product_spec}</td>
+                    <td>{item.quantity}</td>
+                    <td>${item.unit_price.toFixed(2)}</td>
+                    <td>${(item.unit_price * item.quantity).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <dl class="cp-order-detail-grid">
+            <div>
+              <dt>Subtotal</dt>
+              <dd>${detail.order.subtotal.toFixed(2)}</dd>
+            </div>
+            <div>
+              <dt>Shipping</dt>
+              <dd>
+                {detail.order.shipping_cost === 0
+                  ? 'FREE'
+                  : `$${detail.order.shipping_cost.toFixed(2)}`}
+              </dd>
+            </div>
+            <div>
+              <dt>Estimated total</dt>
+              <dd>${detail.order.total.toFixed(2)}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="cp-admin-section">
+          <h2>Status history</h2>
+          {detail.history.length === 0 ? (
+            <p class="cp-admin-empty-row">No status changes recorded yet.</p>
+          ) : (
+            <div class="cp-admin-table-wrap">
+              <table class="cp-admin-table">
+                <thead>
+                  <tr>
+                    <th>When</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Changed by</th>
+                    <th class="cp-admin-table__wrap">Note</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {detail.history.map((h) => (
+                    <tr>
+                      <td>{new Date(h.changed_at).toLocaleString()}</td>
+                      <td>{h.previous_status ?? '—'}</td>
+                      <td>{h.new_status}</td>
+                      <td>
+                        {h.changed_by === session.userId ? 'You' : (h.changed_by ?? 'system')}
+                      </td>
+                      <td class="cp-admin-table__wrap">{h.note ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section class="cp-admin-section">
+          <h2>Related audit events</h2>
+          {auditEntries.length === 0 ? (
+            <p class="cp-admin-empty-row">None.</p>
+          ) : (
+            <div class="cp-admin-table-wrap">
+              <table class="cp-admin-table">
+                <thead>
+                  <tr>
+                    <th>When</th>
+                    <th>Actor</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditEntries.map((entry) => (
+                    <tr>
+                      <td>{new Date(entry.created_at).toLocaleString()}</td>
+                      <td>
+                        {entry.actor_user_id === session.userId
+                          ? 'You'
+                          : (entry.actor_user_id ?? 'system')}
+                      </td>
+                      <td>{entry.action}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </>
+    )
+  }
+</AdminLayout>
+
+<script>
+  import '../../../scripts/admin-order-request-status.ts';
+</script>
+
+<style>
+  .cp-order-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 1rem;
+    margin: 0 0 1rem;
+  }
+  .cp-order-detail-grid dt {
+    font-size: var(--text-caption);
+    color: var(--text-secondary);
+    margin: 0 0 0.25rem;
+  }
+  .cp-order-detail-grid dd {
+    margin: 0;
+    font-weight: 500;
+  }
+  .cp-admin-inline-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+  }
+</style>

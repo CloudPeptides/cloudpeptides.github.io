@@ -32,6 +32,17 @@ export default defineConfig(
     },
   },
   {
+    // The admin PWA's service worker (public/admin/sw.js) runs in the
+    // ServiceWorkerGlobalScope, not a normal browser window — `self`,
+    // `caches`, `fetch`, `URL` etc. are that scope's own globals, not
+    // undefined references. It's a static public/ file (never bundled
+    // by Vite/Astro), so this is the only place it's linted at all.
+    files: ['public/admin/sw.js'],
+    languageOptions: {
+      globals: globals.serviceworker,
+    },
+  },
+  {
     // Ambient declaration files legitimately use triple-slash references
     // — it's the standard Astro convention for env.d.ts specifically,
     // not something an `import` can replace.
