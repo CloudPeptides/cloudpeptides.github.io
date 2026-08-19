@@ -46,17 +46,40 @@ test.describe('Admin PWA shell', () => {
     }
   });
 
-  // /admin/login is intentionally NOT wrapped in AdminLayout (it must
-  // stay reachable when no session/no admin exists yet, and AdminLayout
-  // itself redirects to /admin/login when unauthenticated — using it
-  // there would be a redirect loop, see AdminLayout.astro's own guard).
-  // It therefore correctly does NOT carry the `pwa` head tags — those
-  // only appear once an admin actually lands on an authenticated
-  // AdminLayout page, which is also the realistic point in the flow
-  // where "Add to Home Screen" happens. No e2e coverage of an
-  // authenticated admin page's own head tags here, matching this
-  // repo's established pattern of not faking staff sessions in e2e
-  // (see product-wizard.spec.ts's own comment).
+  // Real bug, found live (2026-08-19): a user's very first touch point
+  // with the admin realm is /admin/login — not an authenticated
+  // AdminLayout page — and iOS reads the manifest/apple-touch-icon tags
+  // from whichever page is on screen the moment "Add to Home Screen" is
+  // tapped, with no fallback to any other page. /admin/login (and
+  // forgot-password/reset-password, its own two unauthenticated
+  // siblings) is intentionally NOT wrapped in AdminLayout (which would
+  // redirect-loop on an unauthenticated visit — see AdminLayout.astro's
+  // own guard), so it was missing `pwa` entirely, and "Add to Home
+  // Screen" from the login screen produced iOS's generic-letter
+  // fallback icon instead of the real brand mark. Fixed by passing
+  // `pwa` directly to BaseLayout on all three of those pages (independent
+  // of AdminLayout/session — the prop only adds head tags, it doesn't
+  // gate anything) — asserted here on the one that's reachable without a
+  // session at all in this test.
+  for (const path of ['/admin/login', '/admin/forgot-password']) {
+    test(`${path} declares the manifest link and Apple PWA meta tags (reachable pre-login)`, async ({
+      page,
+    }) => {
+      await page.goto(path);
+      await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
+        'href',
+        '/admin/manifest.webmanifest',
+      );
+      await expect(page.locator('meta[name="apple-mobile-web-app-capable"]')).toHaveAttribute(
+        'content',
+        'yes',
+      );
+      await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute(
+        'href',
+        '/brand/apple-touch-icon.png',
+      );
+    });
+  }
 
   test('the public/researcher-facing site does NOT declare the admin manifest', async ({
     page,
