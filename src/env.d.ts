@@ -21,6 +21,13 @@ interface ImportMetaEnv {
    * key) — safe under the PUBLIC_ prefix, read client-side to render
    * the widget (src/scripts/turnstile-widget.ts). */
   readonly PUBLIC_TURNSTILE_SITE_KEY?: string;
+  /** VAPID public key (raw uncompressed P-256 point, base64url) — safe
+   * under PUBLIC_ by design (RFC 8292): it's exactly what the browser's
+   * `pushManager.subscribe({ applicationServerKey })` call needs
+   * client-side (src/scripts/admin-notifications.ts). The matching
+   * private key (VAPID_PRIVATE_KEY) is server-only — see
+   * cloudflare:workers' env declaration below. */
+  readonly PUBLIC_VAPID_PUBLIC_KEY?: string;
 }
 
 interface ImportMeta {
@@ -121,5 +128,23 @@ declare module 'cloudflare:workers' {
      * writing to what is, after cutover, the real production database.
      * Read once, centrally, in src/middleware.ts — never per-route. */
     STAGING_READ_ONLY?: string;
+    /** Server-only — the VAPID private key (raw 32-byte EC scalar,
+     * base64url), used only inside src/lib/web-push.ts to sign the
+     * VAPID JWT that authenticates each push send. Never sent to the
+     * client, never logged. Generate a matching pair with
+     * scripts/push/generate-vapid-keys.mjs. */
+    VAPID_PRIVATE_KEY?: string;
+    /** Same value as PUBLIC_VAPID_PUBLIC_KEY above, read server-side
+     * (src/lib/web-push.ts needs it too, to embed in the VAPID
+     * Authorization header's `k=` parameter) — duplicated across the
+     * PUBLIC_/server env boundary deliberately rather than having
+     * server code reach into import.meta.env's client-facing surface. */
+    VAPID_PUBLIC_KEY?: string;
+    /** A contact URI (mailto: or https:) required by RFC 8292 as the
+     * VAPID JWT's `sub` claim — push services use it to reach the
+     * sender if a subscription is being misused. Not sensitive, but
+     * kept server-only since it's only ever read inside the JWT-signing
+     * code. */
+    VAPID_SUBJECT?: string;
   };
 }
