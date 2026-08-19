@@ -155,18 +155,34 @@ test.describe('Order-request persistence + admin surface', () => {
 });
 
 test.describe('Research/shop separation holds for the 2026-08-19 batch', () => {
-  test('a newly-imported draft compound (GHRP-2) is not publicly visible yet', async ({ page }) => {
-    // Every profile imported by scripts/research/import-batch-*.mjs is
-    // inserted as status='draft' — never auto-published (CLAUDE.md's
-    // draft -> in_review -> published workflow). The public directory
-    // and profile route both only ever show published rows, so this
-    // compound must be invisible on the public site until a human
-    // editor actually publishes it.
+  // Every profile imported by scripts/research/import-batch-*.mjs was
+  // originally inserted as status='draft' (CLAUDE.md's draft ->
+  // in_review -> published workflow — nothing auto-published). The user
+  // explicitly reviewed and approved publishing the full batch
+  // afterward (scripts/research/publish-batch.mjs, which re-verifies
+  // src/lib/admin/validation.ts's checkPublishReadiness — every claim
+  // cited, every regulatory record sourced — before writing anything).
+  // This test now asserts the batch is genuinely live for a signed-in
+  // researcher, not just that it once correctly stayed hidden.
+  test('a published batch compound (GHRP-2) is publicly visible with real content', async ({
+    page,
+  }) => {
     const res = await page.goto('/research/compounds/ghrp-2');
-    expect(res?.status()).toBe(404);
+    expect(res?.status()).toBe(200);
+    await expect(page.getByRole('heading', { name: 'GHRP-2', exact: false }).first()).toBeVisible();
+    // Claim-level citations render, not just the compound shell — the
+    // whole point of also publishing every claim, not just the
+    // compound row (CompoundProfileBody.astro filters claims by their
+    // own status independently of the compound's).
+    await expect(page.getByText('World Anti-Doping Agency', { exact: false })).toBeVisible();
 
+    // Same client-side-search pattern compounds.spec.ts's own directory
+    // tests already use ([data-compound-item] + the search box toggling
+    // a `hidden` attribute) — a raw text/href locator matched multiple
+    // DOM nodes for reasons unrelated to this test's actual point.
     await page.goto('/research/compounds');
-    await expect(page.getByText('GHRP-2', { exact: false })).toHaveCount(0);
+    await page.locator('[data-compound-search]').fill('GHRP-2');
+    await expect(page.locator('[data-compound-item]:not([hidden])')).toHaveCount(1);
   });
 
   test('CP-S1/CP-T2/CP-R3 shop products still carry no link to the separate research profiles', async ({
