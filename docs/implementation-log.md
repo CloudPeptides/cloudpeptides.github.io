@@ -2,6 +2,45 @@
 
 Append-only. One entry per meaningful step, per [CLAUDE.md](../CLAUDE.md) §3/§11/§12.
 
+## Admin PWA + Web Push + order-request persistence + 18-profile research expansion (2026-08-19)
+
+Deployed to staging then production (both explicitly approved). Full detail lives in the 14 commits
+themselves (`8edb1e0`..`7edf384` on `rebuild/astro-platform`/`main`) — this entry is the durable summary.
+
+- **Admin PWA**: `/admin` is now installable to a home screen (manifest, service worker scoped to
+  `/admin/`, real 192/512/180px icon set generated from the approved brand mark via `sharp`). The
+  service worker caches only its own fixed app-shell asset list — no admin page, no `/api/*` response,
+  no auth/session data is ever cached.
+- **Web Push**: RFC 8291/8292 implemented directly on Workers' native `crypto.subtle` (no new
+  dependency — `web-push` npm isn't Workers-compatible without `nodejs_compat`). VAPID keys generated
+  and set as Worker secrets on both staging and production. Fires once for genuinely new researcher
+  registrations and once per new order request, idempotently (unique `idempotency_key` +
+  `ON CONFLICT DO NOTHING`), fanning out to every admin's registered device with automatic
+  expired-subscription cleanup and one retry for transient failures.
+- **Order requests persisted for the first time.** `checkout.ts` previously only emailed — no `orders`
+  table existed anywhere. New `order_requests`/`order_request_items`/`order_request_status_history`
+  tables (the latter two append-only), plus a full admin list/detail/status-history UI. The DB record
+  is now the source of truth, inserted before either notification email is attempted, so an email
+  failure can never lose a real request again.
+- **18 new draft research profiles** (17 new compounds + a CagriSema combination referencing the
+  existing Cagrilintide/Semaglutide rows) from a 39-candidate reconciliation pass — see
+  [docs/research/2026-08-19-candidate-reconciliation-manifest.md](research/2026-08-19-candidate-reconciliation-manifest.md).
+  Every citation independently verified via PubMed/PMC/NEJM/Cell/FDA/DailyMed/WADA this session. All
+  18 remain `status='draft'` — none publicly visible pending editorial review.
+- **A real bug found by live RLS testing, not just assumed:** `order_requests`' original SELECT policy
+  was strictly admin-only, which silently broke the actual submission code path (PostgREST's
+  `insert().select().single()` needs the inserting session to read its own row back). Fixed in a
+  follow-up migration (`20260819140000`), applied and reverified — a researcher can read only their
+  own order request, never another's.
+- **Verification**: 206/206 unit tests, 102/102 e2e tests, 332-file `astro check` clean, 0 lint errors,
+  clean build, 93/93 links with 0 broken, and a 32-check live RLS/idempotency/research-integrity script
+  (`scripts/migration/verify-push-orders-research.mjs`) run against the real database with disposable
+  test users/rows, fully cleaned up afterward.
+- **One step outside automatable scope**: `PUBLIC_VAPID_PUBLIC_KEY` needed to be added as a GitHub
+  Actions repo variable (not a secret — public by RFC 8292 design) to reach the client bundle at build
+  time; no GitHub token was available in this environment to set it programmatically. The user added it
+  directly in the GitHub UI; this entry's own commit is the rebuild that picks it up.
+
 ## Supabase Auth mail delivery + config fixes (2026-08-13)
 
 Config-only change against the live Supabase project (no code/migration) — the researcher-account
