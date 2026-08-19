@@ -145,6 +145,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify PUBLIC_VAPID_PUBLIC_KEY repo variable is set
+        run: |
+          if [ -z "${{ vars.PUBLIC_VAPID_PUBLIC_KEY }}" ]; then
+            echo "::error::vars.PUBLIC_VAPID_PUBLIC_KEY is empty in this job. Check GitHub → Settings → Secrets and variables → Actions → the *Variables* tab (not Secrets) has a repository variable named exactly PUBLIC_VAPID_PUBLIC_KEY."
+            exit 1
+          fi
+          echo "PUBLIC_VAPID_PUBLIC_KEY is set (length: ${#VAPID_KEY_CHECK} chars)"
+        env:
+          VAPID_KEY_CHECK: ${{ vars.PUBLIC_VAPID_PUBLIC_KEY }}
+
       - name: Build
         # PUBLIC_TURNSTILE_SITE_KEY: added 2026-08-08 — was previously
         # missing from this build step entirely, so the deployed staging
@@ -211,6 +221,24 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # Diagnostic, added 2026-08-19: a user report ("push notifications
+      # are not configured") traced back to this value silently
+      # resolving empty at build time with no visible signal anywhere —
+      # the app itself can't tell "not configured" apart from "briefly
+      # misconfigured," and neither could this workflow before now. This
+      # doesn't print the key's value (never necessary — the failure
+      # mode is "empty," which printing a length also proves), just
+      # whether GitHub actually populated it for this job.
+      - name: Verify PUBLIC_VAPID_PUBLIC_KEY repo variable is set
+        run: |
+          if [ -z "${{ vars.PUBLIC_VAPID_PUBLIC_KEY }}" ]; then
+            echo "::error::vars.PUBLIC_VAPID_PUBLIC_KEY is empty in this job. Check GitHub → Settings → Secrets and variables → Actions → the *Variables* tab (not Secrets) has a repository variable named exactly PUBLIC_VAPID_PUBLIC_KEY, not scoped only to an environment this job doesn't use."
+            exit 1
+          fi
+          echo "PUBLIC_VAPID_PUBLIC_KEY is set (length: ${#VAPID_KEY_CHECK} chars)"
+        env:
+          VAPID_KEY_CHECK: ${{ vars.PUBLIC_VAPID_PUBLIC_KEY }}
 
       - name: Build (production)
         # SITE_ENV=production is what tells scripts/postbuild-headers.mjs
