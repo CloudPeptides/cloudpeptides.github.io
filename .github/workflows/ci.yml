@@ -146,6 +146,16 @@ jobs:
           PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
           PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.PUBLIC_TURNSTILE_SITE_KEY }}
+          # Same reasoning as PUBLIC_TURNSTILE_SITE_KEY above: a VAPID
+          # public key is designed to be public (RFC 8292) — safe as a
+          # plain repo variable, not a GitHub secret. Added 2026-08-19
+          # alongside the admin push-notification feature
+          # (src/scripts/admin-notifications.ts reads it via
+          # import.meta.env at build time) — until this repo variable is
+          # actually set, the build embeds an empty value and the
+          # Enable-Push-Notifications button shows its own "not
+          # configured" message rather than failing silently.
+          PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.PUBLIC_VAPID_PUBLIC_KEY }}
 
       # Staging only: wrangler.jsonc sets name "cloudpeptides-staging" and
       # workers_dev: true, with no "routes"/custom domain configured —
@@ -216,6 +226,9 @@ jobs:
           PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
           PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.PUBLIC_TURNSTILE_SITE_KEY }}
+          # Same repo variable as deploy-staging's Build step above —
+          # public by design (RFC 8292).
+          PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.PUBLIC_VAPID_PUBLIC_KEY }}
 
       # Deploys wrangler.production.jsonc — name "cloudpeptides",
       # workers_dev: false, `routes` attaching cloudpeptides.org
