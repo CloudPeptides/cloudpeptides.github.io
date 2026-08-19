@@ -13,32 +13,45 @@
  * reserve inventory. Cloud Peptides reviews the request and contacts
  * the customer manually afterward.
  *
- * Two independent emails are sent via Resend for every accepted
- * request: the full request to info.order.thecloud@proton.me (the
- * operational record — no separate `orders` database table exists,
- * matching this project's existing shop/checkout architecture, which
- * has never persisted orders anywhere but that inbox), and an
- * acknowledgement to the customer stating plainly that the request
- * was received but not yet accepted and that no payment was taken.
- * Neither send is silently swallowed: if either fails, the response is
- * an honest failure, never a fake success (see the two `emailResult`
- * checks below) — the admin email is sent first specifically so that,
- * in the one failure mode where it succeeds but the acknowledgement
- * doesn't, the business still has the order details even though the
- * customer didn't get their confirmation and the browser is correctly
- * told the submission did not fully succeed.
+ * Order requests + their line items are now persisted to Supabase
+ * (order_requests/order_request_items — supabase/migrations/
+ * 20260819130000_order_requests.sql, added 2026-08-19; there was
+ * previously no `orders` table at all, confirmed by inspecting this
+ * file's own prior history plus shop_products/admin_pricing_catalog/
+ * batch_coas before adding it — see that migration's header comment).
+ * The database row is the source of truth from this point forward: it
+ * is inserted FIRST, before either email is attempted, and — a
+ * deliberate change from this route's pre-2026-08-19 behavior, where a
+ * failed email meant nothing was recorded anywhere — an email failure
+ * after that insert no longer loses the request. Two independent
+ * emails are still sent via Resend for every accepted request: the
+ * full request to info.order.thecloud@proton.me (the human
+ * notification channel), and an acknowledgement to the customer
+ * stating plainly that the request was received but not yet accepted
+ * and that no payment was taken. Neither send is silently swallowed —
+ * a failure is logged and reflected in admin_email_sent/
+ * customer_email_sent on the saved row, and the browser response below
+ * still reports an honest failure for that specific case (see the two
+ * `emailResult` checks) — but the underlying order_requests row, once
+ * inserted, is never deleted or rolled back because of it. A push
+ * notification (src/lib/push.ts's notifyNewOrderRequest) is attempted
+ * last, best-effort, and can never affect whether the request was
+ * saved or whether either email was attempted.
  */
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
+import { createServiceClient, createUserScopedClient } from '../../lib/auth';
 import {
   buildCatalogResolver,
   validateCheckoutSubmission,
   type CheckoutSubmission,
 } from '../../lib/form-validation';
 import { COMMERCE_ENABLED } from '../../lib/launch-config';
+import { insertOrderRequest, markOrderRequestEmailSent } from '../../lib/order-requests';
 import { hasSupabaseConfig, listCheckoutCatalogEntries } from '../../lib/public-shop';
+import { notifyNewOrderRequest } from '../../lib/push';
 import { checkRateLimit, cooldownSetCookieHeader, isInCooldown } from '../../lib/rate-limit';
 import { readBodyWithLimit } from '../../lib/request-limits';
 import { sendEmail } from '../../lib/resend';
@@ -249,6 +262,28 @@ export const POST: APIRoute = async ({ request, locals }) => {
   // orders" even though the same real Resend send path is exercised.
   const isTestOrder = !locals.indexable;
 
+  // The database record is the source of truth from here on — inserted
+  // BEFORE either email is attempted, under the submitting researcher's
+  // own JWT (RLS's order_requests_insert_own is the real boundary, not
+  // this route). A failure here is a genuine, unrecoverable failure
+  // (there is no request to email about yet).
+  const userClient = createUserScopedClient(session.accessToken);
+  let order;
+  try {
+    order = await insertOrderRequest(userClient, {
+      requestNumber,
+      researcherUserId: session.userId,
+      data,
+      isTestOrder,
+    });
+  } catch (err) {
+    console.error('order_requests insert failed:', err instanceof Error ? err.message : err);
+    return json(
+      { success: false, error: 'Could not submit your order request. Please try again.' },
+      500,
+    );
+  }
+
   const adminEmailResult = await sendEmail({
     apiKey,
     from: fromAddress,
@@ -258,11 +293,32 @@ export const POST: APIRoute = async ({ request, locals }) => {
     text: buildAdminEmail(requestNumber, data, isTestOrder),
   });
   if (!adminEmailResult.success) {
+    // The order is already saved and admin-visible (dashboard + push,
+    // attempted below) even though this specific notification channel
+    // failed — a deliberate improvement over the pre-2026-08-19
+    // behavior, where a failed admin email meant the request was lost
+    // entirely. The browser is still told honestly that something went
+    // wrong, matching the pre-existing response contract exactly.
+    let service;
+    try {
+      service = createServiceClient();
+      await notifyNewOrderRequest(service, {
+        requestId: order.id,
+        requestNumber,
+        customerName: data.name,
+      });
+    } catch (err) {
+      console.error(
+        'order-request push notification failed:',
+        err instanceof Error ? err.message : err,
+      );
+    }
     return json(
       { success: false, error: 'Could not submit your order request. Please try again.' },
       502,
     );
   }
+  await markOrderRequestEmailSent(userClient, order.id, 'admin_email_sent');
 
   const customerEmailResult = await sendEmail({
     apiKey,
@@ -272,11 +328,35 @@ export const POST: APIRoute = async ({ request, locals }) => {
     subject: `${isTestOrder ? '[TEST] ' : ''}We received your order request — ${requestNumber}`,
     text: buildCustomerEmail(requestNumber, data),
   });
+  if (customerEmailResult.success) {
+    await markOrderRequestEmailSent(userClient, order.id, 'customer_email_sent');
+  }
+
+  // Push notification — after both email attempts (whichever way they
+  // went), best-effort, service-role (fans out to every admin device;
+  // never reachable/callable by a client with arbitrary content — see
+  // src/lib/push.ts's own header comment). Never blocks or alters the
+  // response below.
+  try {
+    const service = createServiceClient();
+    await notifyNewOrderRequest(service, {
+      requestId: order.id,
+      requestNumber,
+      customerName: data.name,
+    });
+  } catch (err) {
+    console.error(
+      'order-request push notification failed:',
+      err instanceof Error ? err.message : err,
+    );
+  }
+
   if (!customerEmailResult.success) {
     // The admin already has the full order details at this point (the
-    // send above succeeded) — but the customer never got their
-    // acknowledgement, so this is still an honest failure to the
-    // browser, not a fake success, per the approved product decision.
+    // send above succeeded, and the record itself is saved) — but the
+    // customer never got their acknowledgement, so this is still an
+    // honest failure to the browser, not a fake success, per the
+    // approved product decision.
     return json(
       {
         success: false,

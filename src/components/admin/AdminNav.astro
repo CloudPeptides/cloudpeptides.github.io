@@ -26,6 +26,11 @@ const links = [
   { label: 'Audit Log', href: '/admin/audit-log', minRole: 'admin' as Role },
   { label: 'Users', href: '/admin/users', minRole: 'admin' as Role },
   { label: 'Researcher Accounts', href: '/admin/researchers', minRole: 'admin' as Role },
+  // Admin-only, matching COAs/Products/Pricing Catalog's existing bar —
+  // order requests carry real customer PII (name/email/phone/shipping
+  // address), unlike the editorial content tables 'contributor' can
+  // already reach.
+  { label: 'Order Requests', href: '/admin/order-requests', minRole: 'admin' as Role },
   { label: 'Notifications', href: '/admin/notifications', minRole: 'admin' as Role },
 ];
 
