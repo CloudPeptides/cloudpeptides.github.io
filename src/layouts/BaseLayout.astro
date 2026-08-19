@@ -129,17 +129,16 @@ const jsonLdBlocks = [
           <meta name="theme-color" content="#1f4b3f" />
           {/* iOS Safari ignores the web manifest for "Add to Home Screen"
               and instead reads these Apple-specific tags + apple-touch-icon
-              — all three are required for a real standalone iPhone install
-              (Blueprint-adjacent task requirement). apple-touch-icon
-              intentionally has no `sizes` attribute: the source asset is a
-              single 512x512 PNG (public/brand/logo-square.png, the one
-              approved brand mark — no redesign, no duplicate asset) and iOS
-              scales a single largest-available icon down itself; declaring
-              a false exact size would be less honest than omitting it. */}
+              — all three are required for a real standalone iPhone install.
+              apple-touch-icon.png is a real 180x180 render (public/brand/
+              icon-192.png and icon-512.png cover the web manifest's own
+              192/512 sizes) — all three generated from the single approved
+              brand mark (public/brand/logo-square.png) via sharp, no
+              redesign, no new artwork. */}
           <meta name="apple-mobile-web-app-capable" content="yes" />
           <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
           <meta name="apple-mobile-web-app-title" content="CP Admin" />
-          <link rel="apple-touch-icon" href="/brand/logo-square.png" />
+          <link rel="apple-touch-icon" sizes="180x180" href="/brand/apple-touch-icon.png" />
         </>
       )
     }

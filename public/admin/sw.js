@@ -24,8 +24,17 @@
 
 // Bump this string whenever APP_SHELL_ASSETS changes — a new cache name
 // means the old one is deleted on activate, so nothing stale lingers.
-const CACHE_NAME = 'cp-admin-shell-v1';
-const APP_SHELL_ASSETS = ['/admin/manifest.webmanifest', '/brand/logo-square.png'];
+// v2 (2026-08-19): switched from the single logo-square.png lockup to
+// the real, properly-sized icon files the manifest/apple-touch-icon
+// actually reference now (see public/admin/manifest.webmanifest and
+// BaseLayout.astro).
+const CACHE_NAME = 'cp-admin-shell-v2';
+const APP_SHELL_ASSETS = [
+  '/admin/manifest.webmanifest',
+  '/brand/icon-192.png',
+  '/brand/icon-512.png',
+  '/brand/apple-touch-icon.png',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -73,8 +82,8 @@ self.addEventListener('push', (event) => {
   const title = typeof payload.title === 'string' ? payload.title : 'CloudPeptides Admin';
   const options = {
     body: typeof payload.body === 'string' ? payload.body : '',
-    icon: '/brand/logo-square.png',
-    badge: '/brand/logo-square.png',
+    icon: '/brand/icon-192.png',
+    badge: '/brand/icon-192.png',
     // The destination admin URL to open on click — never anything but a
     // same-origin /admin/* path (the server only ever sends one of
     // those; see src/lib/push.ts's buildNotificationPayload()).

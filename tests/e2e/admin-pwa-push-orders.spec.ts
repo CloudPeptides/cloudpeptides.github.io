@@ -33,9 +33,13 @@ test.describe('Admin PWA shell', () => {
     // must never touch anything beyond the fixed app-shell asset list —
     // checked directly against that list, not the whole file text
     // (whose comments legitimately discuss /api/* paths in prose).
-    const assetsMatch = body.match(/APP_SHELL_ASSETS\s*=\s*(\[[^\]]*\])/);
+    const assetsMatch = body.match(/APP_SHELL_ASSETS\s*=\s*\[([^\]]*)\]/);
     expect(assetsMatch).not.toBeNull();
-    const assets = JSON.parse(assetsMatch![1].replace(/'/g, '"'));
+    // Pulled out as individual quoted strings rather than JSON.parse —
+    // the array literal is real JS (single-quoted, trailing comma
+    // allowed), not JSON.
+    const assets = [...assetsMatch![1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+    expect(assets.length).toBeGreaterThan(0);
     for (const asset of assets) {
       expect(asset).not.toMatch(/\/api\//);
       expect(asset).not.toMatch(/^\/admin\/(?!manifest)/); // no admin page, only the manifest itself
