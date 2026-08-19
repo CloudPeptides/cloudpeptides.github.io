@@ -21,7 +21,7 @@ if (!session) {
 }
 ---
 
-<BaseLayout title={`${title} — Admin`} noindex hideChrome>
+<BaseLayout title={`${title} — Admin`} noindex hideChrome pwa>
   <div class="cp-admin-shell">
     <AdminNav role={session.role} email={session.email} />
     <main class="cp-admin-main">
@@ -37,6 +37,14 @@ if (!session) {
     </main>
   </div>
 </BaseLayout>
+
+<script>
+  // Registered from every /admin page (this layout wraps all of them) so
+  // the installed app updates its service worker whenever staff browse
+  // normally — never registered from the public/researcher site, which
+  // has no <script> importing this file at all.
+  import '../scripts/admin-pwa-register.ts';
+</script>
 
 <style>
   .cp-admin-shell {
