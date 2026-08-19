@@ -30,7 +30,7 @@ if (Astro.locals.session && hasMinRole(Astro.locals.session.role, 'contributor')
 const justReset = Astro.url.searchParams.get('reset') === 'success';
 ---
 
-<BaseLayout title="Admin Sign In" noindex hideChrome>
+<BaseLayout title="Admin Sign In" noindex hideChrome pwa>
   <section class="cp-login-container">
     <div class="cp-login-card">
       <h1>Cloud Peptides Admin</h1>
