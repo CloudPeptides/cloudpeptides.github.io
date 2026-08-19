@@ -25,7 +25,19 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Bumped from 15 to 30 (2026-08-19): run 32277190121 hit the old
+    # 15-minute budget and was cancelled mid-e2e-suite. Root cause,
+    # reasoned from playwright.config.ts (no explicit `workers`
+    # override, so Playwright defaults to a CPU-core-based worker count)
+    # and the fact the suite completes in ~30s locally with 12 workers:
+    # GitHub-hosted ubuntu runners have far fewer cores, so the same 102
+    # tests (90 pre-existing + 12 added this batch) run far more
+    # serially in CI than locally — combined with npm ci + a
+    # Playwright-Chromium cache-miss install, the total job time can
+    # genuinely exceed 15 minutes without any single test actually
+    # hanging. 30 minutes gives real headroom rather than guessing at a
+    # smaller bump.
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
