@@ -3,7 +3,7 @@ export const prerender = false;
 
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import ErrorState from '../../components/ui/ErrorState.astro';
-import { createUserScopedClient } from '../../lib/auth';
+import { createUserScopedClient, hasMinRole } from '../../lib/auth';
 import {
   getCompoundStatusCounts,
   getEvidenceGaps,
@@ -11,9 +11,11 @@ import {
   getExpertReviewFlaggedCompounds,
   getRecentRevisions,
 } from '../../lib/admin/queries';
+import { getOrderRequestCounts } from '../../lib/order-requests';
 
 const session = Astro.locals.session!;
 const client = createUserScopedClient(session.accessToken);
+const isAdmin = hasMinRole(session.role, 'admin');
 
 let loadError: string | null = null;
 let counts = { draft: 0, in_review: 0, published: 0, archived: 0 };
@@ -21,6 +23,7 @@ let gaps = { compoundsWithNoClaims: 0, claimsNotAssessed: 0 };
 let unsupportedCount = 0;
 let expertReview: Awaited<ReturnType<typeof getExpertReviewFlaggedCompounds>> = [];
 let recentRevisions: Awaited<ReturnType<typeof getRecentRevisions>> = [];
+let newOrderCount = 0;
 
 try {
   [counts, gaps, unsupportedCount, expertReview, recentRevisions] = await Promise.all([
@@ -30,6 +33,14 @@ try {
     getExpertReviewFlaggedCompounds(client),
     getRecentRevisions(client),
   ]);
+  // Order requests carry customer PII — only queried at all for admin
+  // sessions, matching the table's own admin-only RLS (a contributor/
+  // editor session would just get zero rows back either way, but this
+  // avoids the query entirely for them).
+  if (isAdmin) {
+    const orderCounts = await getOrderRequestCounts(client);
+    newOrderCount = orderCounts.new;
+  }
 } catch {
   loadError = 'Could not load dashboard data right now.';
 }
@@ -96,6 +107,13 @@ const totalCompounds = counts.draft + counts.in_review + counts.published + coun
             <p class="cp-admin-stat-card__value">{expertReview.length}</p>
             <p class="cp-admin-stat-card__label">Expert-review-flagged compounds</p>
           </div>
+          {isAdmin && (
+            <div class="cp-admin-stat-card">
+              <p class="cp-admin-stat-card__value">{newOrderCount}</p>
+              <p class="cp-admin-stat-card__label">New order requests</p>
+              <a href="/admin/order-requests?status=new">View &rarr;</a>
+            </div>
+          )}
         </section>
 
         <section class="cp-admin-section">

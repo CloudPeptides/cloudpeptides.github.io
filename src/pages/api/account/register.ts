@@ -33,6 +33,7 @@ import { MIN_PASSWORD_LENGTH } from '../../../lib/password-reset';
 import { insertAttestation, insertResearcherProfile } from '../../../lib/researcher';
 import { CURRENT_ATTESTATION_VERSIONS } from '../../../lib/researcher-certification';
 import { writeAuditLog } from '../../../lib/admin/users';
+import { notifyNewResearcher } from '../../../lib/push';
 import { checkRateLimit } from '../../../lib/rate-limit';
 import { readBodyWithLimit } from '../../../lib/request-limits';
 import { verifyTurnstileToken } from '../../../lib/turnstile';
@@ -203,6 +204,22 @@ export const POST: APIRoute = async ({ request, url }) => {
     });
   } catch (err) {
     console.error('registration audit log failed:', err instanceof Error ? err.message : err);
+  }
+
+  // Fires exactly once per genuinely new account — after both the
+  // profile/attestation inserts and the audit log above have already
+  // succeeded. Never awaited into the response's success/failure path:
+  // a push failure must never turn a real, completed registration into
+  // an error response (notifyNewResearcher itself never throws, but the
+  // await is still isolated here for clarity — see src/lib/push.ts's
+  // own header comment for the full "never rolls back real work" story).
+  try {
+    await notifyNewResearcher(service, { userId: data.user.id, fullName });
+  } catch (err) {
+    console.error(
+      'registration push notification failed:',
+      err instanceof Error ? err.message : err,
+    );
   }
 
   return json({ success: true, message: GENERIC_SUCCESS }, 200);

@@ -1,0 +1,226 @@
+---
+/**
+ * Admin order-request list — search/status/date filters and sorting are
+ * all plain GET query params (no client JS needed, matches
+ * audit-log.astro's own pattern). "New/unread" is represented by
+ * status='new' itself (the default status every submission gets) rather
+ * than a separate read-receipt column — an admin marking a request
+ * 'reviewing' (or any other status) is what clears the indicator, which
+ * is also the real workflow signal this table needs.
+ */
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Badge from '../../../components/ui/Badge.astro';
+import Pagination from '../../../components/admin/Pagination.astro';
+import ErrorState from '../../../components/ui/ErrorState.astro';
+import { createUserScopedClient, hasMinRole } from '../../../lib/auth';
+import {
+  listOrderRequestsForAdmin,
+  ORDER_REQUEST_STATUSES,
+  type OrderRequestStatus,
+} from '../../../lib/order-requests';
+
+const session = Astro.locals.session!;
+const isAdmin = hasMinRole(session.role, 'admin');
+if (!isAdmin) Astro.response.status = 403;
+
+const STATUS_TONE: Record<
+  OrderRequestStatus,
+  'info' | 'warning' | 'sage' | 'success' | 'danger' | 'neutral'
+> = {
+  new: 'info',
+  reviewing: 'warning',
+  contacted: 'sage',
+  approved: 'success',
+  declined: 'danger',
+  completed: 'success',
+  cancelled: 'neutral',
+};
+
+const page = Math.max(1, Number(Astro.url.searchParams.get('page') ?? '1') || 1);
+const statusParam = Astro.url.searchParams.get('status') ?? '';
+const status = ORDER_REQUEST_STATUSES.includes(statusParam as OrderRequestStatus)
+  ? (statusParam as OrderRequestStatus)
+  : undefined;
+const search = Astro.url.searchParams.get('q') ?? '';
+const dateFrom = Astro.url.searchParams.get('from') ?? '';
+const dateTo = Astro.url.searchParams.get('to') ?? '';
+const sortParam = Astro.url.searchParams.get('sort') ?? 'newest';
+const sort = (['newest', 'oldest', 'total_desc', 'total_asc'] as const).includes(
+  sortParam as 'newest',
+)
+  ? (sortParam as 'newest' | 'oldest' | 'total_desc' | 'total_asc')
+  : 'newest';
+const PAGE_SIZE = 25;
+
+let loadError: string | null = null;
+let rows: Awaited<ReturnType<typeof listOrderRequestsForAdmin>>['rows'] = [];
+let total = 0;
+if (isAdmin) {
+  try {
+    const client = createUserScopedClient(session.accessToken);
+    const result = await listOrderRequestsForAdmin(client, {
+      status,
+      search: search || undefined,
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo ? `${dateTo}T23:59:59.999Z` : undefined,
+      sort,
+      page,
+      pageSize: PAGE_SIZE,
+    });
+    rows = result.rows;
+    total = result.total;
+  } catch {
+    loadError = 'Could not load order requests right now.';
+  }
+}
+const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+---
+
+<AdminLayout title="Order Requests">
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">Admin</p>
+      <h1>Order requests</h1>
+      <p>
+        Submitted order requests — review, contact, and update status manually. No payment
+        processing happens here.
+      </p>
+    </div>
+  </div>
+
+  {
+    !isAdmin && (
+      <div class="cp-admin-section">
+        <p class="cp-admin-empty-row">Admins only.</p>
+      </div>
+    )
+  }
+
+  {
+    isAdmin && (
+      <form class="cp-admin-filter-row" method="get">
+        <input type="search" name="q" placeholder="Search name, email, request #" value={search} />
+        <select name="status">
+          <option value="">All statuses</option>
+          {ORDER_REQUEST_STATUSES.map((s) => (
+            <option value={s} selected={s === status}>
+              {s}
+            </option>
+          ))}
+        </select>
+        <label>
+          From
+          <input type="date" name="from" value={dateFrom} />
+        </label>
+        <label>
+          To
+          <input type="date" name="to" value={dateTo} />
+        </label>
+        <select name="sort">
+          <option value="newest" selected={sort === 'newest'}>
+            Newest first
+          </option>
+          <option value="oldest" selected={sort === 'oldest'}>
+            Oldest first
+          </option>
+          <option value="total_desc" selected={sort === 'total_desc'}>
+            Total: high to low
+          </option>
+          <option value="total_asc" selected={sort === 'total_asc'}>
+            Total: low to high
+          </option>
+        </select>
+        <button type="submit" class="cp-admin-btn cp-admin-btn--primary cp-admin-btn--sm">
+          Apply
+        </button>
+        <a
+          href="/admin/order-requests"
+          class="cp-admin-btn cp-admin-btn--secondary cp-admin-btn--sm"
+        >
+          Clear
+        </a>
+      </form>
+    )
+  }
+
+  {isAdmin && loadError && <ErrorState message={loadError} retryHref="/admin/order-requests" />}
+
+  {
+    isAdmin && !loadError && rows.length === 0 && (
+      <div class="cp-admin-section">
+        <p class="cp-admin-empty-row">No order requests match these filters.</p>
+      </div>
+    )
+  }
+
+  {
+    isAdmin && !loadError && rows.length > 0 && (
+      <>
+        <div class="cp-admin-table-wrap">
+          <table class="cp-admin-table">
+            <thead>
+              <tr>
+                <th>Request #</th>
+                <th>Customer</th>
+                <th>Submitted</th>
+                <th>Items</th>
+                <th>Total</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr class={r.status === 'new' ? 'cp-order-row--new' : undefined}>
+                  <td>
+                    <a href={`/admin/order-requests/${r.id}`}>{r.request_number}</a>
+                    {r.is_test_order && (
+                      <Badge tone="neutral" class="cp-order-test-badge">
+                        TEST
+                      </Badge>
+                    )}
+                  </td>
+                  <td>{r.customer_name}</td>
+                  <td>{new Date(r.submitted_at).toLocaleString()}</td>
+                  <td>{r.item_count}</td>
+                  <td>${r.total.toFixed(2)}</td>
+                  <td>
+                    <Badge tone={STATUS_TONE[r.status]}>{r.status}</Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <Pagination currentUrl={Astro.url} page={page} totalPages={totalPages} />
+      </>
+    )
+  }
+</AdminLayout>
+
+<style>
+  .cp-admin-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: end;
+    margin: 0 0 1.5rem;
+  }
+  .cp-admin-filter-row label {
+    display: flex;
+    flex-direction: column;
+    font-size: var(--text-caption);
+    color: var(--text-secondary);
+    gap: 0.25rem;
+  }
+  .cp-admin-filter-row input[type='search'] {
+    min-width: 16rem;
+  }
+  .cp-order-row--new {
+    font-weight: 600;
+  }
+  .cp-order-test-badge {
+    margin-left: 0.5rem;
+  }
+</style>

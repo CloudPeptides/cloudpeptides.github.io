@@ -25,7 +25,19 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Bumped from 15 to 30 (2026-08-19): run 32277190121 hit the old
+    # 15-minute budget and was cancelled mid-e2e-suite. Root cause,
+    # reasoned from playwright.config.ts (no explicit `workers`
+    # override, so Playwright defaults to a CPU-core-based worker count)
+    # and the fact the suite completes in ~30s locally with 12 workers:
+    # GitHub-hosted ubuntu runners have far fewer cores, so the same 102
+    # tests (90 pre-existing + 12 added this batch) run far more
+    # serially in CI than locally — combined with npm ci + a
+    # Playwright-Chromium cache-miss install, the total job time can
+    # genuinely exceed 15 minutes without any single test actually
+    # hanging. 30 minutes gives real headroom rather than guessing at a
+    # smaller bump.
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -146,6 +158,16 @@ jobs:
           PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
           PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.PUBLIC_TURNSTILE_SITE_KEY }}
+          # Same reasoning as PUBLIC_TURNSTILE_SITE_KEY above: a VAPID
+          # public key is designed to be public (RFC 8292) — safe as a
+          # plain repo variable, not a GitHub secret. Added 2026-08-19
+          # alongside the admin push-notification feature
+          # (src/scripts/admin-notifications.ts reads it via
+          # import.meta.env at build time) — until this repo variable is
+          # actually set, the build embeds an empty value and the
+          # Enable-Push-Notifications button shows its own "not
+          # configured" message rather than failing silently.
+          PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.PUBLIC_VAPID_PUBLIC_KEY }}
 
       # Staging only: wrangler.jsonc sets name "cloudpeptides-staging" and
       # workers_dev: true, with no "routes"/custom domain configured —
@@ -216,6 +238,9 @@ jobs:
           PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
           PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.PUBLIC_TURNSTILE_SITE_KEY }}
+          # Same repo variable as deploy-staging's Build step above —
+          # public by design (RFC 8292).
+          PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.PUBLIC_VAPID_PUBLIC_KEY }}
 
       # Deploys wrangler.production.jsonc — name "cloudpeptides",
       # workers_dev: false, `routes` attaching cloudpeptides.org

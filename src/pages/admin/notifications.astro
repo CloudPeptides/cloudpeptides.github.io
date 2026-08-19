@@ -1,0 +1,153 @@
+---
+/**
+ * Admin Notification Settings — installability status, push-permission
+ * status, and enable/test/disable controls. All actual state (installed?
+ * push supported? current permission? current subscription?) is
+ * determined client-side in src/scripts/admin-notifications.ts, since
+ * every one of those is a browser/OS fact this page can't know at
+ * render time — this file only renders the static shell + the iOS
+ * install instructions (also static). Admin-only: push credentials and
+ * VAPID plumbing are sensitive enough to keep out of contributor/editor
+ * reach, matching AdminNav's existing admin-only links (Users, Audit
+ * Log, Researcher Accounts).
+ */
+export const prerender = false;
+
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import ErrorState from '../../components/ui/ErrorState.astro';
+import { hasMinRole } from '../../lib/auth';
+
+const session = Astro.locals.session!;
+if (!hasMinRole(session.role, 'admin')) {
+  return new Response(null, { status: 302, headers: { Location: '/admin' } });
+}
+---
+
+<AdminLayout title="Notification Settings">
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">Admin PWA</p>
+      <h1>Notification Settings</h1>
+      <p>Push alerts for new researcher registrations and new order requests, on this device.</p>
+    </div>
+  </div>
+
+  <noscript>
+    <ErrorState message="Enable JavaScript to view and change notification settings." />
+  </noscript>
+
+  <section class="cp-admin-section" id="npStatusSection">
+    <h2>This device</h2>
+    <dl class="cp-np-status-grid" id="npStatusGrid">
+      <div>
+        <dt>App installed</dt>
+        <dd id="npInstalled">Checking…</dd>
+      </div>
+      <div>
+        <dt>Push supported</dt>
+        <dd id="npSupported">Checking…</dd>
+      </div>
+      <div>
+        <dt>Notification permission</dt>
+        <dd id="npPermission">Checking…</dd>
+      </div>
+      <div>
+        <dt>Subscription status</dt>
+        <dd id="npSubscribed">Checking…</dd>
+      </div>
+    </dl>
+
+    <p class="cp-np-message" data-tone="error" id="npMessage" role="alert" hidden></p>
+    <p class="cp-np-message" data-tone="success" id="npSuccess" role="status" hidden></p>
+
+    <div class="cp-np-actions">
+      <button type="button" class="cp-admin-btn cp-admin-btn--primary" id="npEnable">
+        Enable Push Notifications
+      </button>
+      <button type="button" class="cp-admin-btn cp-admin-btn--secondary" id="npTest" hidden>
+        Send Test Notification
+      </button>
+      <button type="button" class="cp-admin-btn cp-admin-btn--secondary" id="npDisable" hidden>
+        Disable Notifications
+      </button>
+    </div>
+  </section>
+
+  <section class="cp-admin-section" id="npIosSection" hidden>
+    <h2>Install on iPhone first</h2>
+    <p>
+      iOS only allows push notifications for apps added to the Home Screen — Safari tabs can't
+      receive them. To install:
+    </p>
+    <ol class="cp-np-steps">
+      <li>
+        Open this page in Safari (not Chrome or another browser — iOS requires Safari for this).
+      </li>
+      <li>
+        Tap the <strong>Share</strong> icon (the square with an arrow pointing up) in Safari's toolbar.
+      </li>
+      <li>Scroll down and tap <strong>Add to Home Screen</strong>.</li>
+      <li>Tap <strong>Add</strong> in the top-right corner.</li>
+      <li>
+        Open <strong>CloudPeptides Admin</strong> from your Home Screen (not from Safari) and sign in
+        — then push notifications can be enabled from this same page.
+      </li>
+    </ol>
+    <p class="cp-np-ios-note">Requires iOS 16.4 or later.</p>
+  </section>
+</AdminLayout>
+
+<script>
+  import '../../scripts/admin-notifications.ts';
+</script>
+
+<style>
+  .cp-np-status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: 1rem;
+    margin: 0 0 1.25rem;
+    padding: 1rem 1.25rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-control);
+  }
+  .cp-np-status-grid dt {
+    font-size: var(--text-caption);
+    color: var(--text-secondary);
+    margin: 0 0 0.25rem;
+  }
+  .cp-np-status-grid dd {
+    margin: 0;
+    font-weight: 600;
+  }
+  .cp-np-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .cp-np-steps {
+    padding-left: 1.25rem;
+    line-height: 1.6;
+  }
+  .cp-np-ios-note {
+    color: var(--text-secondary);
+    font-size: var(--text-caption);
+  }
+  .cp-np-message {
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-control);
+    font-size: var(--text-caption);
+    margin: 0 0 1rem;
+  }
+  .cp-np-message[data-tone='error'] {
+    background: color-mix(in srgb, var(--danger-text) 12%, var(--bg-elevated));
+    border: 1.5px solid var(--danger-text);
+    color: var(--danger-text);
+  }
+  .cp-np-message[data-tone='success'] {
+    background: color-mix(in srgb, var(--success-text) 12%, var(--bg-elevated));
+    border: 1.5px solid var(--success-text);
+    color: var(--success-text);
+  }
+</style>
