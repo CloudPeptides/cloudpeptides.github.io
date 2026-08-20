@@ -211,17 +211,20 @@ test.describe('contact form', () => {
     await expect(page.locator('#contactFormSuccess')).toBeVisible();
   });
 
-  test('a real submission with no Resend key configured shows an honest error', async ({
+  test('a real submission with no Turnstile secret configured shows an honest error', async ({
     page,
   }) => {
     // Still accurate locally/in CI even though CONTACT_FORM_ENABLED is
     // now true (src/lib/launch-config.ts) and the form is genuinely
     // active on staging: .dev.vars (the local/CI Worker-runtime secrets
-    // file, distinct from .env.local) has no real RESEND_API_KEY/
-    // RESEND_FROM_ADDRESS/TURNSTILE_SECRET_KEY, so contact.ts's own
-    // Resend+Turnstile activation check still falls through to this
-    // same "not configured" response here — the launch-phase gate and
-    // the credential-activation gate are two independent checks.
+    // file, distinct from .env.local) has no real TURNSTILE_SECRET_KEY —
+    // the only remaining activation gate on this route since 2026-08-20,
+    // when email notification (and therefore the Resend half of the old
+    // combined gate) was retired in favor of the admin dashboard + push
+    // (src/pages/api/contact.ts, src/lib/push.ts's
+    // notifyNewContactSubmission). The launch-phase gate
+    // (CONTACT_FORM_ENABLED) and this credential-activation gate remain
+    // two independent checks.
     await page.goto('/contact');
     await page.fill('#name', 'Jane Doe');
     await page.fill('#email', 'jane@example.com');

@@ -83,7 +83,14 @@ const breadcrumbJsonLd = {
     {
       !loadError && compounds.length > 0 && (
         <SearchFilterBar compounds={compounds}>
-          <div class="cp-compound-grid" data-compound-grid>
+          <div
+            class="cp-compound-grid"
+            data-compound-grid
+            id="cp-compound-grid"
+            role="tabpanel"
+            aria-labelledby="cp-tab-compounds"
+            tabindex="0"
+          >
             {compounds.map((compound) => (
               <div
                 data-compound-item
