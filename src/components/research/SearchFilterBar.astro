@@ -53,6 +53,13 @@ const REGULATORY_STATUS_LABELS: Record<string, string> = {
   other: 'Other',
 };
 
+// Compounds/Stacks tabs (2026-08-20, approved) — canonical DB
+// classification only (entity_kind === 'stack'), never inferred from
+// name text/word count/"+" signs. See src/scripts/compound-search.ts
+// for the tab/filter/URL interplay this markup drives.
+const stackCount = compounds.filter((c) => c.entity_kind === 'stack').length;
+const compoundCount = compounds.length - stackCount;
+
 const entityKinds = [...new Set(compounds.map((c) => c.entity_kind))].sort();
 const categories = [
   ...new Set(compounds.map((c) => c.category).filter((c): c is string => Boolean(c))),
@@ -110,6 +117,39 @@ const regulatoryStatusesPresent = [
   </div>
 
   <div class="cp-directory-chips" data-active-chips aria-live="polite"></div>
+
+  <div class="cp-directory-tabs" role="tablist" aria-label="Research entries">
+    <button
+      type="button"
+      role="tab"
+      id="cp-tab-compounds"
+      aria-selected="true"
+      aria-controls="cp-compound-grid"
+      tabindex="0"
+      class="cp-directory-tab"
+      data-tab="compounds"
+    >
+      Compounds
+      <span class="cp-directory-tab__count" data-tab-count="compounds">
+        {compoundCount}
+      </span>
+    </button>
+    <button
+      type="button"
+      role="tab"
+      id="cp-tab-stacks"
+      aria-selected="false"
+      aria-controls="cp-compound-grid"
+      tabindex="-1"
+      class="cp-directory-tab"
+      data-tab="stacks"
+    >
+      Stacks
+      <span class="cp-directory-tab__count" data-tab-count="stacks">
+        {stackCount}
+      </span>
+    </button>
+  </div>
 
   <div class="cp-directory-layout">
     <button
@@ -336,6 +376,61 @@ const regulatoryStatusesPresent = [
     color: var(--text-primary);
     font-weight: 500;
     cursor: pointer;
+  }
+
+  .cp-directory-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .cp-directory-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 44px;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--font-body);
+    font-size: var(--text-body);
+    font-weight: 500;
+    cursor: pointer;
+    margin-bottom: -1px;
+  }
+  .cp-directory-tab:hover {
+    color: var(--text-primary);
+  }
+  .cp-directory-tab:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+  .cp-directory-tab[aria-selected='true'] {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    font-weight: 600;
+  }
+  /* Stacks echo the terracotta accent stack cards already use
+     (CompoundCard.astro's accent prop) once that tab is active —
+     distinct from the forest/mint Compounds accent, matching
+     CLAUDE.md §5's "keep Research and Shop/Stack modes visually
+     distinct" spirit. */
+  .cp-directory-tab[data-tab='stacks'][aria-selected='true'] {
+    color: var(--terracotta-text);
+    border-bottom-color: var(--terracotta-text);
+  }
+  .cp-directory-tab__count {
+    font-size: var(--text-caption);
+    font-weight: 500;
+    color: var(--text-muted);
+    background: var(--bg-sunken);
+    border-radius: 999px;
+    padding: 0.0625rem 0.5rem;
+  }
+  .cp-directory-tab[aria-selected='true'] .cp-directory-tab__count {
+    color: inherit;
   }
 
   .cp-directory-layout {
