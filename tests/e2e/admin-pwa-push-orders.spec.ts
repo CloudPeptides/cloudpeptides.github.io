@@ -154,6 +154,51 @@ test.describe('Order-request persistence + admin surface', () => {
   });
 });
 
+test.describe('Contact-submission persistence + admin surface (2026-08-20 — email notification retired in favor of dashboard + push)', () => {
+  test('/admin/contact-submissions requires admin authentication', async ({ page }) => {
+    await page.goto('/admin/contact-submissions');
+    await expect(page).toHaveURL(/\/admin\/login/);
+  });
+
+  test('/admin/contact-submissions/<id> requires admin authentication', async ({ page }) => {
+    await page.goto('/admin/contact-submissions/00000000-0000-0000-0000-000000000000');
+    await expect(page).toHaveURL(/\/admin\/login/);
+  });
+
+  test.describe('genuinely unauthenticated (no session at all)', () => {
+    test.use({ storageState: { cookies: [], origins: [] } });
+
+    test('the public contact form page itself requires a signed-in session', async ({ page }) => {
+      await page.goto('/contact');
+      await expect(page).toHaveURL(/\/login/);
+    });
+
+    test('the contact-submission POST route rejects an unauthenticated caller', async ({
+      request,
+    }) => {
+      const res = await request.post('/api/contact', {
+        data: { name: 'Test', email: 'test@example.com', message: 'hi' },
+      });
+      expect(res.status()).toBe(401);
+    });
+
+    test('the admin reply API rejects an unauthenticated caller', async ({ request }) => {
+      const res = await request.post(
+        '/api/admin/contact-submissions/00000000-0000-0000-0000-000000000000/reply',
+        { data: { body: 'reply' } },
+      );
+      expect(res.status()).toBe(401);
+    });
+  });
+
+  test('is not linked from any public page', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('a[href="/admin/contact-submissions"]')).toHaveCount(0);
+    await page.goto('/contact');
+    await expect(page.locator('a[href="/admin/contact-submissions"]')).toHaveCount(0);
+  });
+});
+
 test.describe('Research/shop separation holds for the 2026-08-19 batch', () => {
   // Every profile imported by scripts/research/import-batch-*.mjs was
   // originally inserted as status='draft' (CLAUDE.md's draft ->

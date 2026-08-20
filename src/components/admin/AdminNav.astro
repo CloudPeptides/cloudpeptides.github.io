@@ -31,6 +31,9 @@ const links = [
   // address), unlike the editorial content tables 'contributor' can
   // already reach.
   { label: 'Order Requests', href: '/admin/order-requests', minRole: 'admin' as Role },
+  // Admin-only, same PII bar as Order Requests — a contact message
+  // carries a real name/email/free-text body.
+  { label: 'Contact Messages', href: '/admin/contact-submissions', minRole: 'admin' as Role },
   { label: 'Notifications', href: '/admin/notifications', minRole: 'admin' as Role },
 ];
 

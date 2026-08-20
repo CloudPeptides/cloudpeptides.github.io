@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  notifyNewContactSubmission,
   notifyNewOrderRequest,
   notifyNewResearcher,
   sendTestNotification,
@@ -200,6 +201,51 @@ describe('notification payload content — no sensitive data on a lock screen', 
     const serialized = JSON.stringify(payload);
     expect(serialized).toContain('CP-2026-0002');
     expect(serialized).toContain('Morgan Customer');
+  });
+
+  it('the new-contact-submission payload carries the name, never the email or message body', async () => {
+    const { client } = fakeClient({
+      existingEvent: false,
+      subscriptions: [{ id: 's1', endpoint: 'https://push.example/1', p256dh: 'a', auth_key: 'b' }],
+    });
+    const mockedSend = vi.mocked(sendWebPush);
+    mockedSend.mockResolvedValue({ outcome: 'sent' });
+
+    await notifyNewContactSubmission(client as never, {
+      submissionId: 'sub-1',
+      // @ts-expect-error -- deliberately passing extra fields to prove
+      // the function signature/payload builder can't leak them even if
+      // a future caller accidentally supplied them.
+      email: 'casey@example.com',
+      name: 'Casey Researcher',
+      message: 'A private question about dosing.',
+    });
+
+    const [, payload] = mockedSend.mock.calls[0];
+    const serialized = JSON.stringify(payload);
+    expect(serialized).toContain('Casey Researcher');
+    expect(serialized).not.toContain('casey@example.com');
+    expect(serialized).not.toContain('A private question about dosing.');
+  });
+});
+
+describe('idempotency (contact submissions)', () => {
+  it('delivers once per genuinely new contact submission and skips a retried duplicate', async () => {
+    const fresh = fakeClient({
+      existingEvent: false,
+      subscriptions: [{ id: 's1', endpoint: 'https://push.example/1', p256dh: 'a', auth_key: 'b' }],
+    });
+    vi.mocked(sendWebPush).mockResolvedValue({ outcome: 'sent' });
+    await notifyNewContactSubmission(fresh.client as never, {
+      submissionId: 'sub-2',
+      name: 'Alex',
+    });
+    expect(vi.mocked(sendWebPush)).toHaveBeenCalledTimes(1);
+
+    vi.clearAllMocks();
+    const dup = fakeClient({ existingEvent: true, subscriptions: [] });
+    await notifyNewContactSubmission(dup.client as never, { submissionId: 'sub-2', name: 'Alex' });
+    expect(vi.mocked(sendWebPush)).not.toHaveBeenCalled();
   });
 });
 

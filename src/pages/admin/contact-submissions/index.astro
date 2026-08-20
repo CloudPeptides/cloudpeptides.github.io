@@ -1,0 +1,192 @@
+---
+/**
+ * Admin contact-message inbox — search/status filters and sorting are
+ * all plain GET query params (no client JS needed, matches
+ * order-requests/index.astro's own pattern). Replaces the previous
+ * email-only delivery entirely (2026-08-20) — this list IS the inbox
+ * now.
+ */
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Badge from '../../../components/ui/Badge.astro';
+import Pagination from '../../../components/admin/Pagination.astro';
+import ErrorState from '../../../components/ui/ErrorState.astro';
+import { createUserScopedClient, hasMinRole } from '../../../lib/auth';
+import {
+  listContactSubmissionsForAdmin,
+  CONTACT_SUBMISSION_STATUSES,
+  type ContactSubmissionStatus,
+} from '../../../lib/contact-submissions';
+
+const session = Astro.locals.session!;
+const isAdmin = hasMinRole(session.role, 'admin');
+if (!isAdmin) Astro.response.status = 403;
+
+const STATUS_TONE: Record<
+  ContactSubmissionStatus,
+  'info' | 'warning' | 'sage' | 'success' | 'danger' | 'neutral'
+> = {
+  new: 'info',
+  read: 'warning',
+  replied: 'success',
+};
+
+const page = Math.max(1, Number(Astro.url.searchParams.get('page') ?? '1') || 1);
+const statusParam = Astro.url.searchParams.get('status') ?? '';
+const status = CONTACT_SUBMISSION_STATUSES.includes(statusParam as ContactSubmissionStatus)
+  ? (statusParam as ContactSubmissionStatus)
+  : undefined;
+const search = Astro.url.searchParams.get('q') ?? '';
+const sortParam = Astro.url.searchParams.get('sort') ?? 'newest';
+const sort = (['newest', 'oldest'] as const).includes(sortParam as 'newest')
+  ? (sortParam as 'newest' | 'oldest')
+  : 'newest';
+const PAGE_SIZE = 25;
+
+let loadError: string | null = null;
+let rows: Awaited<ReturnType<typeof listContactSubmissionsForAdmin>>['rows'] = [];
+let total = 0;
+if (isAdmin) {
+  try {
+    const client = createUserScopedClient(session.accessToken);
+    const result = await listContactSubmissionsForAdmin(client, {
+      status,
+      search: search || undefined,
+      sort,
+      page,
+      pageSize: PAGE_SIZE,
+    });
+    rows = result.rows;
+    total = result.total;
+  } catch {
+    loadError = 'Could not load contact messages right now.';
+  }
+}
+const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+---
+
+<AdminLayout title="Contact Messages">
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">Admin</p>
+      <h1>Contact messages</h1>
+      <p>
+        Messages submitted through the public contact form. This dashboard is the only delivery
+        channel now — no admin email is sent for new messages, only a push notification.
+      </p>
+    </div>
+  </div>
+
+  {
+    !isAdmin && (
+      <div class="cp-admin-section">
+        <p class="cp-admin-empty-row">Admins only.</p>
+      </div>
+    )
+  }
+
+  {
+    isAdmin && (
+      <form class="cp-admin-filter-row" method="get">
+        <input type="search" name="q" placeholder="Search name, email, message" value={search} />
+        <select name="status">
+          <option value="">All statuses</option>
+          {CONTACT_SUBMISSION_STATUSES.map((s) => (
+            <option value={s} selected={s === status}>
+              {s}
+            </option>
+          ))}
+        </select>
+        <select name="sort">
+          <option value="newest" selected={sort === 'newest'}>
+            Newest first
+          </option>
+          <option value="oldest" selected={sort === 'oldest'}>
+            Oldest first
+          </option>
+        </select>
+        <button type="submit" class="cp-admin-btn cp-admin-btn--primary cp-admin-btn--sm">
+          Apply
+        </button>
+        <a
+          href="/admin/contact-submissions"
+          class="cp-admin-btn cp-admin-btn--secondary cp-admin-btn--sm"
+        >
+          Clear
+        </a>
+      </form>
+    )
+  }
+
+  {
+    isAdmin && loadError && (
+      <ErrorState message={loadError} retryHref="/admin/contact-submissions" />
+    )
+  }
+
+  {
+    isAdmin && !loadError && rows.length === 0 && (
+      <div class="cp-admin-section">
+        <p class="cp-admin-empty-row">No contact messages match these filters.</p>
+      </div>
+    )
+  }
+
+  {
+    isAdmin && !loadError && rows.length > 0 && (
+      <>
+        <div class="cp-admin-table-wrap">
+          <table class="cp-admin-table">
+            <thead>
+              <tr>
+                <th>From</th>
+                <th>Email</th>
+                <th>Message</th>
+                <th>Received</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr class={r.status === 'new' ? 'cp-contact-row--new' : undefined}>
+                  <td>
+                    <a href={`/admin/contact-submissions/${r.id}`}>{r.name}</a>
+                  </td>
+                  <td>{r.email}</td>
+                  <td class="cp-admin-table__wrap cp-contact-message-preview">
+                    {r.message.length > 120 ? `${r.message.slice(0, 120)}…` : r.message}
+                  </td>
+                  <td>{new Date(r.created_at).toLocaleString()}</td>
+                  <td>
+                    <Badge tone={STATUS_TONE[r.status]}>{r.status}</Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <Pagination currentUrl={Astro.url} page={page} totalPages={totalPages} />
+      </>
+    )
+  }
+</AdminLayout>
+
+<style>
+  .cp-admin-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: end;
+    margin: 0 0 1.5rem;
+  }
+  .cp-admin-filter-row input[type='search'] {
+    min-width: 16rem;
+  }
+  .cp-contact-row--new {
+    font-weight: 600;
+  }
+  .cp-contact-message-preview {
+    max-width: 24rem;
+  }
+</style>

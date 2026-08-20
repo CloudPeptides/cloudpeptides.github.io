@@ -46,7 +46,8 @@ export interface NotificationPayload {
 }
 
 interface CreateEventInput {
-  eventType: 'researcher_registered' | 'order_request_created' | 'test';
+  eventType:
+    'researcher_registered' | 'order_request_created' | 'contact_submission_created' | 'test';
   sourceTable?: string;
   sourceId?: string;
   idempotencyKey: string;
@@ -237,6 +238,32 @@ export async function notifyNewOrderRequest(
       body: `${input.requestNumber} — ${input.customerName}`,
       url: `/admin/order-requests/${input.requestId}`,
       tag: `order-${input.requestId}`,
+    },
+  });
+}
+
+/** Fires once per successfully created contact-form submission
+ * (src/pages/api/contact.ts, after the contact_submissions row has been
+ * recorded). Email notification for this form was retired entirely in
+ * favor of this push + the admin dashboard — see
+ * supabase/migrations/20260820100000_contact_submissions.sql's header
+ * comment. Name only in the payload, same "no sensitive data on a lock
+ * screen" rule as notifyNewResearcher — never the email or message
+ * body. */
+export async function notifyNewContactSubmission(
+  service: SupabaseClient,
+  input: { submissionId: string; name: string },
+): Promise<void> {
+  await createAndDeliver(service, {
+    eventType: 'contact_submission_created',
+    sourceTable: 'contact_submissions',
+    sourceId: input.submissionId,
+    idempotencyKey: `contact_submission_created:${input.submissionId}`,
+    payload: {
+      title: 'New contact message',
+      body: input.name ? `${input.name} sent a message.` : 'A new contact message was received.',
+      url: `/admin/contact-submissions/${input.submissionId}`,
+      tag: `contact-${input.submissionId}`,
     },
   });
 }

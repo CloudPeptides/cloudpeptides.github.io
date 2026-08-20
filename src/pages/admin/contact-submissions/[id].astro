@@ -1,0 +1,265 @@
+---
+/**
+ * Admin contact-message detail — full message, reply form (posts to
+ * src/pages/api/admin/contact-submissions/[id]/reply.ts, which is the
+ * only place this app still sends email for this form), append-only
+ * reply history, and related audit-log entries (same shared audit_log
+ * table every other admin action writes to). Viewing a 'new' message
+ * marks it 'read' server-side, same "viewing counts as read" behavior
+ * as any ordinary inbox — never downgrades an already-'replied' row
+ * (markContactSubmissionRead only updates rows still at 'new').
+ */
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Badge from '../../../components/ui/Badge.astro';
+import ErrorState from '../../../components/ui/ErrorState.astro';
+import { createServiceClient, createUserScopedClient, hasMinRole } from '../../../lib/auth';
+import {
+  getContactSubmissionDetail,
+  markContactSubmissionRead,
+} from '../../../lib/contact-submissions';
+import { listAuditLog } from '../../../lib/admin/queries';
+
+const session = Astro.locals.session!;
+const isAdmin = hasMinRole(session.role, 'admin');
+if (!isAdmin) Astro.response.status = 403;
+
+const { id } = Astro.params;
+
+let loadError: string | null = null;
+let detail: Awaited<ReturnType<typeof getContactSubmissionDetail>> = null;
+let researcherEmail: string | null = null;
+let auditEntries: Awaited<ReturnType<typeof listAuditLog>>['rows'] = [];
+
+if (isAdmin && id) {
+  try {
+    const client = createUserScopedClient(session.accessToken);
+    detail = await getContactSubmissionDetail(client, id);
+    if (detail?.submission.status === 'new') {
+      await markContactSubmissionRead(client, id);
+      detail.submission.status = 'read';
+    }
+    if (detail?.submission.researcher_user_id) {
+      try {
+        const service = createServiceClient();
+        const { data } = await service.auth.admin.getUserById(detail.submission.researcher_user_id);
+        researcherEmail = data.user?.email ?? null;
+      } catch {
+        researcherEmail = null;
+      }
+    }
+    const auditResult = await listAuditLog(client, {
+      page: 1,
+      pageSize: 20,
+      targetTable: 'contact_submissions',
+      targetId: id,
+    });
+    auditEntries = auditResult.rows;
+  } catch {
+    loadError = 'Could not load this contact message right now.';
+  }
+}
+---
+
+<AdminLayout title={detail ? `Message from ${detail.submission.name}` : 'Contact Message'}>
+  <div class="cp-admin-page-header">
+    <div>
+      <p class="cp-admin-eyebrow">Admin</p>
+      <h1>{detail ? `Message from ${detail.submission.name}` : 'Contact message'}</h1>
+    </div>
+  </div>
+
+  {
+    !isAdmin && (
+      <div class="cp-admin-section">
+        <p class="cp-admin-empty-row">Admins only.</p>
+      </div>
+    )
+  }
+
+  {
+    isAdmin && loadError && (
+      <ErrorState message={loadError} retryHref="/admin/contact-submissions" />
+    )
+  }
+
+  {
+    isAdmin && !loadError && !detail && (
+      <div class="cp-admin-section">
+        <p class="cp-admin-empty-row">Contact message not found.</p>
+      </div>
+    )
+  }
+
+  {
+    isAdmin && !loadError && detail && (
+      <>
+        <section class="cp-admin-section">
+          <h2>Message</h2>
+          <p>
+            Status: <Badge tone="info">{detail.submission.status}</Badge>
+          </p>
+          <dl class="cp-order-detail-grid">
+            <div>
+              <dt>Name</dt>
+              <dd>{detail.submission.name}</dd>
+            </div>
+            <div>
+              <dt>Email</dt>
+              <dd>{detail.submission.email}</dd>
+            </div>
+            <div>
+              <dt>Associated researcher account</dt>
+              <dd>
+                {detail.submission.researcher_user_id ? (
+                  <a href={`/admin/researchers?highlight=${detail.submission.researcher_user_id}`}>
+                    {researcherEmail ?? detail.submission.researcher_user_id}
+                  </a>
+                ) : (
+                  '—'
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt>Received</dt>
+              <dd>{new Date(detail.submission.created_at).toLocaleString()}</dd>
+            </div>
+          </dl>
+          <h3>Full message</h3>
+          <p class="cp-contact-message-full">{detail.submission.message}</p>
+        </section>
+
+        <section class="cp-admin-section">
+          <h2>Reply</h2>
+          <p>Sends an email to {detail.submission.email} and records it below.</p>
+          <form
+            id="replyForm"
+            class="cp-contact-reply-form"
+            data-submission-id={detail.submission.id}
+          >
+            <textarea
+              id="replyBody"
+              name="body"
+              rows="6"
+              maxlength="4000"
+              placeholder="Type your reply…"
+              required
+            />
+            <button type="submit" class="cp-admin-btn cp-admin-btn--primary cp-admin-btn--sm">
+              Send reply
+            </button>
+          </form>
+          <p
+            class="cp-admin-form-message"
+            data-tone="error"
+            id="replyMessage"
+            role="alert"
+            hidden
+          />
+        </section>
+
+        <section class="cp-admin-section">
+          <h2>Reply history</h2>
+          {detail.replies.length === 0 ? (
+            <p class="cp-admin-empty-row">No replies sent yet.</p>
+          ) : (
+            <div class="cp-admin-table-wrap">
+              <table class="cp-admin-table">
+                <thead>
+                  <tr>
+                    <th>Sent</th>
+                    <th>By</th>
+                    <th class="cp-admin-table__wrap">Body</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {detail.replies.map((r) => (
+                    <tr>
+                      <td>{new Date(r.sent_at).toLocaleString()}</td>
+                      <td>
+                        {r.admin_user_id === session.userId ? 'You' : (r.admin_user_id ?? 'system')}
+                      </td>
+                      <td class="cp-admin-table__wrap">{r.body}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section class="cp-admin-section">
+          <h2>Related audit events</h2>
+          {auditEntries.length === 0 ? (
+            <p class="cp-admin-empty-row">None.</p>
+          ) : (
+            <div class="cp-admin-table-wrap">
+              <table class="cp-admin-table">
+                <thead>
+                  <tr>
+                    <th>When</th>
+                    <th>Actor</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditEntries.map((entry) => (
+                    <tr>
+                      <td>{new Date(entry.created_at).toLocaleString()}</td>
+                      <td>
+                        {entry.actor_user_id === session.userId
+                          ? 'You'
+                          : (entry.actor_user_id ?? 'system')}
+                      </td>
+                      <td>{entry.action}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </>
+    )
+  }
+</AdminLayout>
+
+<script>
+  import '../../../scripts/admin-contact-reply.ts';
+</script>
+
+<style>
+  .cp-order-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 1rem;
+    margin: 0 0 1rem;
+  }
+  .cp-order-detail-grid dt {
+    font-size: var(--text-caption);
+    color: var(--text-secondary);
+    margin: 0 0 0.25rem;
+  }
+  .cp-order-detail-grid dd {
+    margin: 0;
+    font-weight: 500;
+  }
+  .cp-contact-message-full {
+    white-space: pre-wrap;
+    max-width: 48rem;
+  }
+  .cp-contact-reply-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-width: 48rem;
+  }
+  .cp-contact-reply-form textarea {
+    font: inherit;
+    padding: 0.75rem;
+    border-radius: var(--radius-md, 0.5rem);
+    border: 1px solid var(--border-default, currentColor);
+    resize: vertical;
+  }
+</style>
