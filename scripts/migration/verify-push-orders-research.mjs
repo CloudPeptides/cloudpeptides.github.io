@@ -473,11 +473,16 @@ async function main() {
         `${newCompounds?.length ?? 0}/18 found`,
       );
 
-      const nonDraft = (newCompounds ?? []).filter((c) => c.status !== 'draft');
+      // Updated 2026-08-19: the user reviewed and explicitly approved
+      // publishing the full batch (scripts/research/publish-batch.mjs,
+      // which re-verifies checkPublishReadiness — every claim cited,
+      // every regulatory record sourced — before writing anything). All
+      // 18 are now expected to be 'published', not 'draft'.
+      const notPublished = (newCompounds ?? []).filter((c) => c.status !== 'published');
       record(
-        'every one of the 18 new profiles is still status=draft (none published without review)',
-        nonDraft.length === 0,
-        nonDraft.map((c) => `${c.slug}=${c.status}`).join(', '),
+        'every one of the 18 new profiles is published (reviewed and approved by the user)',
+        notPublished.length === 0,
+        notPublished.map((c) => `${c.slug}=${c.status}`).join(', '),
       );
 
       // Every new compound has at least one claim (no shallow placeholders).
