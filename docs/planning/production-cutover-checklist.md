@@ -154,10 +154,13 @@ already uses (one shared project, nothing to duplicate):
       staging and production alike — no extra activation step.
       Spot-check a handful of legacy URLs against the live production
       domain anyway (Phase F below covers the full automated check).
-- [ ] Leave GitHub Pages (`cloudpeptides.github.io`) live and
-      untouched — do not disable it, do not delete `main`'s static
-      HTML files. It stays the documented rollback source for **30
-      days** minimum (Blueprint §26 Phase 12 / production-cutover-plan.md §7).
+- [ ] Leave GitHub Pages (repo `cloudpeptides.github.io`, now reachable
+      at `https://jessicaholsopple.github.io/cloudpeptides.github.io/`
+      since the 2026-08-21 account rename — see
+      production-cutover-plan.md §7) live and untouched — do not
+      disable it, do not delete `main`'s static HTML files. It stays
+      the documented rollback source for **30 days** minimum (Blueprint
+      §26 Phase 12 / production-cutover-plan.md §7).
 - [ ] **New step, 2026-08-08 — flip staging to read-only.** Now that
       production is confirmed live and serving real traffic from the
       shared database, staging must stop being able to write to it:
