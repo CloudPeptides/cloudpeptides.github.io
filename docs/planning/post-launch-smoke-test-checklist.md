@@ -101,7 +101,11 @@ step this depends on:
 - [ ] Confirm a still-"not yet migrated" legacy path (e.g. `/faq.html`)
       does **not** redirect (by design — no replacement page exists
       yet) and instead 404s honestly on the new domain, while the
-      original still works at `cloudpeptides.github.io/faq.html`.
+      original still works at
+      `https://jessicaholsopple.github.io/cloudpeptides.github.io/faq.html`
+      (GitHub Pages project-site URL — no longer the bare
+      `cloudpeptides.github.io` root domain; see
+      production-cutover-plan.md §7).
 
 ## Links and content
 

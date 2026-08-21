@@ -307,8 +307,24 @@ its own; every step below still needs your explicit action/approval
 - Not retired until 30 days after cutover (Blueprint §26 Phase 12
   acceptance criteria: "GitHub Pages kept as untouched rollback for 30
   days"). During that window, GitHub Pages keeps serving the old
-  static site at `cloudpeptides.github.io` unless/until DNS/traffic
-  has fully moved to the new custom domain.
+  static site, reachable at `cloudpeptides.github.io` unless/until
+  DNS/traffic has fully moved to the new custom domain.
+- **Updated 2026-08-21 — GitHub account rename.** The repo owner
+  renamed from `CloudPeptides` to `jessicaholsopple` (repo itself
+  deliberately kept its name — see CLAUDE.md; this repo does **not**
+  claim the reserved `jessicaholsopple.github.io` user-site slot, that
+  is reserved for a separate, unrelated site). Because the repo name
+  no longer matches the account name, GitHub Pages no longer serves it
+  as a user/org root site — the bare `https://cloudpeptides.github.io/`
+  URL now 404s. The legacy static site is still live and unmodified,
+  just at the project-site path instead:
+  `https://jessicaholsopple.github.io/cloudpeptides.github.io/`. This
+  does not affect `cloudpeptides.org` (the production domain, attached
+  directly to the Cloudflare Worker, never routed through GitHub
+  Pages) or the eventual DNS-rollback step in §11 below (custom-domain
+  attachment via a `CNAME` file works identically for project sites),
+  only the plain `*.github.io` fallback URL used for manual spot-checks
+  during the rollback window.
 - After 30 days of confirmed-stable production traffic: disable Pages
   in repo Settings → Pages ("None" as the source), which stops the
   free hosting without deleting any file — `main`'s static HTML stays
